@@ -121,3 +121,5 @@ func TestWrapHashSequencer(t *testing.T) {
 		t.Fatalf("got string %q; want %q", g, str)
 	}
 }
+
+// TODO: write a test for the window mechanisms. We are currently not shrinking.

@@ -181,7 +181,8 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	if b <= c {
 		c = b
 	}
-	for i := a; i < c; i++ {
+	var i int
+	for i = a; i < c; i++ {
 		x := _getLE64(p[i:]) & s.mask
 		h := s.hash(x)
 		s.hashTable[h] = hashEntry{
@@ -189,7 +190,7 @@ func (s *HashSequencer) hashSegment(a, b int) {
 			value: uint32(x),
 		}
 	}
-	for i := c; i < b; i++ {
+	for ; i < b; i++ {
 		x := getLE64(p[i:]) & s.mask
 		h := s.hash(x)
 		s.hashTable[h] = hashEntry{
@@ -255,8 +256,8 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	for ; i < inputEnd; i++ {
 		x := getLE64(p[i:]) & s.mask
 		h := s.hash(x)
-		entry := s.hashTable[h]
 		v := uint32(x)
+		entry := s.hashTable[h]
 		s.hashTable[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: v,

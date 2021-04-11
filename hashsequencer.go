@@ -5,17 +5,23 @@ import (
 	"fmt"
 )
 
+// hashEntry is used for hashEntry. The value field allows a fast check whether
+// a match has been found, which is cache-optimized.
 type hashEntry struct {
 	pos   uint32
 	value uint32
 }
 
+// HashSequencer allows the creation of sequence blocks using a simple hash
+// table.
 type HashSequencer struct {
 	seqWindow
 
 	hashTable []hashEntry
 
+	// mask for input
 	mask uint64
+
 	// shift provides the shift required for the hash function
 	shift uint
 
@@ -23,6 +29,7 @@ type HashSequencer struct {
 	minMatchLen int
 }
 
+// prime is used for hashing
 const prime = 9920624304325388887
 
 // hashes the masked x
@@ -49,6 +56,7 @@ type HashSequencerConfig struct {
 	MinMatchLen int
 }
 
+// ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HashSequencerConfig) ApplyDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * 1024 * 1024
@@ -79,6 +87,7 @@ func (cfg *HashSequencerConfig) ApplyDefaults() {
 	}
 }
 
+// Verify checks the config for correctness.
 func (cfg *HashSequencerConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
@@ -115,6 +124,17 @@ func (cfg *HashSequencerConfig) Verify() error {
 	return nil
 }
 
+// NewHashSeqeuncer creates a new hash sequencer.
+func NewHashSequencer(cfg HashSequencerConfig) (s *HashSequencer, err error) {
+	var t HashSequencer
+	if err := t.Init(cfg); err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// Init initialzes the hash sequencer. It returns an error if there is an issue
+// with the configuration paremeters.
 func (s *HashSequencer) Init(cfg HashSequencerConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -141,6 +161,7 @@ func (s *HashSequencer) Init(cfg HashSequencerConfig) error {
 	return nil
 }
 
+// ErrEmptyBuffer indicates that the buffer is simpler.
 var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
 func (s *HashSequencer) hashSegment(a, b int) {
@@ -174,6 +195,12 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	}
 }
 
+// Sequence converts the next block of k bytes to a sequences. The block will be
+// overwritten. The method returns the number of bytes sequenced and any error
+// encountered. It return ErrEmptyBuffer if there is no further data available.
+//
+// If blk is nil the search structures will be filled. This mode can be used to
+// ignore segments of data.
 func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
 	n = k
 	buffered := s.buffered()

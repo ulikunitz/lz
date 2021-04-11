@@ -193,3 +193,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		t.Fatalf("decoded hash sum: %x; want %x", sum2, sum1)
 	}
 }
+
+// TODO: add benchmarks for HashSequencer and for Encoder.
+// Implement the sequencer in a ways that it can be used with multiple
+// configurations and setups

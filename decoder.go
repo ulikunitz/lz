@@ -6,7 +6,8 @@ import (
 	"io"
 )
 
-// DecoderWindow decodes sequences.
+// DecoderWindow decodes sequences. The decoded data must be read from the
+// decoder window and the WriteTo method is the most simple to use for that.
 type DecoderWindow struct {
 	data []byte
 
@@ -21,6 +22,7 @@ type DecoderWindow struct {
 	fullWindow bool
 }
 
+// Init initializes the decoder window. An existing data slice might be reused.
 func (dw *DecoderWindow) Init(windowSize int) error {
 	if windowSize < 1 {
 		return fmt.Errorf("lz: winSize must be >= 1")
@@ -98,6 +100,7 @@ func (dw *DecoderWindow) copySlice(p []byte) {
 	dw.w = copy(dw.data, p[k:])
 }
 
+// ErrBufferFull indicates that no more data can be bufferd.
 var ErrBufferFull = errors.New("buffer is full")
 
 // Write writes data into the sequencer. If the Write cannot be completed no
@@ -201,11 +204,14 @@ func (dw *DecoderWindow) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 	return k, l, n, err
 }
 
+// A Decoder decodes sequences and writes data into the writer.
 type Decoder struct {
 	window DecoderWindow
-	w   io.Writer
+	w      io.Writer
 }
 
+// Init initializes the decoder. Internal bufferes will be reused if they are
+// largen enougn.
 func (d *Decoder) Init(w io.Writer, windowSize int) error {
 	if err := d.window.Init(windowSize); err != nil {
 		return err
@@ -214,11 +220,13 @@ func (d *Decoder) Init(w io.Writer, windowSize int) error {
 	return nil
 }
 
+// Flush writes all decoded data to the underlying writer.
 func (d *Decoder) Flush() error {
 	_, err := d.window.WriteTo(d.w)
 	return err
 }
 
+// Write writes data directoly into the decoder.
 func (d *Decoder) Write(p []byte) (n int, err error) {
 	n, err = d.window.Write(p)
 	if err != ErrBufferFull {
@@ -236,6 +244,7 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// WriteMatch writes a single match into the decoder.
 func (d *Decoder) WriteMatch(n int, offset int) error {
 	err := d.window.WriteMatch(n, offset)
 	if err != ErrBufferFull {
@@ -249,6 +258,7 @@ func (d *Decoder) WriteMatch(n int, offset int) error {
 	return d.window.WriteMatch(n, offset)
 }
 
+// WriteBlock writes a complete block into the decoder.
 func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 	k, l, n, err = d.window.WriteBlock(blk)
 	if err != ErrBufferFull {

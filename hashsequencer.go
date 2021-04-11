@@ -27,6 +27,7 @@ type HashSequencer struct {
 
 	inputLen    int
 	minMatchLen int
+	blockSize   int
 }
 
 // prime is used for hashing
@@ -48,6 +49,8 @@ type HashSequencerConfig struct {
 	ShrinkSize int
 	// maximum size of the buffer
 	MaxSize int
+	// BlockSize: target size for a block
+	BlockSize int
 	// number of bits of the hash index
 	HashBits int
 	// lenght of the input used; range [2,8]
@@ -58,23 +61,14 @@ type HashSequencerConfig struct {
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HashSequencerConfig) ApplyDefaults() {
+	if cfg.BlockSize == 0 {
+		cfg.BlockSize = 128 * 1024
+	}
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * 1024 * 1024
-		if cfg.ShrinkSize > cfg.WindowSize {
-			cfg.ShrinkSize = cfg.WindowSize
-		}
-		if cfg.MaxSize != 0 && cfg.MaxSize < cfg.WindowSize {
-			cfg.MaxSize = cfg.WindowSize
-		}
 	}
 	if cfg.MaxSize == 0 {
 		cfg.MaxSize = 8 * 1024 * 1024
-		if cfg.MaxSize < cfg.WindowSize {
-			cfg.MaxSize = cfg.WindowSize
-		}
-		if cfg.MaxSize < cfg.ShrinkSize {
-			cfg.MaxSize = 2 * cfg.ShrinkSize
-		}
 	}
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
@@ -105,9 +99,18 @@ func (cfg *HashSequencerConfig) Verify() error {
 	}
 	if !(cfg.WindowSize <= cfg.MaxSize) {
 		return fmt.Errorf(
-			"lz: WindowSize=&%d; must be less than MaxSize=%d",
+			"lz: WindowSize=%d; must be less than MaxSize=%d",
 			cfg.WindowSize, cfg.MaxSize)
 	}
+	if !(cfg.ShrinkSize < cfg.MaxSize) {
+		return fmt.Errorf(
+			"ls: shrinkSize must be less than cfg.MaxSize")
+	}
+	if !(0 < cfg.BlockSize) {
+		return fmt.Errorf(
+			"lz: BlockSize=%d; must be positive", cfg.BlockSize)
+	}
+
 	maxHashBits := 32
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
@@ -158,6 +161,7 @@ func (s *HashSequencer) Init(cfg HashSequencerConfig) error {
 
 	s.inputLen = cfg.InputLen
 	s.minMatchLen = cfg.MinMatchLen
+	s.blockSize = cfg.BlockSize
 	return nil
 }
 
@@ -195,15 +199,37 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	}
 }
 
+// Requested provides the number of bytes that the sequencer wants to be provided.
+func (s *HashSequencer) Requested() int {
+	r := s.blockSize - s.buffered()
+	if r <= 0 {
+		return 0
+	}
+	if s.available() < r {
+		delta := s.shrink()
+		// adapt entries in hashTable since s.pos has changed.
+		if delta > 0 {
+			for i, e := range s.hashTable {
+				if e.pos < delta {
+					s.hashTable[i] = hashEntry{}
+				} else {
+					s.hashTable[i].pos = e.pos - delta
+				}
+			}
+		}
+	}
+	return s.available()
+}
+
 // Sequence converts the next block of k bytes to a sequences. The block will be
 // overwritten. The method returns the number of bytes sequenced and any error
 // encountered. It return ErrEmptyBuffer if there is no further data available.
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
-	n = k
-	buffered := s.Buffered()
+func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+	n = s.blockSize
+	buffered := s.buffered()
 	if n > buffered {
 		n = buffered
 	}
@@ -226,7 +252,7 @@ func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
 	inputEnd := int64(len(p) - s.inputLen + 1)
 	i := int64(s.w)
 	litIndex := i
-	for i < inputEnd {
+	for ; i < inputEnd; i++ {
 		x := getLE64(p[i:]) & s.mask
 		h := s.hash(x)
 		entry := s.hashTable[h]
@@ -236,19 +262,19 @@ func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
 			value: v,
 		}
 		if v != entry.value {
-			i++
 			continue
 		}
 		// potential match
 		j := int64(entry.pos) - int64(s.pos)
+		if j < 0 {
+			continue
+		}
 		o := i - j
 		if !(0 < o && o < int64(s.size)) {
-			i++
 			continue
 		}
 		k := matchLen(p[j:], p[i:])
 		if k < s.minMatchLen {
-			i++
 			continue
 		}
 		q := p[litIndex:i]
@@ -261,7 +287,7 @@ func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + int64(k)
 		s.hashSegment(int(i+1), int(litIndex))
-		i = litIndex
+		i = litIndex - 1
 	}
 
 	if flags&NoTrailingLiterals != 0 {

@@ -2,7 +2,9 @@ package lz
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -14,6 +16,8 @@ func TestHashSequencerSimple(t *testing.T) {
 	if err := s.Init(HashSequencerConfig{
 		WindowSize:  1024,
 		ShrinkSize:  1024,
+		BlockSize:   512,
+		MaxSize:     2 * 1024,
 		InputLen:    3,
 		MinMatchLen: 2,
 	}); err != nil {
@@ -28,7 +32,7 @@ func TestHashSequencerSimple(t *testing.T) {
 	}
 
 	var blk Block
-	n, err = s.Sequence(&blk, 1024, 0)
+	n, err = s.Sequence(&blk, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}
@@ -88,6 +92,8 @@ func TestWrapHashSequencer(t *testing.T) {
 	ws, err := NewHashSequencer(HashSequencerConfig{
 		WindowSize:  windowSize,
 		ShrinkSize:  windowSize,
+		BlockSize:   blockSize,
+		MaxSize:     2 * windowSize,
 		InputLen:    3,
 		MinMatchLen: 2,
 	})
@@ -102,7 +108,7 @@ func TestWrapHashSequencer(t *testing.T) {
 
 	var blk Block
 	for {
-		if _, err := s.Sequence(&blk, blockSize, 0); err != nil {
+		if _, err := s.Sequence(&blk, 0); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -122,4 +128,68 @@ func TestWrapHashSequencer(t *testing.T) {
 	}
 }
 
-// TODO: write a test for the window mechanisms. We are currently not shrinking.
+func TestHashSequencerEnwik7(t *testing.T) {
+	const (
+		enwik7     = "testdata/enwik7"
+		blockSize  = 128 * 1024
+		windowSize = 2*blockSize + 123
+	)
+	f, err := os.Open(enwik7)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", enwik7, err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			t.Fatalf("f.Close() error %s", err)
+		}
+	}()
+	h1 := sha256.New()
+	r := io.TeeReader(f, h1)
+
+	cfg := HashSequencerConfig{
+		BlockSize:   blockSize,
+		WindowSize:  windowSize,
+		ShrinkSize:  windowSize / 4,
+		MaxSize:     2 * windowSize,
+		InputLen:    3,
+		MinMatchLen: 2,
+	}
+	ws, err := NewHashSequencer(cfg)
+	if err != nil {
+		t.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
+	}
+	s := WrapReader(r, ws)
+
+	h2 := sha256.New()
+	var decoder Decoder
+	if err = decoder.Init(h2, windowSize); err != nil {
+		t.Fatalf("decoder.Init() error %s", err)
+	}
+
+	var blk Block
+	for {
+		_, err = s.Sequence(&blk, 0)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("s.Sequence error %s", err)
+		}
+		if len(blk.Sequences) == 0 {
+			t.Fatalf("s.Sequence doesn't compress")
+		}
+		if _, _, _, err := decoder.WriteBlock(&blk); err != nil {
+			t.Fatalf("decoder.WriteBlock error %s", err)
+		}
+	}
+	if err := decoder.Flush(); err != nil {
+		t.Fatalf("decoder.Flush error %s", err)
+	}
+
+	sum1 := h1.Sum(nil)
+	sum2 := h2.Sum(nil)
+
+	if !bytes.Equal(sum1, sum2) {
+		t.Fatalf("decoded hash sum: %x; want %x", sum2, sum1)
+	}
+}

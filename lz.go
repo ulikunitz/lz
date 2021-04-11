@@ -50,19 +50,20 @@ const (
 	NoTrailingLiterals = 1 << iota
 )
 
-// Sequencer can generate a block of sequences.The Sequence method generates a
-// block of sequences for k bytes if possible. It will return the number of
-// bytes sequences have been generated for. The block can be reused and will be
-// overwritten. If the block is nil k bytes will be skipped and no sequences
-// generated.
+// Sequencer instances sequences. The Sequence method generates a block of
+// sequences. The target block size under control of the sequencer. The method
+// returns the actual number of bytes sequences have been generated for. The
+// block can be reused and will be overwritten. If the block is nil k bytes will
+// be skipped and no sequences generated.
 type Sequencer interface {
-	Sequence(blk *Block, k int, flags int) (n int, err error)
+	Sequence(blk *Block, flags int) (n int, err error)
 }
 
 // WriteSequencer provide the data to be sequenced using the Writer
-// interface.
+// interface. Requested() returns the number of bytes that should be written
+// into the sequencer.
 type WriteSequencer interface {
 	io.Writer
-	Buffered() int
+	Requested() int
 	Sequencer
 }

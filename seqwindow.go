@@ -55,7 +55,7 @@ func (w *seqWindow) available() int {
 
 // Buffered returns the number of bytes that have not been transferred into the
 // window.
-func (w *seqWindow) Buffered() int {
+func (w *seqWindow) buffered() int {
 	return len(w.data) - w.w
 }
 
@@ -79,6 +79,13 @@ func (w *seqWindow) ReadFrom(r io.Reader) (n int64, err error) {
 		p = w.data[:w.max]
 	} else {
 		p = w.data[:cap(w.data)]
+	}
+	if len(p) == 0 {
+		n := 32 * 1024
+		if w.max < n {
+			n = w.max
+		}
+		p = make([]byte, n)
 	}
 	i := len(w.data)
 	for {
@@ -118,7 +125,6 @@ func (w *seqWindow) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
-/*
 // shrink moves part of the window and all buffered data to the front of data.
 // The new window size will be shrinkSize. If w.pos is reset due to the limited
 // range of uint32 a non-zero delta will be returned.
@@ -138,4 +144,3 @@ func (w *seqWindow) shrink() (delta uint32) {
 	}
 	return 0
 }
-*/

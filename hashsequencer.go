@@ -270,7 +270,7 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			continue
 		}
 		o := i - j
-		if !(0 < o && o < int64(s.size)) {
+		if !(0 < o && o <= int64(s.size)) {
 			continue
 		}
 		k := matchLen(p[j:], p[i:])

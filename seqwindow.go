@@ -53,10 +53,14 @@ func (w *seqWindow) available() int {
 	return w.max - len(w.data)
 }
 
-func (w *seqWindow) buffered() int {
+// Buffered returns the number of bytes that have not been transferred into the
+// window.
+func (w *seqWindow) Buffered() int {
 	return len(w.data) - w.w
 }
 
+// Write puts data into the buffer behind the window. This data is required by
+// the Sequence method.
 func (w *seqWindow) Write(p []byte) (n int, err error) {
 	n = w.available()
 	if len(p) > n {
@@ -67,6 +71,8 @@ func (w *seqWindow) Write(p []byte) (n int, err error) {
 	return len(p), err
 }
 
+// ReadFrom is an alternative way to transfer data into the buffer after the
+// window. See the Write method.
 func (w *seqWindow) ReadFrom(r io.Reader) (n int64, err error) {
 	var p []byte
 	if w.max < cap(w.data) {

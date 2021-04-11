@@ -203,7 +203,7 @@ func (s *HashSequencer) hashSegment(a, b int) {
 // ignore segments of data.
 func (s *HashSequencer) Sequence(blk *Block, k, flags int) (n int, err error) {
 	n = k
-	buffered := s.buffered()
+	buffered := s.Buffered()
 	if n > buffered {
 		n = buffered
 	}

@@ -44,11 +44,12 @@ func TestHashSequencerSimple(t *testing.T) {
 			len(blk.Literals), len(str))
 	}
 
-	var dw DecoderWindow
-	if err := dw.Init(1024); err != nil {
+	var buf bytes.Buffer
+	var d Decoder
+	if err := d.Init(&buf, 1024); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
-	k, l, m, err := dw.WriteBlock(&blk)
+	k, l, m, err := d.WriteBlock(&blk)
 	if err != nil {
 		t.Fatalf("dw.WriteBlock(&blk) error %s", err)
 	}
@@ -64,15 +65,10 @@ func TestHashSequencerSimple(t *testing.T) {
 		t.Fatalf("dw.WriteBlock(&blk) returned %d; want %d bytes",
 			m, len(str))
 	}
+	if err = d.Flush(); err != nil {
+		t.Fatalf("d.Flush() error %s", err)
+	}
 
-	var buf bytes.Buffer
-	m, err = dw.WriteTo(&buf)
-	if err != nil {
-		t.Fatalf("dw.WriteTo error %s", err)
-	}
-	if m != int64(len(str)) {
-		t.Fatalf("dw.WriteTo returned %d; want %d", m, len(str))
-	}
 	g := buf.String()
 	if g != str {
 		t.Fatalf("uncompressed string %q; want %q", g, str)

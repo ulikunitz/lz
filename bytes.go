@@ -57,6 +57,7 @@ func getLE64(p []byte) uint64 {
 	}
 }
 
+// matchLen computes the lenght of the common prefix between p and q.
 func matchLen(p, q []byte) int {
 	if len(q) > len(p) {
 		p, q = q, p

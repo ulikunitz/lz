@@ -2,6 +2,8 @@ package lz
 
 import (
 	"bytes"
+	"io"
+	"strings"
 	"testing"
 )
 
@@ -74,4 +76,48 @@ func TestHashSequencerSimple(t *testing.T) {
 		t.Fatalf("uncompressed string %q; want %q", g, str)
 	}
 	t.Logf("g: %q", g)
+}
+
+func TestWrapHashSequencer(t *testing.T) {
+	const (
+		windowSize = 1024
+		blockSize  = 512
+		str        = "=====foofoobarfoobar bartender===="
+	)
+
+	ws, err := NewHashSequencer(HashSequencerConfig{
+		WindowSize:  windowSize,
+		ShrinkSize:  windowSize,
+		InputLen:    3,
+		MinMatchLen: 2,
+	})
+	if err != nil {
+		t.Fatalf("NewHashSequencer error %s", err)
+	}
+	s := WrapReader(strings.NewReader(str), ws)
+
+	var builder strings.Builder
+	var decoder Decoder
+	decoder.Init(&builder, windowSize)
+
+	var blk Block
+	for {
+		if _, err := s.Sequence(&blk, blockSize, 0); err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("s.Sequence error %s", err)
+		}
+		if _, _, _, err := decoder.WriteBlock(&blk); err != nil {
+			t.Fatalf("decoder.WriteBlock error %s", err)
+		}
+	}
+	if err := decoder.Flush(); err != nil {
+		t.Fatalf("decoder.Flush error %s", err)
+	}
+
+	g := builder.String()
+	if g != str {
+		t.Fatalf("got string %q; want %q", g, str)
+	}
 }

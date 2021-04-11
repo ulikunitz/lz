@@ -61,11 +61,6 @@ type Sequencer interface {
 // interface.
 type WriteSequencer interface {
 	io.Writer
+	Buffered() int
 	Sequencer
-}
-
-// WrapReader wraps a reader. The user doesn't need to take care of filling the
-// Sequencer with additional data.
-func WrapReader(r io.Reader, wseq WriteSequencer) Sequencer {
-	panic("TODO")
 }

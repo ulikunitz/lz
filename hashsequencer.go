@@ -236,6 +236,12 @@ func (s *HashSequencer) Requested() int {
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
 func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+	// TODO: possible optimizations
+	// - have a meaningful benchmark before implementing these optimizations
+	// - call getLE64 only if needed, otherwise use _getLE64
+	// - use loaded 8-byte x loaded as a kind of buffer
+	// - combine hashing and match determination in loop
+
 	n = s.blockSize
 	buffered := s.buffered()
 	if n > buffered {

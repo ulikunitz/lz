@@ -197,3 +197,5 @@ func TestHashSequencerEnwik7(t *testing.T) {
 // TODO: add benchmarks for HashSequencer and for Encoder.
 // Implement the sequencer in a ways that it can be used with multiple
 // configurations and setups
+
+// TODO: test behavoir for large limits

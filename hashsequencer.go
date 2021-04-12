@@ -106,6 +106,13 @@ func (cfg *HashSequencerConfig) Verify() error {
 		return fmt.Errorf(
 			"ls: shrinkSize must be less than cfg.MaxSize")
 	}
+	if !(int64(cfg.MaxSize) <= int64(maxUint32)) {
+		// We manage positions only as uint32 values and so this limit
+		// is necessary
+		return fmt.Errorf(
+			"lz: MaxSize=%d; must be less than MaxUint32=%d",
+			cfg.MaxSize, maxUint32)
+	}
 	if !(0 < cfg.BlockSize) {
 		return fmt.Errorf(
 			"lz: BlockSize=%d; must be positive", cfg.BlockSize)

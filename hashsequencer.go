@@ -38,13 +38,6 @@ func (s *HashSequencer) hash(x uint64) uint32 {
 	return uint32((x * prime) >> s.shift)
 }
 
-// TODO: get rid of MaxSize
-//
-// Distinguish between MaxSize and WindowSize has no benefits. We basically
-// waste part of the memory allocated and don't use it for compression. Sure we
-// are shrinking the window once an a while but this is done to avoid the
-// complications of a circular buffer and improves compression speed.
-
 // HashSequencerConfig provides the configuration parameters for the
 // HashSequencer. The SeqWindow has a linear buffer that needs to be shrinked
 // by sliding the window into the front of the buffer. The remaining size of the
@@ -287,11 +280,12 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		}
 		// potential match
 		j := int64(entry.pos) - int64(s.pos)
-		if j < 0 {
+		// j must not be less than window start
+		if j < doz64(i, int64(s.size)) {
 			continue
 		}
 		o := i - j
-		if !(0 < o && o <= int64(s.size)) {
+		if o <= 0 {
 			continue
 		}
 		k := matchLen(p[j:], p[i:])

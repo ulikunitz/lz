@@ -49,6 +49,12 @@ func (w *seqWindow) init(size int, max int, shrink int) error {
 	return nil
 }
 
+func (w *seqWindow) reset() {
+	w.data = w.data[:0]
+	w.pos = 0
+	w.w = 0
+}
+
 func (w *seqWindow) available() int {
 	return w.max - len(w.data)
 }

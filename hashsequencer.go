@@ -172,6 +172,13 @@ func (s *HashSequencer) Init(cfg HashSequencerConfig) error {
 	return nil
 }
 
+func (s *HashSequencer) Reset() {
+	s.seqWindow.reset()
+	for i := range s.hashTable {
+		s.hashTable[i] = hashEntry{}
+	}
+}
+
 // ErrEmptyBuffer indicates that the buffer is simpler.
 var ErrEmptyBuffer = errors.New("lz: empty buffer")
 

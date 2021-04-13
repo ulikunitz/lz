@@ -65,5 +65,6 @@ type Sequencer interface {
 type WriteSequencer interface {
 	io.Writer
 	Requested() int
+	Reset()
 	Sequencer
 }

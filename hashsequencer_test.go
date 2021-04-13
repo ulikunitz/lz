@@ -3,6 +3,8 @@ package lz
 import (
 	"bytes"
 	"crypto/sha256"
+	"flag"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -198,4 +200,136 @@ func TestHashSequencerEnwik7(t *testing.T) {
 // Implement the sequencer in a ways that it can be used with multiple
 // configurations and setups
 
+type loopReader struct {
+	r io.ReadSeeker
+}
+
+func (ir *loopReader) Read(p []byte) (n int, err error) {
+	n, err = ir.r.Read(p)
+	if err != io.EOF {
+		return n, err
+	}
+	if _, err = ir.r.Seek(0, io.SeekStart); err != nil {
+		return n, err
+	}
+	if n == len(p) {
+		return n, nil
+	}
+	var k int
+	k, err = ir.r.Read(p[n:])
+	n += k
+	return n, err
+
+}
+
+func newLoopReader(r io.ReadSeeker) *loopReader {
+	return &loopReader{r}
+}
+
+func TestLoopReader(t *testing.T) {
+	const str = "The brown fox jumps ove the lazy dog."
+
+	const size = 128
+	r := io.LimitReader(newLoopReader(strings.NewReader(str)), size)
+
+	var sb strings.Builder
+	n, err := io.Copy(&sb, r)
+	if err != nil {
+		t.Fatalf("io.Copy(&sb, r) error %s", err)
+	}
+	if n != size {
+		t.Fatalf("io.Copy(&sb. r) returne %d; want %d", n, size)
+	}
+	t.Logf("%q", sb.String())
+}
+
 // TODO: test behavoir for large limits
+
+var largeFlag = flag.Bool("large", false, "test large parameters")
+
+func TestLargeParameters(t *testing.T) {
+	if !*largeFlag {
+		t.Skipf("use -large flag to execute test")
+	}
+	if testing.Short() {
+		t.Skipf("test is slow")
+	}
+	const enwik7 = "testdata/enwik7"
+
+	var tests = []struct {
+		filename string
+		size     int64
+		cfg      HashSequencerConfig
+	}{
+		{enwik7, 9 << 30, HashSequencerConfig{
+			InputLen:    3,
+			MinMatchLen: 3,
+			BlockSize:   128 * 1024,
+			WindowSize:  8 << 20,
+			ShrinkSize:  1 << 20,
+			MaxSize:     maxUint32,
+		}},
+	}
+
+	for i, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
+			f, err := os.Open(tc.filename)
+			if err != nil {
+				t.Fatalf("os.Open(%q) error %s", tc.filename,
+					err)
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					t.Fatalf("f.Close() error %s", err)
+				}
+			}()
+			r := io.LimitReader(newLoopReader(f), tc.size)
+			ws, err := NewHashSequencer(tc.cfg)
+			if err != nil {
+				t.Fatalf("NewHashSequencer(%+v) error %s",
+					tc.cfg, err)
+			}
+			h1, h2 := sha256.New(), sha256.New()
+			s := WrapReader(io.TeeReader(r, h1), ws)
+
+			var d Decoder
+			d.Init(h2, tc.cfg.WindowSize)
+
+			var blk Block
+			var n int64
+			for {
+				k, err := s.Sequence(&blk, 0)
+				n += int64(k)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("s.Sequence(&blk, 0) error %s",
+						err)
+				}
+
+				if len(blk.Sequences) == 0 {
+					t.Fatalf("no compression")
+				}
+
+				_, _, _, err = d.WriteBlock(&blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock(&blk) error %s",
+						err)
+				}
+
+			}
+
+			if err = d.Flush(); err != nil {
+				t.Fatalf("d.Flush() error %s", err)
+			}
+
+			s1, s2 := h1.Sum(nil), h2.Sum(nil)
+			if !bytes.Equal(s1, s2) {
+				t.Fatalf("decompressed hash %x; want %x",
+					s1, s2)
+			}
+		})
+	}
+}

@@ -244,8 +244,6 @@ func (s *HashSequencer) Requested() int {
 // ignore segments of data.
 func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	// TODO: possible optimizations
-	// - have a meaningful benchmark before implementing these optimizations
-	// - call getLE64 only if needed, otherwise use _getLE64
 	// - use loaded 8-byte x loaded as a kind of buffer
 	// - combine hashing and match determination in loop
 
@@ -273,8 +271,15 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	inputEnd := int64(len(p) - s.inputLen + 1)
 	i := int64(s.w)
 	litIndex := i
+	_limit := int64(len(s.data) - 7)
 	for ; i < inputEnd; i++ {
-		x := getLE64(p[i:]) & s.mask
+		var x uint64
+		if i < _limit {
+			x = _getLE64(s.data[i:])
+		} else {
+			x = getLE64(s.data[i:])
+		}
+		x &= s.mask
 		h := s.hash(x)
 		v := uint32(x)
 		entry := s.hashTable[h]

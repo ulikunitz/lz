@@ -210,6 +210,14 @@ type Decoder struct {
 	w      io.Writer
 }
 
+// NewDecoder allocates and initializes a decoder. If the windowSize is
+// not positive an error will be returned.
+func NewDecoder(w io.Writer, windowSize int) (*Decoder, error) {
+	d := new(Decoder)
+	err := d.Init(w, windowSize)
+	return d, err
+}
+
 // Init initializes the decoder. Internal bufferes will be reused if they are
 // largen enougn.
 func (d *Decoder) Init(w io.Writer, windowSize int) error {

@@ -179,41 +179,6 @@ func (s *HashSequencer) Reset() {
 	}
 }
 
-// ErrEmptyBuffer indicates that the buffer is simpler.
-var ErrEmptyBuffer = errors.New("lz: empty buffer")
-
-func (s *HashSequencer) hashSegment(a, b int) {
-	p := s.data
-	if a < 0 {
-		a = 0
-	}
-	c := len(p) - s.inputLen + 1
-	if b > c {
-		b = c
-	}
-	c = len(p) - 8 + 1
-	if b <= c {
-		c = b
-	}
-	var i int
-	for i = a; i < c; i++ {
-		x := _getLE64(p[i:]) & s.mask
-		h := s.hash(x)
-		s.hashTable[h] = hashEntry{
-			pos:   s.pos + uint32(i),
-			value: uint32(x),
-		}
-	}
-	for ; i < b; i++ {
-		x := getLE64(p[i:]) & s.mask
-		h := s.hash(x)
-		s.hashTable[h] = hashEntry{
-			pos:   s.pos + uint32(i),
-			value: uint32(x),
-		}
-	}
-}
-
 // Requested provides the number of bytes that the sequencer wants to be provided.
 func (s *HashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
@@ -235,6 +200,38 @@ func (s *HashSequencer) Requested() int {
 	}
 	return s.available()
 }
+
+func (s *HashSequencer) hashSegment(a, b int) {
+	if a < 0 {
+		a = 0
+	}
+	n := len(s.data)
+	c := n - s.inputLen + 1
+	if b > c {
+		b = c
+	}
+
+	// Ensure that we can use _getLE64 all the time.
+	k := b + 8
+	if k > cap(s.data) {
+		var z [8]byte
+		n := len(s.data)
+		s.data = append(s.data, z[:k-n]...)[:n]
+	}
+	_p := s.data[:k]
+
+	for i := a; i < b; i++ {
+		x := _getLE64(_p[i:]) & s.mask
+		h := s.hash(x)
+		s.hashTable[h] = hashEntry{
+			pos:   s.pos + uint32(i),
+			value: uint32(x),
+		}
+	}
+}
+
+// ErrEmptyBuffer indicates that the buffer is simpler.
+var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
 // Sequence converts the next block of k bytes to a sequences. The block will be
 // overwritten. The method returns the number of bytes sequenced and any error
@@ -271,15 +268,18 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	inputEnd := int64(len(p) - s.inputLen + 1)
 	i := int64(s.w)
 	litIndex := i
-	_limit := int64(len(s.data) - 7)
+
+	// Ensure that we can use _getLE64 all the time.
+	k := int(inputEnd + 8)
+	if k > cap(s.data) {
+		var z [8]byte
+		m := len(s.data)
+		s.data = append(s.data, z[:k-m]...)[:m]
+	}
+	_p := s.data[:k]
+
 	for ; i < inputEnd; i++ {
-		var x uint64
-		if i < _limit {
-			x = _getLE64(s.data[i:])
-		} else {
-			x = getLE64(s.data[i:])
-		}
-		x &= s.mask
+		x := _getLE64(_p[i:]) & s.mask
 		h := s.hash(x)
 		v := uint32(x)
 		entry := s.hashTable[h]

@@ -3,6 +3,7 @@ package lz
 import (
 	"bytes"
 	"io"
+	"math/bits"
 	"os"
 	"strings"
 	"testing"
@@ -62,14 +63,47 @@ func TestReset(t *testing.T) {
 	}
 }
 
+// blockCost computes the cost of the block in bytes
+func blockCost(blk *Block) int64 {
+	c := int64(0)
+	for _, seq := range blk.Sequences {
+		c += int64(bits.Len32(seq.LitLen))
+		c += int64(bits.Len32(seq.MatchLen))
+		c += int64(bits.Len32(seq.Offset))
+	}
+	c += 8 * int64(len(blk.Literals))
+	return c
+}
+
 func BenchmarkSequencers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
 		name string
 		ws   WriteSequencer
 	}{
-		{"HashSequencer", newTestHashSequencer(b, HashSequencerConfig{
+		{"HashSequencer-3", newTestHashSequencer(b, HashSequencerConfig{
+			InputLen:    3,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"HashSequencer-4", newTestHashSequencer(b, HashSequencerConfig{
 			InputLen:    4,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"HashSequencer-5", newTestHashSequencer(b, HashSequencerConfig{
+			InputLen:    5,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"HashSequencer-8", newTestHashSequencer(b, HashSequencerConfig{
+			InputLen:    8,
 			MinMatchLen: 3,
 			WindowSize:  8 << 20,
 			ShrinkSize:  32 << 10,
@@ -86,12 +120,16 @@ func BenchmarkSequencers(b *testing.B) {
 			}
 			r := Wrap(bytes.NewReader(data), bm.ws)
 			b.SetBytes(int64(len(data)))
+			var cost int64
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				var blk Block
 			loop:
 				for {
 					_, err := r.Sequence(&blk, 0)
+					b.StopTimer()
+					cost += blockCost(&blk)
+					b.StartTimer()
 					switch err {
 					case nil:
 						continue loop
@@ -105,6 +143,13 @@ func BenchmarkSequencers(b *testing.B) {
 				r.Reset(bytes.NewReader(data))
 				b.StartTimer()
 			}
+			b.StopTimer()
+			compressedBytes := (cost + 7) / 8
+			uncompressedBytes := int64(b.N) * int64(len(data))
+			b.ReportMetric(
+				100*float64(compressedBytes)/
+					float64(uncompressedBytes),
+				"%_compression_ratio")
 		})
 	}
 }

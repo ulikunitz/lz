@@ -29,7 +29,7 @@ func TestReset(t *testing.T) {
 		MaxSize:     windowSize,
 	})
 
-	r := WrapReader(strings.NewReader(str), hs)
+	r := Wrap(strings.NewReader(str), hs)
 
 	for i := 1; i < 2; i++ {
 		var sb strings.Builder
@@ -84,7 +84,7 @@ func BenchmarkSequencers(b *testing.B) {
 				b.Fatalf("io.ReadFile(%q) error %s", enwik7,
 					err)
 			}
-			r := WrapReader(bytes.NewReader(data), bm.ws)
+			r := Wrap(bytes.NewReader(data), bm.ws)
 			b.SetBytes(int64(len(data)))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

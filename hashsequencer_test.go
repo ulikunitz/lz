@@ -102,7 +102,7 @@ func TestWrapHashSequencer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewHashSequencer error %s", err)
 	}
-	s := WrapReader(strings.NewReader(str), ws)
+	s := Wrap(strings.NewReader(str), ws)
 
 	var builder strings.Builder
 	var decoder Decoder
@@ -160,7 +160,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
 	}
-	s := WrapReader(r, ws)
+	s := Wrap(r, ws)
 
 	h2 := sha256.New()
 	var decoder Decoder
@@ -291,7 +291,7 @@ func TestLargeParameters(t *testing.T) {
 					tc.cfg, err)
 			}
 			h1, h2 := sha256.New(), sha256.New()
-			s := WrapReader(io.TeeReader(r, h1), ws)
+			s := Wrap(io.TeeReader(r, h1), ws)
 
 			var d Decoder
 			d.Init(h2, tc.cfg.WindowSize)

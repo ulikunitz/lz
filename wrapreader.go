@@ -4,10 +4,10 @@ import (
 	"io"
 )
 
-// WrapReader wraps a reader. The user doesn't need to take care of filling the
-// Sequencer with additional data. The returned sequencer returns EOF if no
-// further data is available.
-func WrapReader(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
+// Wrap combines a reader and a WriteSequencer and makes a Sequencer. The user
+// doesn't need to take care of filling the Sequencer with additional data. The
+// returned sequencer returns EOF if no further data is available.
+func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
 	return &WrappedSequencer{r: r, wseq: wseq}
 }
 

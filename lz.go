@@ -1,6 +1,6 @@
-// Package lz provides sequencers that convert a stream of bytes into blocks of
-// LZ77 sequences. It also provides the possibility to convert sequences back
-// into the original FileStream.
+// Package lz provides encoders and decoders for LZ77 sequences. The term
+// sequence used here reflects the usage in the zstd format specification. We
+// use the term Sequencer as something that produces Sequences.
 //
 // TODO: examples
 package lz

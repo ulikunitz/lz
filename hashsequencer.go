@@ -277,6 +277,10 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		s.data = append(s.data, z[:k-m]...)[:m]
 	}
 	_p := s.data[:k]
+	m32 := 4
+	if s.inputLen < m32 {
+		m32 = s.inputLen
+	}
 
 	for ; i < inputEnd; i++ {
 		x := _getLE64(_p[i:]) & s.mask
@@ -300,7 +304,8 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		if o <= 0 {
 			continue
 		}
-		k := matchLen(p[j:], p[i:])
+
+		k := m32 + matchLen(p[j+int64(m32):], p[i+int64(m32):])
 		if k < s.minMatchLen {
 			continue
 		}

@@ -307,7 +307,6 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		if o <= 0 {
 			continue
 		}
-
 		k := m32 + matchLen(p[j+int64(m32):], p[i+int64(m32):])
 		if k < s.minMatchLen {
 			continue

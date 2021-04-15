@@ -7,7 +7,7 @@ import (
 
 const maxUint32 = 1<<32 - 1
 
-type seqWindow struct {
+type posBuffer struct {
 	data []byte
 
 	// pos at the start of data; pos+max <= 1<<32
@@ -24,7 +24,7 @@ type seqWindow struct {
 	shrinkSize int
 }
 
-func (w *seqWindow) init(size int, max int, shrink int) error {
+func (s *posBuffer) init(size int, max int, shrink int) error {
 	if !(size >= 1) {
 		return fmt.Errorf("lz: window size must be >= 1")
 	}
@@ -40,8 +40,8 @@ func (w *seqWindow) init(size int, max int, shrink int) error {
 	if !(max <= maxUint32) {
 		return fmt.Errorf("lz: max is larger than maxUint32")
 	}
-	*w = seqWindow{
-		data:       w.data[:0],
+	*s = posBuffer{
+		data:       s.data[:0],
 		size:       size,
 		max:        max,
 		shrinkSize: shrink,
@@ -49,51 +49,51 @@ func (w *seqWindow) init(size int, max int, shrink int) error {
 	return nil
 }
 
-func (w *seqWindow) reset() {
-	w.data = w.data[:0]
-	w.pos = 0
-	w.w = 0
+func (s *posBuffer) reset() {
+	s.data = s.data[:0]
+	s.pos = 0
+	s.w = 0
 }
 
-func (w *seqWindow) available() int {
-	return w.max - len(w.data)
+func (s *posBuffer) available() int {
+	return s.max - len(s.data)
 }
 
 // Buffered returns the number of bytes that have not been transferred into the
 // window.
-func (w *seqWindow) buffered() int {
-	return len(w.data) - w.w
+func (s *posBuffer) buffered() int {
+	return len(s.data) - s.w
 }
 
 // Write puts data into the buffer behind the window. This data is required by
 // the Sequence method.
-func (w *seqWindow) Write(p []byte) (n int, err error) {
-	n = w.available()
+func (s *posBuffer) Write(p []byte) (n int, err error) {
+	n = s.available()
 	if len(p) > n {
 		p = p[:n]
 		err = ErrBufferFull
 	}
-	w.data = append(w.data, p...)
+	s.data = append(s.data, p...)
 	return len(p), err
 }
 
 // ReadFrom is an alternative way to transfer data into the buffer after the
 // window. See the Write method.
-func (w *seqWindow) ReadFrom(r io.Reader) (n int64, err error) {
+func (s *posBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	var p []byte
-	if w.max < cap(w.data) {
-		p = w.data[:w.max]
+	if s.max < cap(s.data) {
+		p = s.data[:s.max]
 	} else {
-		p = w.data[:cap(w.data)]
+		p = s.data[:cap(s.data)]
 	}
 	if len(p) == 0 {
 		n := 32 * 1024
-		if w.max < n {
-			n = w.max
+		if s.max < n {
+			n = s.max
 		}
 		p = make([]byte, n)
 	}
-	i := len(w.data)
+	i := len(s.data)
 	for {
 		var k int
 		k, err = r.Read(p[i:])
@@ -108,44 +108,44 @@ func (w *seqWindow) ReadFrom(r io.Reader) (n int64, err error) {
 			// p is not exhausted
 			continue
 		}
-		if i >= w.max {
+		if i >= s.max {
 			err = ErrBufferFull
 			break
 		}
 		// doubling the size of data
 		k = 2 * i
-		if k > w.max || k < 0 {
-			k = w.max
+		if k > s.max || k < 0 {
+			k = s.max
 		}
 		q := make([]byte, k)
 		// don't copy data before the window starts
-		r := w.w - w.size
+		r := s.w - s.size
 		if r < 0 {
 			r = 0
 		}
 		copy(q[r:], p[r:])
 		p = q
 	}
-	n = int64(i - len(w.data))
-	w.data = p[:i]
+	n = int64(i - len(s.data))
+	s.data = p[:i]
 	return n, err
 }
 
 // shrink moves part of the window and all buffered data to the front of data.
 // The new window size will be shrinkSize. If w.pos is reset due to the limited
 // range of uint32 a non-zero delta will be returned.
-func (w *seqWindow) shrink() (delta uint32) {
-	r := w.w - w.shrinkSize
+func (s *posBuffer) shrink() (delta uint32) {
+	r := s.w - s.shrinkSize
 	if r < 0 {
 		r = 0
 	}
-	copy(w.data, w.data[r:])
-	w.data = w.data[:len(w.data)-r]
-	w.w -= r
-	w.pos += uint32(r)
-	if int64(w.pos)+int64(w.max) > maxUint32 {
-		delta := w.pos
-		w.pos = 0
+	copy(s.data, s.data[r:])
+	s.data = s.data[:len(s.data)-r]
+	s.w -= r
+	s.pos += uint32(r)
+	if int64(s.pos)+int64(s.max) > maxUint32 {
+		delta := s.pos
+		s.pos = 0
 		return delta
 	}
 	return 0

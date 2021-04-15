@@ -11,6 +11,7 @@ func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
 	return &WrappedSequencer{r: r, wseq: wseq}
 }
 
+// WrappedSequencer is returned by the Wrap function.
 type WrappedSequencer struct {
 	r    io.Reader
 	wseq WriteSequencer
@@ -33,6 +34,8 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	return n, serr
 }
 
+// Reset puts the WrappedSequencer in its initial state and changes the wrapped
+// reader to another reader.
 func (s *WrappedSequencer) Reset(r io.Reader) {
 	s.wseq.Reset()
 	s.r = r

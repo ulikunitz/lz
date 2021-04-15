@@ -101,7 +101,7 @@ func (dw *DecoderWindow) copySlice(p []byte) {
 }
 
 // ErrBufferFull indicates that no more data can be bufferd.
-var ErrBufferFull = errors.New("buffer is full")
+var ErrBufferFull = errors.New("lz: buffer is full")
 
 // Write writes data into the sequencer. If the Write cannot be completed no
 // bytes will be written.

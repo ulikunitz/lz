@@ -23,10 +23,8 @@ func (s Seq) Len() int64 {
 	return int64(s.MatchLen) + int64(s.LitLen)
 }
 
-// Block describes a complete block using sequences and literals.
-// Together with a Dictionary it can reconstruct the whole block. Note that
-// literals that are not consumed by the Sequences slice need to be added to the
-// end of the reconstructed data.
+// Block stores sequences and literals. Note that literals that are not consumed
+// by the Sequences slice need to be added to the end of the reconstructed data.
 type Block struct {
 	Sequences []Seq
 	Literals  []byte

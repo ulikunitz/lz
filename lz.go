@@ -56,9 +56,9 @@ type Sequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
 }
 
-// WriteSequencer provide the data to be sequenced using the Writer
-// interface. Requested() returns the number of bytes that should be written
-// into the sequencer.
+// WriteSequencer buffers the data to generate LZ77 sequences for. It has
+// additional methods required to work with a WrappedSequencer. Requested
+// provides the number of bytes that can be written to the WriteSequencer.
 type WriteSequencer interface {
 	io.Writer
 	Requested() int

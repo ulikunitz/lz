@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func newTestHashSequencer(tb testing.TB, cfg HashSequencerConfig) *HashSequencer {
+func newTestHashSequencer(tb testing.TB, cfg HSConfig) *HashSequencer {
 	hs, err := NewHashSequencer(cfg)
 	if err != nil {
 		tb.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
@@ -22,7 +22,7 @@ func TestReset(t *testing.T) {
 		str        = "The quick brown fox jumps over the lazy dogdog."
 		windowSize = 20
 	)
-	hs := newTestHashSequencer(t, HashSequencerConfig{
+	hs := newTestHashSequencer(t, HSConfig{
 		InputLen:    3,
 		MinMatchLen: 3,
 		WindowSize:  windowSize,
@@ -81,28 +81,28 @@ func BenchmarkSequencers(b *testing.B) {
 		name string
 		ws   WriteSequencer
 	}{
-		{"HashSequencer-3", newTestHashSequencer(b, HashSequencerConfig{
+		{"HashSequencer-3", newTestHashSequencer(b, HSConfig{
 			InputLen:    3,
 			MinMatchLen: 3,
 			WindowSize:  8 << 20,
 			ShrinkSize:  32 << 10,
 			MaxSize:     8 << 20,
 		})},
-		{"HashSequencer-4", newTestHashSequencer(b, HashSequencerConfig{
+		{"HashSequencer-4", newTestHashSequencer(b, HSConfig{
 			InputLen:    4,
 			MinMatchLen: 3,
 			WindowSize:  8 << 20,
 			ShrinkSize:  32 << 10,
 			MaxSize:     8 << 20,
 		})},
-		{"HashSequencer-5", newTestHashSequencer(b, HashSequencerConfig{
+		{"HashSequencer-5", newTestHashSequencer(b, HSConfig{
 			InputLen:    5,
 			MinMatchLen: 3,
 			WindowSize:  8 << 20,
 			ShrinkSize:  32 << 10,
 			MaxSize:     8 << 20,
 		})},
-		{"HashSequencer-8", newTestHashSequencer(b, HashSequencerConfig{
+		{"HashSequencer-8", newTestHashSequencer(b, HSConfig{
 			InputLen:    8,
 			MinMatchLen: 3,
 			WindowSize:  8 << 20,

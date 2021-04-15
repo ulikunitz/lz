@@ -38,11 +38,14 @@ func (s *HashSequencer) hash(x uint64) uint32 {
 	return uint32((x * prime) >> s.shift)
 }
 
-// HashSequencerConfig provides the configuration parameters for the
-// HashSequencer. The SeqWindow has a linear buffer that needs to be shrinked
-// by sliding the window into the front of the buffer. The remaining size of the
-// window after sliding the window is given by shrinkSize.
-type HashSequencerConfig struct {
+// HSConfig provides the configuration parameters for the
+// HashSequencer.
+//
+// The pos-buffer contains the sliding window. If the window reaches the end of
+// the buffer parts of it needs to be moved to the front of the buffer. The
+// number of bytes to be moved are defined by the shrinkSize. A shrinkSize of 0
+// is supported.
+type HSConfig struct {
 	// maximal window size
 	WindowSize int
 	// size of the window if the buffer is shrinked
@@ -60,7 +63,7 @@ type HashSequencerConfig struct {
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
-func (cfg *HashSequencerConfig) ApplyDefaults() {
+func (cfg *HSConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * 1024
 	}
@@ -82,7 +85,7 @@ func (cfg *HashSequencerConfig) ApplyDefaults() {
 }
 
 // Verify checks the config for correctness.
-func (cfg *HashSequencerConfig) Verify() error {
+func (cfg *HSConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
@@ -135,7 +138,7 @@ func (cfg *HashSequencerConfig) Verify() error {
 }
 
 // NewHashSeqeuncer creates a new hash sequencer.
-func NewHashSequencer(cfg HashSequencerConfig) (s *HashSequencer, err error) {
+func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 	var t HashSequencer
 	if err := t.Init(cfg); err != nil {
 		return nil, err
@@ -145,7 +148,7 @@ func NewHashSequencer(cfg HashSequencerConfig) (s *HashSequencer, err error) {
 
 // Init initialzes the hash sequencer. It returns an error if there is an issue
 // with the configuration paremeters.
-func (s *HashSequencer) Init(cfg HashSequencerConfig) error {
+func (s *HashSequencer) Init(cfg HSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {

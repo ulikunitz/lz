@@ -15,7 +15,7 @@ func TestHashSequencerSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
 	var s HashSequencer
-	if err := s.Init(HashSequencerConfig{
+	if err := s.Init(HSConfig{
 		WindowSize:  1024,
 		ShrinkSize:  1024,
 		BlockSize:   512,
@@ -91,7 +91,7 @@ func TestWrapHashSequencer(t *testing.T) {
 		str        = "=====foofoobarfoobar bartender===="
 	)
 
-	ws, err := NewHashSequencer(HashSequencerConfig{
+	ws, err := NewHashSequencer(HSConfig{
 		WindowSize:  windowSize,
 		ShrinkSize:  windowSize,
 		BlockSize:   blockSize,
@@ -148,7 +148,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	h1 := sha256.New()
 	r := io.TeeReader(f, h1)
 
-	cfg := HashSequencerConfig{
+	cfg := HSConfig{
 		BlockSize:   blockSize,
 		WindowSize:  windowSize,
 		ShrinkSize:  windowSize / 4,
@@ -259,9 +259,9 @@ func TestLargeParameters(t *testing.T) {
 	var tests = []struct {
 		filename string
 		size     int64
-		cfg      HashSequencerConfig
+		cfg      HSConfig
 	}{
-		{enwik7, 9 << 30, HashSequencerConfig{
+		{enwik7, 9 << 30, HSConfig{
 			InputLen:    3,
 			MinMatchLen: 3,
 			BlockSize:   128 * 1024,

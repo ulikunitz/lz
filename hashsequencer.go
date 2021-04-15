@@ -233,7 +233,7 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	}
 }
 
-// ErrEmptyBuffer indicates that the buffer is simpler.
+// ErrEmptyBuffer indicates that the buffer is empty.
 var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
 // Sequence converts the next block of k bytes to a sequences. The block will be

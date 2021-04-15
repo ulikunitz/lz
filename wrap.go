@@ -11,7 +11,8 @@ func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
 	return &WrappedSequencer{r: r, wseq: wseq}
 }
 
-// WrappedSequencer is returned by the Wrap function.
+// WrappedSequencer is returned by the Wrap function. It provides the Sequence
+// method and reads the data required automatically from the stored reader.
 type WrappedSequencer struct {
 	r    io.Reader
 	wseq WriteSequencer

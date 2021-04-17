@@ -216,9 +216,9 @@ type RingDecoder struct {
 	w   io.Writer
 }
 
-// NewDecoder allocates and initializes a decoder. If the windowSize is
+// NewRingDecoder allocates and initializes a decoder. If the windowSize is
 // not positive an error will be returned.
-func NewDecoder(w io.Writer, windowSize int) (*RingDecoder, error) {
+func NewRingDecoder(w io.Writer, windowSize int) (*RingDecoder, error) {
 	d := new(RingDecoder)
 	err := d.Init(w, windowSize)
 	return d, err

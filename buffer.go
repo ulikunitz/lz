@@ -160,7 +160,7 @@ func (buf *Buffer) writeSeq(s Seq, literals []byte) (l int, err error) {
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
-func (buf *Buffer) WriteBlock(blk *Block) (k, l int, n int64, err error) {
+func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
 	var s Seq
 	for k, s = range blk.Sequences {
 		m, err := buf.writeSeq(s, blk.Literals[l:])
@@ -271,7 +271,7 @@ func (d *Decoder) WriteMatch(n int, offset int) error {
 }
 
 // WriteBlock writes a complete block into the decoder.
-func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
+func (d *Decoder) WriteBlock(blk Block) (k, l int, n int64, err error) {
 	k, l, n, err = d.buf.WriteBlock(blk)
 	if err != ErrBufferFull {
 		return k, l, n, err
@@ -281,10 +281,9 @@ func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 		return k, l, n, err
 	}
 
-	var copy Block
-	copy.Sequences = blk.Sequences[k:]
-	copy.Literals = blk.Literals[l:]
-	k2, l2, n2, err := d.buf.WriteBlock(&copy)
+	blk.Sequences = blk.Sequences[k:]
+	blk.Literals = blk.Literals[l:]
+	k2, l2, n2, err := d.buf.WriteBlock(blk)
 	k += k2
 	l += l2
 	n += n2

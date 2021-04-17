@@ -57,9 +57,9 @@ func TestHashSequencerSimple(t *testing.T) {
 	if err := d.Init(&buf, DConfig{WindowSize: 1024}); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
-	k, l, m, err := d.WriteBlock(&blk)
+	k, l, m, err := d.WriteBlock(blk)
 	if err != nil {
-		t.Fatalf("dw.WriteBlock(&blk) error %s", err)
+		t.Fatalf("dw.WriteBlock(blk) error %s", err)
 	}
 	if k != len(blk.Sequences) {
 		t.Fatalf("dw.WriteBlock returned k=%d; want %d sequences",
@@ -70,7 +70,7 @@ func TestHashSequencerSimple(t *testing.T) {
 			l, len(blk.Literals))
 	}
 	if m != int64(len(str)) {
-		t.Fatalf("dw.WriteBlock(&blk) returned %d; want %d bytes",
+		t.Fatalf("dw.WriteBlock(blk) returned %d; want %d bytes",
 			m, len(str))
 	}
 	if err = d.Flush(); err != nil {
@@ -116,7 +116,7 @@ func TestWrapHashSequencer(t *testing.T) {
 			}
 			t.Fatalf("s.Sequence error %s", err)
 		}
-		if _, _, _, err := decoder.WriteBlock(&blk); err != nil {
+		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
 			t.Fatalf("decoder.WriteBlock error %s", err)
 		}
 	}
@@ -180,7 +180,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		if len(blk.Sequences) == 0 {
 			t.Fatalf("s.Sequence doesn't compress")
 		}
-		if _, _, _, err := decoder.WriteBlock(&blk); err != nil {
+		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
 			t.Fatalf("decoder.WriteBlock error %s", err)
 		}
 	}
@@ -307,9 +307,9 @@ func TestLargeParameters(t *testing.T) {
 					t.Fatalf("no compression")
 				}
 
-				_, _, _, err = d.WriteBlock(&blk)
+				_, _, _, err = d.WriteBlock(blk)
 				if err != nil {
-					t.Fatalf("d.WriteBlock(&blk) error %s",
+					t.Fatalf("d.WriteBlock(blk) error %s",
 						err)
 				}
 

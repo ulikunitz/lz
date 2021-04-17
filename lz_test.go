@@ -49,7 +49,7 @@ func TestReset(t *testing.T) {
 				t.Fatalf("r.Sequence(&blk, 0) error %s", err)
 			}
 
-			d.WriteBlock(&blk)
+			d.WriteBlock(blk)
 		}
 
 		if err := d.Flush(); err != nil {

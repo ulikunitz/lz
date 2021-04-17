@@ -18,6 +18,14 @@ func newTestHashSequencer(tb testing.TB, cfg HSConfig) *HashSequencer {
 	return hs
 }
 
+func newTestBHS(tb testing.TB, cfg HSConfig) *BackwardHashSequencer {
+	bhs, err := NewBackwardHashSequencer(cfg)
+	if err != nil {
+		tb.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
+	}
+	return bhs
+}
+
 func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
@@ -110,6 +118,35 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize:  32 << 10,
 			MaxSize:     8 << 20,
 		})},
+		{"BackwardHashSequencer-3", newTestBHS(b, HSConfig{
+			InputLen:    3,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"BackwardHashSequencer-4", newTestBHS(b, HSConfig{
+			InputLen:    4,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"BackwardHashSequencer-5", newTestBHS(b, HSConfig{
+			InputLen:    5,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+		{"BackwardHashSequencer-8", newTestBHS(b, HSConfig{
+			InputLen:    8,
+			MinMatchLen: 3,
+			WindowSize:  8 << 20,
+			ShrinkSize:  32 << 10,
+			MaxSize:     8 << 20,
+		})},
+
 	}
 
 	for _, bm := range benchmarks {
@@ -248,4 +285,77 @@ func BenchmarkDecoders(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestBHSSimple(t *testing.T) {
+	const str = "=====foofoobarfoobar bartender===="
+
+	var s BackwardHashSequencer
+	if err := s.Init(HSConfig{
+		WindowSize:  1024,
+		ShrinkSize:  1024,
+		BlockSize:   512,
+		MaxSize:     2 * 1024,
+		InputLen:    3,
+		MinMatchLen: 2,
+	}); err != nil {
+		t.Fatalf("s.Init error %s", err)
+	}
+	n, err := s.Write([]byte(str))
+	if err != nil {
+		t.Fatalf("s.Write(%q) error %s", str, err)
+	}
+	if n != len(str) {
+		t.Fatalf("s.Write(%q) returned %d; want %d", str, n, len(str))
+	}
+
+	var blk Block
+	n, err = s.Sequence(&blk, 0)
+	if err != nil {
+		t.Fatalf("s.Sequence error %s", err)
+	}
+	if n != len(str) {
+		t.Fatalf("s.Sequence returned %d; want %d", n, len(str))
+	}
+	t.Logf("sequences: %+v", blk.Sequences)
+	t.Logf("literals: %q", blk.Literals)
+	if len(blk.Sequences) == 0 {
+		t.Errorf("len(blk.Sequences)=%d; want value > 0",
+			len(blk.Sequences))
+	}
+	if len(blk.Literals) >= len(str) {
+		t.Errorf("len(blk.Literals)=%d; should < %d",
+			len(blk.Literals), len(str))
+	}
+
+	var buf bytes.Buffer
+	var d Decoder
+	if err := d.Init(&buf, DConfig{WindowSize: 1024}); err != nil {
+		t.Fatalf("dw.Init(%d) error %s", 1024, err)
+	}
+	k, l, m, err := d.WriteBlock(blk)
+	if err != nil {
+		t.Fatalf("dw.WriteBlock(blk) error %s", err)
+	}
+	if k != len(blk.Sequences) {
+		t.Fatalf("dw.WriteBlock returned k=%d; want %d sequences",
+			k, len(blk.Sequences))
+	}
+	if l != len(blk.Literals) {
+		t.Fatalf("dw.WriteBlock returned l=%d; want %d literals",
+			l, len(blk.Literals))
+	}
+	if m != int64(len(str)) {
+		t.Fatalf("dw.WriteBlock(blk) returned %d; want %d bytes",
+			m, len(str))
+	}
+	if err = d.Flush(); err != nil {
+		t.Fatalf("d.Flush() error %s", err)
+	}
+
+	g := buf.String()
+	if g != str {
+		t.Fatalf("uncompressed string %q; want %q", g, str)
+	}
+	t.Logf("g: %q", g)
 }

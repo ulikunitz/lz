@@ -83,3 +83,32 @@ func matchLen(p, q []byte) int {
 	}
 	return n
 }
+
+func backwardMatchLen(p, q []byte) int {
+	if len(q) > len(p) {
+		p, q = q, p
+	}
+	p = p[len(p)-len(q):]
+	n := 0
+	var i int
+	for i = len(q) - 8; i >= 0; i -= 8 {
+		x := _getLE64(p[i:]) ^ _getLE64(q[i:])
+		k := bits.LeadingZeros64(x) >> 3
+		n += k
+		if k < 8 {
+			return n
+		}
+	}
+	i += 8
+	if i > 0 {
+		s := (8 - i) << 3
+		x := getLE64(q) << s
+		x ^= getLE64(p) << s
+		k := bits.LeadingZeros64(x) >> 3
+		if k > i {
+			k = i
+		}
+		n += k
+	}
+	return n
+}

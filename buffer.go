@@ -281,9 +281,10 @@ func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 		return k, l, n, err
 	}
 
-	blk.Sequences = blk.Sequences[k:]
-	blk.Literals = blk.Literals[l:]
-	k2, l2, n2, err := d.buf.WriteBlock(blk)
+	var copy Block
+	copy.Sequences = blk.Sequences[k:]
+	copy.Literals = blk.Literals[l:]
+	k2, l2, n2, err := d.buf.WriteBlock(&copy)
 	k += k2
 	l += l2
 	n += n2

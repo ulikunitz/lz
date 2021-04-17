@@ -17,7 +17,7 @@ type hashEntry struct {
 // HashSequencer allows the creation of sequence blocks using a simple hash
 // table.
 type HashSequencer struct {
-	Buffer
+	seqBuffer
 
 	hashTable []hashEntry
 
@@ -159,7 +159,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.Buffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
+	err = s.seqBuffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
 	if err != nil {
 		return err
 	}
@@ -185,14 +185,14 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 }
 
 func (s *HashSequencer) Reset() {
-	s.Buffer.Reset()
+	s.seqBuffer.Reset()
 	s.pos = 0
 	for i := range s.hashTable {
 		s.hashTable[i] = hashEntry{}
 	}
 }
 
-// Requested provides the number of bytes that the sequencer wants to be provided.
+// Requested provides the number of bytes that the sequencer wants to filled.
 func (s *HashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {

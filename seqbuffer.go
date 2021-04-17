@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-type Buffer struct {
+type seqBuffer struct {
 	data []byte
 
 	w int
@@ -15,7 +15,7 @@ type Buffer struct {
 	shrinkSize int
 }
 
-func (buf *Buffer) Init(windowSize, max, shrink int) error {
+func (buf *seqBuffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize >= 1) {
 		return fmt.Errorf("lz: window size must be >= 1")
 	}
@@ -28,7 +28,7 @@ func (buf *Buffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize <= max) {
 		return fmt.Errorf("lz: maxSo must be >= window size")
 	}
-	*buf = Buffer{
+	*buf = seqBuffer{
 		data:       buf.data[0:],
 		windowSize: windowSize,
 		max:        max,
@@ -37,20 +37,20 @@ func (buf *Buffer) Init(windowSize, max, shrink int) error {
 	return nil
 }
 
-func (buf *Buffer) Reset() {
+func (buf *seqBuffer) Reset() {
 	buf.data = buf.data[:0]
 	buf.w = 0
 }
 
-func (buf *Buffer) available() int {
+func (buf *seqBuffer) available() int {
 	return buf.max - len(buf.data)
 }
 
-func (buf *Buffer) buffered() int {
+func (buf *seqBuffer) buffered() int {
 	return len(buf.data) - buf.w
 }
 
-func (buf *Buffer) Write(p []byte) (n int, err error) {
+func (buf *seqBuffer) Write(p []byte) (n int, err error) {
 	n = buf.available()
 	if len(p) > n {
 		p = p[:n]
@@ -62,7 +62,7 @@ func (buf *Buffer) Write(p []byte) (n int, err error) {
 
 // ReadFrom is an alternative way to transfer data into the buffer after the
 // window. See the Write method.
-func (buf *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
+func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	var p []byte
 	if buf.max < cap(buf.data) {
 		p = buf.data[:buf.max]
@@ -114,7 +114,7 @@ func (buf *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
-func (buf *Buffer) Shrink() int {
+func (buf *seqBuffer) Shrink() int {
 	r := buf.w - buf.shrinkSize
 	if r < 0 {
 		r = 0

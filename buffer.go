@@ -114,7 +114,7 @@ func (buf *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
-func (buf *Buffer) ShrinkBuffer() int {
+func (buf *Buffer) Shrink() int {
 	r := buf.w - buf.shrinkSize
 	if r < 0 {
 		r = 0
@@ -123,43 +123,4 @@ func (buf *Buffer) ShrinkBuffer() int {
 	buf.data = buf.data[:len(buf.data)-r]
 	buf.w -= r
 	return r
-}
-
-const maxUint32 = 1<<32 - 1
-
-type posBuffer struct {
-	Buffer
-
-	// pos at the start of data; pos+max <= 1<<32
-	pos uint32
-}
-
-func (s *posBuffer) Init(size, max, shrink int) error {
-	if err := s.Buffer.Init(size, max, shrink); err != nil {
-		return err
-	}
-	if !(max <= maxUint32) {
-		return fmt.Errorf("lz: max is larger than maxUint32")
-	}
-	s.pos = 0
-	return nil
-}
-
-func (s *posBuffer) Reset() {
-	s.Buffer.Reset()
-	s.pos = 0
-}
-
-// Shrink moves part of the window and all buffered data to the front of data.
-// The new window size will be shrinkSize. If w.pos is reset due to the limited
-// range of uint32 a non-zero delta will be returned.
-func (s *posBuffer) shrink() (delta uint32) {
-	r := s.Buffer.ShrinkBuffer()
-	s.pos += uint32(r)
-	if int64(s.pos)+int64(s.max) <= maxUint32 {
-		return 0
-	}
-	delta = s.pos
-	s.pos = 0
-	return delta
 }

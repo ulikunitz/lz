@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const maxUint32 = 1<<32 - 1
+
 // hashEntry is used for hashEntry. The value field allows a fast check whether
 // a match has been found, which is cache-optimized.
 type hashEntry struct {
@@ -15,9 +17,12 @@ type hashEntry struct {
 // HashSequencer allows the creation of sequence blocks using a simple hash
 // table.
 type HashSequencer struct {
-	posBuffer
+	Buffer
 
 	hashTable []hashEntry
+
+	// pos of the start of data in Buffer
+	pos uint32
 
 	// mask for input
 	mask uint64
@@ -154,7 +159,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.posBuffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
+	err = s.Buffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
 	if err != nil {
 		return err
 	}
@@ -172,11 +177,13 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	s.inputLen = cfg.InputLen
 	s.minMatchLen = cfg.MinMatchLen
 	s.blockSize = cfg.BlockSize
+	s.pos = 0
 	return nil
 }
 
 func (s *HashSequencer) Reset() {
-	s.posBuffer.Reset()
+	s.Buffer.Reset()
+	s.pos = 0
 	for i := range s.hashTable {
 		s.hashTable[i] = hashEntry{}
 	}
@@ -189,16 +196,17 @@ func (s *HashSequencer) Requested() int {
 		return 0
 	}
 	if s.available() < r {
-		delta := s.shrink()
-		// adapt entries in hashTable since s.pos has changed.
-		if delta > 0 {
+		s.pos += uint32(s.Shrink())
+		if int64(s.pos)+int64(s.max) > maxUint32 {
+			// adapt entries in hashTable since s.pos has changed.
 			for i, e := range s.hashTable {
-				if e.pos < delta {
+				if e.pos < s.pos {
 					s.hashTable[i] = hashEntry{}
 				} else {
-					s.hashTable[i].pos = e.pos - delta
+					s.hashTable[i].pos = e.pos - s.pos
 				}
 			}
+			s.pos = 0
 		}
 	}
 	return s.available()

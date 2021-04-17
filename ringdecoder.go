@@ -37,6 +37,10 @@ func (buf *RingBuffer) Init(windowSize int) error {
 	return nil
 }
 
+func (buf *RingBuffer) Reset() {
+	*buf = RingBuffer{data: buf.data}
+}
+
 // Read reads data from the writer. It will always try to return as much data as
 // possible.
 func (buf *RingBuffer) Read(p []byte) (n int, err error) {
@@ -235,6 +239,11 @@ func (d *RingDecoder) Init(w io.Writer, windowSize int) error {
 	}
 	d.w = w
 	return nil
+}
+
+func (d *RingDecoder) Reset(w io.Writer) {
+	d.buf.Reset()
+	d.w = w
 }
 
 // Flush writes all decoded data to the underlying writer.

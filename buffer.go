@@ -232,6 +232,11 @@ func (d *Decoder) Init(w io.Writer, cfg DConfig) error {
 	return nil
 }
 
+func (d *Decoder) Reset(w io.Writer) {
+	d.buf.Reset()
+	d.w = w
+}
+
 // Flush writes all decoded data to the underlying writer.
 func (d *Decoder) Flush() error {
 	_, err := d.buf.WriteTo(d.w)

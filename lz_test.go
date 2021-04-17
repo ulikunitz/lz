@@ -2,6 +2,7 @@ package lz
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
 	"math/bits"
 	"os"
@@ -150,6 +151,101 @@ func BenchmarkSequencers(b *testing.B) {
 				100*float64(compressedBytes)/
 					float64(uncompressedBytes),
 				"%_compression_ratio")
+		})
+	}
+}
+
+func BenchmarkDecoders(b *testing.B) {
+	const enwik7 = "testdata/enwik7"
+	benchmarks := []struct {
+		name    string
+		winSize int
+		maxSize int
+		ring    bool
+	}{
+		{name: "Decoder", winSize: 1024 * 1024},
+		{name: "RingDecoder", winSize: 1024 * 1024, ring: true},
+	}
+	data, err := os.ReadFile(enwik7)
+	if err != nil {
+		b.Fatalf("os.ReadFile(%q) error %s", enwik7, err)
+	}
+	hd := sha256.New()
+	hd.Write(data)
+	sumData := hd.Sum(nil)
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			var blocks []Block
+			hs, err := NewHashSequencer(HSConfig{
+				InputLen:    3,
+				MinMatchLen: 3,
+				WindowSize:  bm.winSize,
+				MaxSize:     bm.maxSize,
+				ShrinkSize:  bm.winSize,
+			})
+			if err != nil {
+				b.Fatalf("NewHashSequencer error %s", err)
+			}
+			s := Wrap(bytes.NewReader(data), hs)
+			for {
+				var blk Block
+				_, err = s.Sequence(&blk, 0)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					b.Fatalf("s.Sequence error %s", err)
+				}
+				blocks = append(blocks, blk)
+			}
+			b.SetBytes(int64(len(data)))
+
+			var d interface {
+				WriteBlock(blk Block) (k, l int, n int64,
+					err error)
+				Flush() error
+				Reset(w io.Writer)
+			}
+			hw := sha256.New()
+			if bm.ring {
+				d, err = NewRingDecoder(hw, bm.winSize)
+				if err != nil {
+					b.Fatalf("NewRingDecoder error %s", err)
+				}
+			} else {
+
+				d, err = NewDecoder(hw, DConfig{
+					WindowSize: bm.winSize,
+					MaxSize:    bm.maxSize,
+				})
+				if err != nil {
+					b.Fatalf("NewDecoder error %s", err)
+				}
+			}
+			b.ResetTimer()
+			b.StopTimer()
+			for i := 0; i < b.N; i++ {
+				hw.Reset()
+				b.StartTimer()
+				d.Reset(hw)
+				for _, blk := range blocks {
+					_, _, _, err := d.WriteBlock(blk)
+					if err != nil {
+						b.Fatalf("d.WriteBlock"+
+							" error %s",
+							err)
+					}
+				}
+				if err = d.Flush(); err != nil {
+					b.Fatalf("d.Flush() error %s", err)
+				}
+				b.StopTimer()
+				sum := hw.Sum(nil)
+				if !bytes.Equal(sum, sumData) {
+					b.Fatalf("got hash %x; want %x", sum,
+						sumData)
+				}
+			}
 		})
 	}
 }

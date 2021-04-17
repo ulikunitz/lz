@@ -6,9 +6,10 @@ import (
 	"io"
 )
 
-// DecoderWindow decodes sequences. The decoded data must be read from the
-// decoder window and the WriteTo method is the most simple to use for that.
-type DecoderWindow struct {
+// RingBuffer supports the decoding of sequence blocks. It stores the window in
+// a ring buffer. The decoded data must be read from the window and the simplest
+// way to do that is the WriteTo method.
+type RingBuffer struct {
 	data []byte
 
 	// reader index; start of valid data
@@ -22,101 +23,106 @@ type DecoderWindow struct {
 	fullWindow bool
 }
 
-// Init initializes the decoder window. An existing data slice might be reused.
-func (dw *DecoderWindow) Init(windowSize int) error {
+// Init initializes the ring buffer. The existing data slice in the ring buffer
+// will be reused if it is has more or equal capacity than the windowSize+1.
+func (buf *RingBuffer) Init(windowSize int) error {
 	if windowSize < 1 {
 		return fmt.Errorf("lz: winSize must be >= 1")
 	}
-	if cap(dw.data) > windowSize {
-		*dw = DecoderWindow{data: dw.data[:windowSize+1]}
+	if cap(buf.data) > windowSize {
+		*buf = RingBuffer{data: buf.data[:windowSize+1]}
 	} else {
-		*dw = DecoderWindow{data: make([]byte, windowSize+1)}
+		*buf = RingBuffer{data: make([]byte, windowSize+1)}
 	}
 	return nil
 }
 
 // Read reads data from the writer. It will always try to return as much data as
 // possible.
-func (dw *DecoderWindow) Read(p []byte) (n int, err error) {
-	if dw.r > dw.w {
-		n = copy(p, dw.data[dw.r:])
+func (buf *RingBuffer) Read(p []byte) (n int, err error) {
+	if buf.r > buf.w {
+		n = copy(p, buf.data[buf.r:])
 		p = p[n:]
-		dw.r += n
-		if dw.r < len(dw.data) {
+		buf.r += n
+		if buf.r < len(buf.data) {
 			return n, nil
 		}
-		dw.r = 0
+		buf.r = 0
 	}
-	k := copy(p, dw.data[dw.r:dw.w])
+	k := copy(p, buf.data[buf.r:buf.w])
 	n += k
-	dw.r += k
+	buf.r += k
 	return n, nil
 }
 
 // WriteTo writes data into the writer as much as it is possible.
-func (dw *DecoderWindow) WriteTo(w io.Writer) (n int64, err error) {
-	if dw.r > dw.w {
-		k, err := w.Write(dw.data[dw.r:])
-		dw.r += k
+func (buf *RingBuffer) WriteTo(w io.Writer) (n int64, err error) {
+	if buf.r > buf.w {
+		k, err := w.Write(buf.data[buf.r:])
+		buf.r += k
 		n = int64(k)
 		if err != nil {
 			return n, err
 		}
-		if dw.r != len(dw.data) {
-			panic(fmt.Errorf("sw.r=%d; want len(sw.data)=%d", dw.r,
-				len(dw.data)))
+		if buf.r != len(buf.data) {
+			panic(fmt.Errorf("sw.r=%d; want len(sw.data)=%d", buf.r,
+				len(buf.data)))
 		}
-		dw.r = 0
+		buf.r = 0
 	}
-	k, err := w.Write(dw.data[dw.r:dw.w])
-	dw.r += k
+	k, err := w.Write(buf.data[buf.r:buf.w])
+	buf.r += k
 	n += int64(k)
 	return n, err
 }
 
-func (dw *DecoderWindow) available() int {
-	n := dw.r - dw.w - 1
+// available returns the number of bytes available for writing data to the ring
+// buffer.
+func (buf *RingBuffer) available() int {
+	n := buf.r - buf.w - 1
 	if n < 0 {
-		n += len(dw.data)
+		n += len(buf.data)
 	}
 	return n
 }
 
-func (dw *DecoderWindow) len() int {
-	if dw.fullWindow {
-		return len(dw.data) - 1
+// len returns the actual size of the window.
+func (buf *RingBuffer) len() int {
+	if buf.fullWindow {
+		return len(buf.data) - 1
 	}
-	return dw.w
+	return buf.w
 }
 
-func (dw *DecoderWindow) copySlice(p []byte) {
-	q := dw.data[dw.w:]
+// copySlice copies the slice into the ring buffer
+func (buf *RingBuffer) copySlice(p []byte) {
+	q := buf.data[buf.w:]
 	k := copy(q, p)
 	if k < len(q) {
-		dw.w += k
+		buf.w += k
 		return
 	}
-	dw.fullWindow = true
-	dw.w = copy(dw.data, p[k:])
+	buf.fullWindow = true
+	buf.w = copy(buf.data, p[k:])
 }
 
-// ErrBufferFull indicates that no more data can be bufferd.
+// ErrBufferFull indicates that no more data can be buffered.
 var ErrBufferFull = errors.New("lz: buffer is full")
 
 // Write writes data into the sequencer. If the Write cannot be completed no
 // bytes will be written.
-func (dw *DecoderWindow) Write(p []byte) (n int, err error) {
-	n = dw.available()
+func (buf *RingBuffer) Write(p []byte) (n int, err error) {
+	n = buf.available()
 	if len(p) > n {
 		return 0, ErrBufferFull
 	}
-	dw.copySlice(p)
+	buf.copySlice(p)
 	return len(p), nil
 }
 
-func (dw *DecoderWindow) copyMatch(n int, off int) {
+func (buf *RingBuffer) copyMatch(n int, off int) {
 	for n > off {
-		dw.copyMatch(off, off)
+		buf.copyMatch(off, off)
 		n -= off
 		if n <= off {
 			// no need to double off; prevents also that 2*off < 0
@@ -125,71 +131,71 @@ func (dw *DecoderWindow) copyMatch(n int, off int) {
 		off *= 2
 	}
 	// n <= off
-	r := dw.w - off
+	r := buf.w - off
 	if r < 0 {
-		r += len(dw.data)
+		r += len(buf.data)
 	}
-	p := dw.data[r:]
+	p := buf.data[r:]
 	if len(p) < n {
-		dw.copySlice(p)
+		buf.copySlice(p)
 		n -= len(p)
-		p = dw.data
+		p = buf.data
 	}
-	dw.copySlice(p[:n])
+	buf.copySlice(p[:n])
 }
 
 // WriteMatch writes a match completely or not completely.
-func (dw *DecoderWindow) WriteMatch(n int, offset int) error {
+func (buf *RingBuffer) WriteMatch(n int, offset int) error {
 	if offset <= 0 {
 		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
 	}
-	if k := dw.len(); offset > k {
+	if k := buf.len(); offset > k {
 		return fmt.Errorf("lz: offset=%d; should be <= window (%d)",
 			offset, k)
 	}
-	a := dw.available()
+	a := buf.available()
 	if n > a {
 		return ErrBufferFull
 	}
-	dw.copyMatch(n, offset)
+	buf.copyMatch(n, offset)
 	return nil
 }
 
 // writeSeq writes the sequence to the buffer.
-func (dw *DecoderWindow) writeSeq(s Seq, literals []byte) (l int, err error) {
+func (buf *RingBuffer) writeSeq(s Seq, literals []byte) (l int, err error) {
 	if int64(s.LitLen) > int64(len(literals)) {
 		return 0, errors.New("lz: too few literals for serquence")
 	}
-	if s.Len() > int64(dw.available()) {
+	if s.Len() > int64(buf.available()) {
 		return 0, ErrBufferFull
 	}
 	if s.Offset == 0 {
 		return 0, errors.New("lz: sequence offset must be > 0")
 	}
-	n := int64(dw.len())
+	n := int64(buf.len())
 	n += int64(s.LitLen)
-	winSize := int64(len(dw.data)) - 1
+	winSize := int64(len(buf.data)) - 1
 	if n > winSize {
 		n = winSize
 	}
 	if int64(s.Offset) > n {
 		return 0, errors.New("lz: offset too large")
 	}
-	l, err = dw.Write(literals[:s.LitLen])
+	l, err = buf.Write(literals[:s.LitLen])
 	if err != nil {
 		return l, err
 	}
-	dw.copyMatch(int(s.MatchLen), int(s.Offset))
+	buf.copyMatch(int(s.MatchLen), int(s.Offset))
 	return l, nil
 }
 
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
-func (dw *DecoderWindow) WriteBlock(blk *Block) (k, l int, n int64, err error) {
+func (buf *RingBuffer) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 	var s Seq
 	for k, s = range blk.Sequences {
-		m, err := dw.writeSeq(s, blk.Literals[l:])
+		m, err := buf.writeSeq(s, blk.Literals[l:])
 		l += m
 		n += int64(m)
 		if err != nil {
@@ -198,30 +204,30 @@ func (dw *DecoderWindow) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 		n += int64(s.MatchLen)
 	}
 	k = len(blk.Sequences)
-	m, err := dw.Write(blk.Literals[l:])
+	m, err := buf.Write(blk.Literals[l:])
 	l += m
 	n += int64(m)
 	return k, l, n, err
 }
 
-// A Decoder decodes sequences and writes data into the writer.
-type Decoder struct {
-	window DecoderWindow
-	w      io.Writer
+// A RingDecoder decodes sequences and writes data into the writer.
+type RingDecoder struct {
+	buf RingBuffer
+	w   io.Writer
 }
 
 // NewDecoder allocates and initializes a decoder. If the windowSize is
 // not positive an error will be returned.
-func NewDecoder(w io.Writer, windowSize int) (*Decoder, error) {
-	d := new(Decoder)
+func NewDecoder(w io.Writer, windowSize int) (*RingDecoder, error) {
+	d := new(RingDecoder)
 	err := d.Init(w, windowSize)
 	return d, err
 }
 
 // Init initializes the decoder. Internal bufferes will be reused if they are
 // largen enougn.
-func (d *Decoder) Init(w io.Writer, windowSize int) error {
-	if err := d.window.Init(windowSize); err != nil {
+func (d *RingDecoder) Init(w io.Writer, windowSize int) error {
+	if err := d.buf.Init(windowSize); err != nil {
 		return err
 	}
 	d.w = w
@@ -229,14 +235,14 @@ func (d *Decoder) Init(w io.Writer, windowSize int) error {
 }
 
 // Flush writes all decoded data to the underlying writer.
-func (d *Decoder) Flush() error {
-	_, err := d.window.WriteTo(d.w)
+func (d *RingDecoder) Flush() error {
+	_, err := d.buf.WriteTo(d.w)
 	return err
 }
 
 // Write writes data directoly into the decoder.
-func (d *Decoder) Write(p []byte) (n int, err error) {
-	n, err = d.window.Write(p)
+func (d *RingDecoder) Write(p []byte) (n int, err error) {
+	n, err = d.buf.Write(p)
 	if err != ErrBufferFull {
 		return n, err
 	}
@@ -247,14 +253,14 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 	}
 
 	var k int
-	k, err = d.window.Write(p)
+	k, err = d.buf.Write(p)
 	n += k
 	return n, err
 }
 
 // WriteMatch writes a single match into the decoder.
-func (d *Decoder) WriteMatch(n int, offset int) error {
-	err := d.window.WriteMatch(n, offset)
+func (d *RingDecoder) WriteMatch(n int, offset int) error {
+	err := d.buf.WriteMatch(n, offset)
 	if err != ErrBufferFull {
 		return err
 	}
@@ -263,12 +269,12 @@ func (d *Decoder) WriteMatch(n int, offset int) error {
 		return err
 	}
 
-	return d.window.WriteMatch(n, offset)
+	return d.buf.WriteMatch(n, offset)
 }
 
 // WriteBlock writes a complete block into the decoder.
-func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
-	k, l, n, err = d.window.WriteBlock(blk)
+func (d *RingDecoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
+	k, l, n, err = d.buf.WriteBlock(blk)
 	if err != ErrBufferFull {
 		return k, l, n, err
 	}
@@ -279,7 +285,7 @@ func (d *Decoder) WriteBlock(blk *Block) (k, l int, n int64, err error) {
 
 	blk.Sequences = blk.Sequences[k:]
 	blk.Literals = blk.Literals[l:]
-	k2, l2, n2, err := d.window.WriteBlock(blk)
+	k2, l2, n2, err := d.buf.WriteBlock(blk)
 	k += k2
 	l += l2
 	n += n2

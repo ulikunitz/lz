@@ -34,7 +34,7 @@ func TestReset(t *testing.T) {
 
 	for i := 1; i < 2; i++ {
 		var sb strings.Builder
-		var d Decoder
+		var d RingDecoder
 		d.Init(&sb, windowSize)
 
 		r.Reset(strings.NewReader(str))

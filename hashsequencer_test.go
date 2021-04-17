@@ -53,7 +53,7 @@ func TestHashSequencerSimple(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	var d Decoder
+	var d RingDecoder
 	if err := d.Init(&buf, 1024); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
@@ -105,7 +105,7 @@ func TestWrapHashSequencer(t *testing.T) {
 	s := Wrap(strings.NewReader(str), ws)
 
 	var builder strings.Builder
-	var decoder Decoder
+	var decoder RingDecoder
 	decoder.Init(&builder, windowSize)
 
 	var blk Block
@@ -163,7 +163,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	s := Wrap(r, ws)
 
 	h2 := sha256.New()
-	var decoder Decoder
+	var decoder RingDecoder
 	if err = decoder.Init(h2, windowSize); err != nil {
 		t.Fatalf("decoder.Init() error %s", err)
 	}
@@ -195,10 +195,6 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		t.Fatalf("decoded hash sum: %x; want %x", sum2, sum1)
 	}
 }
-
-// TODO: add benchmarks for HashSequencer and for Encoder.
-// Implement the sequencer in a ways that it can be used with multiple
-// configurations and setups
 
 type loopReader struct {
 	r io.ReadSeeker
@@ -242,8 +238,6 @@ func TestLoopReader(t *testing.T) {
 	}
 	t.Logf("%q", sb.String())
 }
-
-// TODO: test behavoir for large limits
 
 var largeFlag = flag.Bool("large", false, "test large parameters")
 
@@ -293,7 +287,7 @@ func TestLargeParameters(t *testing.T) {
 			h1, h2 := sha256.New(), sha256.New()
 			s := Wrap(io.TeeReader(r, h1), ws)
 
-			var d Decoder
+			var d RingDecoder
 			d.Init(h2, tc.cfg.WindowSize)
 
 			var blk Block

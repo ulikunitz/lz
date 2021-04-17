@@ -84,6 +84,85 @@ func blockCost(blk *Block) int64 {
 	return c
 }
 
+func TestSequencers(t *testing.T) {
+	const enwik7 = "testdata/enwik7"
+	tests := []struct {
+		name       string
+		windowSize int
+		ws         WriteSequencer
+	}{
+		{
+			name:       "HashSequencer-3",
+			windowSize: 8 << 20,
+			ws: newTestHashSequencer(t, HSConfig{
+				InputLen:    3,
+				MinMatchLen: 3,
+				WindowSize:  8 << 20,
+				ShrinkSize:  32 << 10,
+				MaxSize:     8 << 20,
+			})},
+		{
+			name:       "BackwardHashSequencer-3",
+			windowSize: 8 << 20,
+			ws: newTestBHS(t, HSConfig{
+				InputLen:    3,
+				MinMatchLen: 3,
+				WindowSize:  8 << 20,
+				ShrinkSize:  32 << 10,
+				MaxSize:     8 << 20,
+			})},
+	}
+	data, err := os.ReadFile(enwik7)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error %s", enwik7, err)
+	}
+	hd := sha256.New()
+	hd.Write(data)
+	sumData := hd.Sum(nil)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h := sha256.New()
+			d, err := NewDecoder(h, DConfig{
+				WindowSize: tc.windowSize,
+				MaxSize:    2 * tc.windowSize})
+			if err != nil {
+				t.Fatalf("NewDecoder error %s", err)
+			}
+
+			s := Wrap(bytes.NewReader(data), tc.ws)
+
+			var blk Block
+			for {
+				_, err := s.Sequence(&blk, 0)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("s.Sequencer error %s",
+						err)
+				}
+
+				_, _, _, err = d.WriteBlock(blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock error %s",
+						err)
+				}
+			}
+
+			if err = d.Flush(); err != nil {
+				t.Fatalf("d.Flush() error %s", err)
+			}
+
+			sum := h.Sum(nil)
+			if !bytes.Equal(sum, sumData) {
+				t.Fatalf("hash Is %x; want %x", sum, sumData)
+			}
+		})
+
+	}
+
+}
+
 func BenchmarkSequencers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
@@ -146,7 +225,6 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize:  32 << 10,
 			MaxSize:     8 << 20,
 		})},
-
 	}
 
 	for _, bm := range benchmarks {

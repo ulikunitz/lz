@@ -154,7 +154,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.posBuffer.init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
+	err = s.posBuffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 }
 
 func (s *HashSequencer) Reset() {
-	s.posBuffer.reset()
+	s.posBuffer.Reset()
 	for i := range s.hashTable {
 		s.hashTable[i] = hashEntry{}
 	}
@@ -300,7 +300,7 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		// potential match
 		j := int64(entry.pos) - int64(s.pos)
 		// j must not be less than window start
-		if j < doz64(i, int64(s.size)) {
+		if j < doz64(i, int64(s.windowSize)) {
 			continue
 		}
 		o := i - j

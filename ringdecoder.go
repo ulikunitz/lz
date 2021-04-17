@@ -125,7 +125,8 @@ func (buf *RingBuffer) copyMatch(n int, off int) {
 		buf.copyMatch(off, off)
 		n -= off
 		if n <= off {
-			// no need to double off; prevents also that 2*off < 0
+			// no need to double off; prevents also
+			// that 2*off < 0
 			break
 		}
 		off *= 2
@@ -146,16 +147,18 @@ func (buf *RingBuffer) copyMatch(n int, off int) {
 
 // WriteMatch writes a match completely or not completely.
 func (buf *RingBuffer) WriteMatch(n int, offset int) error {
+	if n > buf.available() {
+		return ErrBufferFull
+	}
 	if offset <= 0 {
 		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
+	}
+	if n <= 0 {
+		return fmt.Errorf("lz: n=%d; must be >= 0", n)
 	}
 	if k := buf.len(); offset > k {
 		return fmt.Errorf("lz: offset=%d; should be <= window (%d)",
 			offset, k)
-	}
-	a := buf.available()
-	if n > a {
-		return ErrBufferFull
 	}
 	buf.copyMatch(n, offset)
 	return nil

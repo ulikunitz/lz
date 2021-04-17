@@ -167,6 +167,9 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	n := 1 << cfg.HashBits
 	if n <= cap(s.hashTable) {
 		s.hashTable = s.hashTable[:n]
+		for i := range s.hashTable {
+			s.hashTable[i] = hashEntry{}
+		}
 	} else {
 		s.hashTable = make([]hashEntry, n)
 	}

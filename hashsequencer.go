@@ -7,13 +7,6 @@ import (
 
 const maxUint32 = 1<<32 - 1
 
-// hashEntry is used for hashEntry. The value field allows a fast check whether
-// a match has been found, which is cache-optimized.
-type hashEntry struct {
-	pos   uint32
-	value uint32
-}
-
 // HashSequencer allows the creation of sequence blocks using a simple hash
 // table.
 type HashSequencer struct {
@@ -33,9 +26,6 @@ type HashSequencer struct {
 	inputLen  int
 	blockSize int
 }
-
-// prime is used for hashing
-const prime = 9920624304325388887
 
 // hashes the masked x
 func (s *HashSequencer) hash(x uint64) uint32 {
@@ -125,7 +115,7 @@ func (cfg *HSConfig) Verify() error {
 
 	}
 	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
-		return fmt.Errorf("lz: HashBits=%d; must be less than %d",
+		return fmt.Errorf("lz: HashBits=%d; must be <= %d",
 			cfg.HashBits, maxHashBits)
 	}
 	return nil

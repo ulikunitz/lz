@@ -15,7 +15,7 @@ type seqBuffer struct {
 	shrinkSize int
 }
 
-func (buf *seqBuffer) Init(windowSize, max, shrink int) error {
+func (s *seqBuffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize >= 1) {
 		return fmt.Errorf("lz: window size must be >= 1")
 	}
@@ -28,8 +28,8 @@ func (buf *seqBuffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize <= max) {
 		return fmt.Errorf("lz: maxSo must be >= window size")
 	}
-	*buf = seqBuffer{
-		data:       buf.data[0:],
+	*s = seqBuffer{
+		data:       s.data[0:],
 		windowSize: windowSize,
 		max:        max,
 		shrinkSize: shrink,
@@ -37,47 +37,47 @@ func (buf *seqBuffer) Init(windowSize, max, shrink int) error {
 	return nil
 }
 
-func (buf *seqBuffer) Reset() {
-	buf.data = buf.data[:0]
-	buf.w = 0
+func (s *seqBuffer) Reset() {
+	s.data = s.data[:0]
+	s.w = 0
 }
 
-func (buf *seqBuffer) available() int {
-	return buf.max - len(buf.data)
+func (s *seqBuffer) available() int {
+	return s.max - len(s.data)
 }
 
-func (buf *seqBuffer) buffered() int {
-	return len(buf.data) - buf.w
+func (s *seqBuffer) buffered() int {
+	return len(s.data) - s.w
 }
 
 // Write writes data into the buffer that will be later processed by the
 // Sequence method.
-func (buf *seqBuffer) Write(p []byte) (n int, err error) {
-	n = buf.available()
+func (s *seqBuffer) Write(p []byte) (n int, err error) {
+	n = s.available()
 	if len(p) > n {
 		p = p[:n]
 		err = ErrFullBuffer
 	}
-	buf.data = append(buf.data, p...)
+	s.data = append(s.data, p...)
 	return len(p), err
 }
 
 // ReadFrom is an alternative way to write data into the buffer.
-func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
+func (s *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	var p []byte
-	if buf.max < cap(buf.data) {
-		p = buf.data[:buf.max]
+	if s.max < cap(s.data) {
+		p = s.data[:s.max]
 	} else {
-		p = buf.data[:cap(buf.data)]
+		p = s.data[:cap(s.data)]
 	}
 	if len(p) == 0 {
 		n := 32 * 1024
-		if buf.max < n {
-			n = buf.max
+		if s.max < n {
+			n = s.max
 		}
 		p = make([]byte, n)
 	}
-	i := len(buf.data)
+	i := len(s.data)
 	for {
 		var k int
 		k, err = r.Read(p[i:])
@@ -92,38 +92,38 @@ func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 			// p is not exhausted
 			continue
 		}
-		if i >= buf.max {
+		if i >= s.max {
 			err = ErrFullBuffer
 			break
 		}
 		// doubling the size of data
 		k = 2 * i
-		if k > buf.max || k < 0 {
-			k = buf.max
+		if k > s.max || k < 0 {
+			k = s.max
 		}
 		q := make([]byte, k)
 		// don't copy data before the window starts
-		r := buf.w - buf.windowSize
+		r := s.w - s.windowSize
 		if r < 0 {
 			r = 0
 		}
 		copy(q[r:], p[r:])
 		p = q
 	}
-	n = int64(i - len(buf.data))
-	buf.data = p[:i]
+	n = int64(i - len(s.data))
+	s.data = p[:i]
 	return n, err
 }
 
 // Shrink moves the tail of the Window, determined by ShrinkSize, to the front
 // of the buffer and makes then more space available to write into the buffer.
-func (buf *seqBuffer) Shrink() int {
-	r := buf.w - buf.shrinkSize
+func (s *seqBuffer) Shrink() int {
+	r := s.w - s.shrinkSize
 	if r < 0 {
 		r = 0
 	}
-	copy(buf.data, buf.data[r:])
-	buf.data = buf.data[:len(buf.data)-r]
-	buf.w -= r
+	copy(s.data, s.data[r:])
+	s.data = s.data[:len(s.data)-r]
+	s.w -= r
 	return r
 }

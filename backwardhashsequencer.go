@@ -1,5 +1,7 @@
 package lz
 
+import "math/bits"
+
 // BackwardHashSequencer allows the creation of sequence blocks using a simple
 // hash table. It extends found matches by looking backward in the input stream.
 type BackwardHashSequencer struct {
@@ -142,13 +144,10 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 		s.data = append(s.data, z[:k-m]...)[:m]
 	}
 	_p := s.data[:k]
-	m32 := 4
-	if s.inputLen < m32 {
-		m32 = s.inputLen
-	}
 
 	for ; i < inputEnd; i++ {
-		x := _getLE64(_p[i:]) & s.mask
+		y := _getLE64(_p[i:])
+		x := y & s.mask
 		h := s.hashValue(x)
 		entry := s.table[h]
 		v := uint32(x)
@@ -169,7 +168,13 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 		if o <= 0 {
 			continue
 		}
-		k := m32 + matchLen(p[j+int64(m32):], p[i+int64(m32):])
+		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
+		if int64(k) > inputEnd-i {
+			k = int(inputEnd - i)
+		}
+		if k == 8 {
+			k = 8 + matchLen(p[j+8:], p[i+8:])
+		}
 		if back := i - litIndex; back > 0 {
 			if back > j {
 				back = j

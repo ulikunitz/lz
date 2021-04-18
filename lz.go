@@ -48,10 +48,11 @@ const (
 	NoTrailingLiterals = 1 << iota
 )
 
-// Sequencer transforms byte streams into a block of sequences. The target block size under control of the
-// sequencer. The method returns the actual number of bytes sequences have been
-// generated for. The block can be reused and will be overwritten. If the block
-// is nil k bytes will be skipped and no sequences generated.
+// Sequencer transforms byte streams into a block of sequences. The target block
+// size under control of the sequencer. The method returns the actual number of
+// bytes sequences have been generated for. The block can be reused and will be
+// overwritten. If the block is nil k bytes will be skipped and no sequences
+// generated.
 type Sequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
 }

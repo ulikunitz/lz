@@ -34,6 +34,13 @@ func newTestDHS(tb testing.TB, cfg DHSConfig) *DoubleHashSequencer {
 	return dhs
 }
 
+func newTestBDHS(tb testing.TB, cfg DHSConfig) *BackwardDoubleHashSequencer {
+	dhs, err := NewBackwardDoubleHashSequencer(cfg)
+	if err != nil {
+		tb.Fatalf("NewDoubleHashSequencer(%+v) error %s", cfg, err)
+	}
+	return dhs
+}
 func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
@@ -125,6 +132,16 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		{
+			name: "BDHSequencer-3,8",
+			ws: newTestBDHS(t, DHSConfig{
+				InputLen1:  3,
+				InputLen2:  8,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -205,6 +222,16 @@ func TestSequencersSimple(t *testing.T) {
 		{
 			name: "DoubleHashSequencer-3,6",
 			ws: newTestDHS(t, DHSConfig{
+				InputLen1:  3,
+				InputLen2:  6,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+		{
+			name: "BDHSequencer-3,6",
+			ws: newTestBDHS(t, DHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
 				WindowSize: 8 << 20,
@@ -333,6 +360,24 @@ func BenchmarkSequencers(b *testing.B) {
 			MaxSize:    8 << 20,
 		})},
 		{"DoubleHashSequencer-4,6", newTestDHS(b, DHSConfig{
+			InputLen1:  4,
+			InputLen2:  6,
+			HashBits1:  15,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
+			ShrinkSize: 32 << 10,
+			MaxSize:    8 << 20,
+		})},
+		{"BDHSequencer-3,6", newTestBDHS(b, DHSConfig{
+			InputLen1:  3,
+			InputLen2:  6,
+			HashBits1:  15,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
+			ShrinkSize: 32 << 10,
+			MaxSize:    8 << 20,
+		})},
+		{"BDHSequencer-4,6", newTestBDHS(b, DHSConfig{
 			InputLen1:  4,
 			InputLen2:  6,
 			HashBits1:  15,

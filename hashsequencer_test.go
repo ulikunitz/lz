@@ -21,7 +21,6 @@ func TestHashSequencerSimple(t *testing.T) {
 		BlockSize:   512,
 		MaxSize:     2 * 1024,
 		InputLen:    3,
-		MinMatchLen: 2,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
@@ -97,7 +96,6 @@ func TestWrapHashSequencer(t *testing.T) {
 		BlockSize:   blockSize,
 		MaxSize:     2 * windowSize,
 		InputLen:    3,
-		MinMatchLen: 2,
 	})
 	if err != nil {
 		t.Fatalf("NewHashSequencer error %s", err)
@@ -154,7 +152,6 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		ShrinkSize:  windowSize / 4,
 		MaxSize:     2 * windowSize,
 		InputLen:    3,
-		MinMatchLen: 2,
 	}
 	ws, err := NewHashSequencer(cfg)
 	if err != nil {
@@ -257,7 +254,6 @@ func TestLargeParameters(t *testing.T) {
 	}{
 		{enwik7, 9 << 30, HSConfig{
 			InputLen:    3,
-			MinMatchLen: 3,
 			BlockSize:   128 * 1024,
 			WindowSize:  8 << 20,
 			ShrinkSize:  1 << 20,

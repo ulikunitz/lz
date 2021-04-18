@@ -30,9 +30,8 @@ type HashSequencer struct {
 	// shift provides the shift required for the hash function
 	shift uint
 
-	inputLen    int
-	minMatchLen int
-	blockSize   int
+	inputLen  int
+	blockSize int
 }
 
 // prime is used for hashing
@@ -63,8 +62,6 @@ type HSConfig struct {
 	HashBits int
 	// lenght of the input used; range [2,8]
 	InputLen int
-	// minimum match length; must be greater or equal 2
-	MinMatchLen int
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
@@ -77,9 +74,6 @@ func (cfg *HSConfig) ApplyDefaults() {
 	}
 	if cfg.MaxSize == 0 {
 		cfg.MaxSize = 8 * 1024 * 1024
-	}
-	if cfg.MinMatchLen == 0 {
-		cfg.MinMatchLen = 3
 	}
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 4
@@ -125,15 +119,10 @@ func (cfg *HSConfig) Verify() error {
 		return fmt.Errorf(
 			"lz: BlockSize=%d; must be positive", cfg.BlockSize)
 	}
-
 	maxHashBits := 32
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 
-	}
-	if !(2 <= cfg.MinMatchLen) {
-		return fmt.Errorf(
-			"lz: MinMatchLen=%d; must be >= 2", cfg.MinMatchLen)
 	}
 	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
 		return fmt.Errorf("lz: HashBits=%d; must be less than %d",
@@ -178,7 +167,6 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	s.shift = 64 - uint(cfg.HashBits)
 
 	s.inputLen = cfg.InputLen
-	s.minMatchLen = cfg.MinMatchLen
 	s.blockSize = cfg.BlockSize
 	s.pos = 0
 	return nil
@@ -319,9 +307,6 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			continue
 		}
 		k := m32 + matchLen(p[j+int64(m32):], p[i+int64(m32):])
-		if k < s.minMatchLen {
-			continue
-		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{

@@ -17,7 +17,6 @@ type BackwardHashSequencer struct {
 	shift uint
 
 	inputLen    int
-	minMatchLen int
 	blockSize   int
 }
 
@@ -62,7 +61,6 @@ func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
 	s.shift = 64 - uint(cfg.HashBits)
 
 	s.inputLen = cfg.InputLen
-	s.minMatchLen = cfg.MinMatchLen
 	s.blockSize = cfg.BlockSize
 	s.pos = 0
 	return nil
@@ -207,9 +205,6 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 			m := backwardMatchLen(p[j-back:j], p[:i])
 			i -= int64(m)
 			k += m
-		}
-		if k < s.minMatchLen {
-			continue
 		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,

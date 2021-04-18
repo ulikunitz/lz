@@ -87,13 +87,11 @@ func blockCost(blk *Block) int64 {
 func TestSequencers(t *testing.T) {
 	const enwik7 = "testdata/enwik7"
 	tests := []struct {
-		name       string
-		windowSize int
-		ws         WriteSequencer
+		name string
+		ws   WriteSequencer
 	}{
 		{
-			name:       "HashSequencer-3",
-			windowSize: 8 << 20,
+			name: "HashSequencer-3",
 			ws: newTestHashSequencer(t, HSConfig{
 				InputLen:    3,
 				MinMatchLen: 3,
@@ -102,8 +100,7 @@ func TestSequencers(t *testing.T) {
 				MaxSize:     8 << 20,
 			})},
 		{
-			name:       "BackwardHashSequencer-3",
-			windowSize: 8 << 20,
+			name: "BackwardHashSequencer-3",
 			ws: newTestBHS(t, HSConfig{
 				InputLen:    3,
 				MinMatchLen: 3,
@@ -122,9 +119,10 @@ func TestSequencers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			h := sha256.New()
+			winSize := tc.ws.WindowSize()
 			d, err := NewDecoder(h, DConfig{
-				WindowSize: tc.windowSize,
-				MaxSize:    2 * tc.windowSize})
+				WindowSize: winSize,
+				MaxSize:    2 * winSize})
 			if err != nil {
 				t.Fatalf("NewDecoder error %s", err)
 			}

@@ -62,6 +62,7 @@ type Sequencer interface {
 // provides the number of bytes that can be written to the WriteSequencer.
 type WriteSequencer interface {
 	io.Writer
+	WindowSize() int
 	Requested() int
 	Reset()
 	Sequencer

@@ -26,7 +26,7 @@ func _getLE32(p []byte) uint32 {
 }
 
 // getLE64 reads the 64-bit little-endian representation independent of the
-// lenght of slice p.
+// length of slice p.
 func getLE64(p []byte) uint64 {
 	switch len(p) {
 	case 0:
@@ -57,7 +57,7 @@ func getLE64(p []byte) uint64 {
 	}
 }
 
-// matchLen computes the lenght of the common prefix between p and q.
+// matchLen computes the length of the common prefix between p and q.
 func matchLen(p, q []byte) int {
 	if len(q) > len(p) {
 		p, q = q, p

@@ -60,7 +60,7 @@ type HSConfig struct {
 	BlockSize int
 	// number of bits of the hash index
 	HashBits int
-	// lenght of the input used; range [2,8]
+	// length of the input used; range [2,8]
 	InputLen int
 }
 

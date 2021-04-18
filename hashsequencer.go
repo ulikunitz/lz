@@ -101,7 +101,6 @@ func (cfg *HSConfig) Verify() error {
 	maxHashBits := 32
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
-
 	}
 	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
 		return fmt.Errorf("lz: HashBits=%d; must be <= %d",

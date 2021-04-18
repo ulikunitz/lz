@@ -5,24 +5,12 @@ package lz
 type BackwardHashSequencer struct {
 	seqBuffer
 
-	hashTable []hashEntry
+	hash
 
 	// pos of the start of data in Buffer
 	pos uint32
 
-	// mask for input
-	mask uint64
-
-	// shift provides the shift required for the hash function
-	shift uint
-
-	inputLen  int
 	blockSize int
-}
-
-// hashes the masked x
-func (s *BackwardHashSequencer) hash(x uint64) uint32 {
-	return uint32((x * prime) >> s.shift)
 }
 
 // NewBackwardHashSequencer creates a new backward hash sequencer.
@@ -46,21 +34,10 @@ func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
 	if err != nil {
 		return err
 	}
+	if err = s.hash.init(cfg.InputLen, cfg.HashBits); err != nil {
+		return err
 
-	n := 1 << cfg.HashBits
-	if n <= cap(s.hashTable) {
-		s.hashTable = s.hashTable[:n]
-		for i := range s.hashTable {
-			s.hashTable[i] = hashEntry{}
-		}
-	} else {
-		s.hashTable = make([]hashEntry, n)
 	}
-
-	s.mask = 1<<(uint64(cfg.InputLen)*8) - 1
-	s.shift = 64 - uint(cfg.HashBits)
-
-	s.inputLen = cfg.InputLen
 	s.blockSize = cfg.BlockSize
 	s.pos = 0
 	return nil
@@ -70,10 +47,8 @@ func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
 // returned.
 func (s *BackwardHashSequencer) Reset() {
 	s.seqBuffer.Reset()
+	s.hash.reset()
 	s.pos = 0
-	for i := range s.hashTable {
-		s.hashTable[i] = hashEntry{}
-	}
 }
 
 // Requested provides the number of bytes that the sequencer requests to be
@@ -87,13 +62,7 @@ func (s *BackwardHashSequencer) Requested() int {
 		s.pos += uint32(s.Shrink())
 		if int64(s.pos)+int64(s.max) > maxUint32 {
 			// adapt entries in hashTable since s.pos has changed.
-			for i, e := range s.hashTable {
-				if e.pos < s.pos {
-					s.hashTable[i] = hashEntry{}
-				} else {
-					s.hashTable[i].pos = e.pos - s.pos
-				}
-			}
+			s.hash.adapt(s.pos)
 			s.pos = 0
 		}
 	}
@@ -121,8 +90,8 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		h := s.hash(x)
-		s.hashTable[h] = hashEntry{
+		h := s.hashValue(x)
+		s.table[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: uint32(x),
 		}
@@ -180,10 +149,10 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 
 	for ; i < inputEnd; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		h := s.hash(x)
+		h := s.hashValue(x)
+		entry := s.table[h]
 		v := uint32(x)
-		entry := s.hashTable[h]
-		s.hashTable[h] = hashEntry{
+		s.table[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: v,
 		}

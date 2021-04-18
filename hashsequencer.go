@@ -250,8 +250,8 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	for ; i < inputEnd; i++ {
 		x := _getLE64(_p[i:]) & s.mask
 		h := s.hashValue(x)
-		v := uint32(x)
 		entry := s.table[h]
+		v := uint32(x)
 		s.table[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: v,

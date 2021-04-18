@@ -37,6 +37,7 @@ func (buf *RingBuffer) Init(windowSize int) error {
 	return nil
 }
 
+// Reset puts the Ringbuffer in its initial state.
 func (buf *RingBuffer) Reset() {
 	*buf = RingBuffer{data: buf.data}
 }
@@ -110,15 +111,16 @@ func (buf *RingBuffer) copySlice(p []byte) {
 	buf.w = copy(buf.data, p[k:])
 }
 
-// ErrBufferFull indicates that no more data can be buffered.
-var ErrBufferFull = errors.New("lz: buffer is full")
+// ErrFullBuffer indicates that no more data can be buffered. Data must be read
+// or processed.
+var ErrFullBuffer = errors.New("lz: buffer is full")
 
 // Write writes data into the sequencer. If the Write cannot be completed no
 // bytes will be written.
 func (buf *RingBuffer) Write(p []byte) (n int, err error) {
 	n = buf.available()
 	if len(p) > n {
-		return 0, ErrBufferFull
+		return 0, ErrFullBuffer
 	}
 	buf.copySlice(p)
 	return len(p), nil
@@ -152,7 +154,7 @@ func (buf *RingBuffer) copyMatch(n int, off int) {
 // WriteMatch writes a match completely or not completely.
 func (buf *RingBuffer) WriteMatch(n int, offset int) error {
 	if n > buf.available() {
-		return ErrBufferFull
+		return ErrFullBuffer
 	}
 	if offset <= 0 {
 		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
@@ -174,7 +176,7 @@ func (buf *RingBuffer) writeSeq(s Seq, literals []byte) (l int, err error) {
 		return 0, errors.New("lz: too few literals for serquence")
 	}
 	if s.Len() > int64(buf.available()) {
-		return 0, ErrBufferFull
+		return 0, ErrFullBuffer
 	}
 	if s.Offset == 0 {
 		return 0, errors.New("lz: sequence offset must be > 0")
@@ -255,7 +257,7 @@ func (d *RingDecoder) Flush() error {
 // Write writes data directoly into the decoder.
 func (d *RingDecoder) Write(p []byte) (n int, err error) {
 	n, err = d.buf.Write(p)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return n, err
 	}
 	p = p[n:]
@@ -273,7 +275,7 @@ func (d *RingDecoder) Write(p []byte) (n int, err error) {
 // WriteMatch writes a single match into the decoder.
 func (d *RingDecoder) WriteMatch(n int, offset int) error {
 	err := d.buf.WriteMatch(n, offset)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return err
 	}
 
@@ -287,7 +289,7 @@ func (d *RingDecoder) WriteMatch(n int, offset int) error {
 // WriteBlock writes a complete block into the decoder.
 func (d *RingDecoder) WriteBlock(blk Block) (k, l int, n int64, err error) {
 	k, l, n, err = d.buf.WriteBlock(blk)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return k, l, n, err
 	}
 

@@ -6,6 +6,8 @@ import (
 	"io"
 )
 
+// Buffer provides a simple buffer to decode sequences. The buffer can be
+// extened to max bytes.
 type Buffer struct {
 	data []byte
 
@@ -15,6 +17,8 @@ type Buffer struct {
 	max        int
 }
 
+// Init initialized the buffer. The window size must be larger than 1 and max
+// must be larger then the windowSize.
 func (buf *Buffer) Init(windowSize, max int) error {
 	if windowSize < 1 {
 		return fmt.Errorf("lz: windowSize must be >1")
@@ -32,6 +36,7 @@ func (buf *Buffer) Init(windowSize, max int) error {
 	return nil
 }
 
+// Reset puts the buffer into its initial state.
 func (buf *Buffer) Reset() {
 	buf.data = buf.data[:0]
 	buf.r = 0
@@ -47,18 +52,22 @@ func (buf *Buffer) len() int {
 	return n
 }
 
+// Read reads data from the buffer.
 func (buf *Buffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
 	return n, nil
 }
 
+// WriteTo writes all data to read into the writer.
 func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 	k, err := w.Write(buf.data[buf.r:])
 	buf.r += k
 	return int64(k), err
 }
 
+// shrink moves the window to the front of the buffer if n bytes will be made
+// available. Otherwise ErrFullBuffer will be returned.
 func (buf *Buffer) shrink(n int) error {
 	r := len(buf.data) - buf.windowSize
 	if r < 0 {
@@ -68,7 +77,7 @@ func (buf *Buffer) shrink(n int) error {
 		r = buf.r
 	}
 	if buf.available() < n-r {
-		return ErrBufferFull
+		return ErrFullBuffer
 	}
 	if r <= 0 {
 		return nil
@@ -79,6 +88,8 @@ func (buf *Buffer) shrink(n int) error {
 	return nil
 }
 
+// Write writes the provided byte slice into the buffer and extends the window
+// accordingly.
 func (buf *Buffer) Write(p []byte) (n int, err error) {
 	if buf.available() < len(p) {
 		if err = buf.shrink(len(p)); err != nil {
@@ -104,6 +115,8 @@ func (buf *Buffer) copyMatch(n, off int) {
 	buf.data = append(buf.data, buf.data[k:k+n]...)
 }
 
+// WriteMatch writes a match into the buffer and extends the window by the
+// match.
 func (buf *Buffer) WriteMatch(n, offset int) error {
 	if n > buf.available() {
 		if err := buf.shrink(n); err != nil {
@@ -132,7 +145,7 @@ func (buf *Buffer) writeSeq(s Seq, literals []byte) (l int, err error) {
 	if n := s.Len(); n > int64(buf.available()) {
 		k := int(n)
 		if k < 0 {
-			return 0, ErrBufferFull
+			return 0, ErrFullBuffer
 		}
 		if err = buf.shrink(k); err != nil {
 			return 0, err
@@ -178,11 +191,14 @@ func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
 	return k, l, n, err
 }
 
+// DConfig contains the configuration for a simple Decoder. It provides the
+// window size and the MaxSize of the buffer.
 type DConfig struct {
 	WindowSize int
 	MaxSize    int
 }
 
+// Verify checks the configuration and returns any errors.
 func (cfg *DConfig) Verify() error {
 	if cfg.WindowSize < 1 {
 		return fmt.Errorf("lz: windowSize=%d must be >=1",
@@ -195,6 +211,7 @@ func (cfg *DConfig) Verify() error {
 	return nil
 }
 
+// ApplyDefaults applies the defaults for the configuration.
 func (cfg *DConfig) ApplyDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * 1024 * 1024
@@ -232,6 +249,7 @@ func (d *Decoder) Init(w io.Writer, cfg DConfig) error {
 	return nil
 }
 
+// Reset resets the decoder to its initial state.
 func (d *Decoder) Reset(w io.Writer) {
 	d.buf.Reset()
 	d.w = w
@@ -246,7 +264,7 @@ func (d *Decoder) Flush() error {
 // Write writes data directoly into the decoder.
 func (d *Decoder) Write(p []byte) (n int, err error) {
 	n, err = d.buf.Write(p)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return n, err
 	}
 	p = p[n:]
@@ -264,7 +282,7 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 // WriteMatch writes a single match into the decoder.
 func (d *Decoder) WriteMatch(n int, offset int) error {
 	err := d.buf.WriteMatch(n, offset)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return err
 	}
 
@@ -278,7 +296,7 @@ func (d *Decoder) WriteMatch(n int, offset int) error {
 // WriteBlock writes a complete block into the decoder.
 func (d *Decoder) WriteBlock(blk Block) (k, l int, n int64, err error) {
 	k, l, n, err = d.buf.WriteBlock(blk)
-	if err != ErrBufferFull {
+	if err != ErrFullBuffer {
 		return k, l, n, err
 	}
 

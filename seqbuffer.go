@@ -50,18 +50,19 @@ func (buf *seqBuffer) buffered() int {
 	return len(buf.data) - buf.w
 }
 
+// Write writes data into the buffer that will be later processed by the
+// Sequence method.
 func (buf *seqBuffer) Write(p []byte) (n int, err error) {
 	n = buf.available()
 	if len(p) > n {
 		p = p[:n]
-		err = ErrBufferFull
+		err = ErrFullBuffer
 	}
 	buf.data = append(buf.data, p...)
 	return len(p), err
 }
 
-// ReadFrom is an alternative way to transfer data into the buffer after the
-// window. See the Write method.
+// ReadFrom is an alternative way to write data into the buffer.
 func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	var p []byte
 	if buf.max < cap(buf.data) {
@@ -92,7 +93,7 @@ func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 			continue
 		}
 		if i >= buf.max {
-			err = ErrBufferFull
+			err = ErrFullBuffer
 			break
 		}
 		// doubling the size of data
@@ -114,6 +115,8 @@ func (buf *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
+// Shrink moves the tail of the Window, determined by ShrinkSize, to the front
+// of the buffer and makes then more space available to write into the buffer.
 func (buf *seqBuffer) Shrink() int {
 	r := buf.w - buf.shrinkSize
 	if r < 0 {

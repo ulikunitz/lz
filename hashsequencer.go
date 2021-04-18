@@ -131,7 +131,7 @@ func (cfg *HSConfig) Verify() error {
 	return nil
 }
 
-// NewHashSeqeuncer creates a new hash sequencer.
+// NewHashSequencer creates a new hash sequencer.
 func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 	var t HashSequencer
 	if err := t.Init(cfg); err != nil {
@@ -141,7 +141,7 @@ func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 }
 
 // Init initialzes the hash sequencer. It returns an error if there is an issue
-// with the configuration paremeters.
+// with the configuration parameters.
 func (s *HashSequencer) Init(cfg HSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -172,6 +172,8 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	return nil
 }
 
+// Reset resets the hash sequencer. The sequencer will be in the same state as
+// after Init.
 func (s *HashSequencer) Reset() {
 	s.seqBuffer.Reset()
 	s.pos = 0
@@ -180,7 +182,8 @@ func (s *HashSequencer) Reset() {
 	}
 }
 
-// Requested provides the number of bytes that the sequencer wants to filled.
+// Requested provides the number of bytes that the sequencer requests to be
+// provided.
 func (s *HashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
@@ -232,7 +235,8 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	}
 }
 
-// ErrEmptyBuffer indicates that the buffer is empty.
+// ErrEmptyBuffer indicates that the buffer is empty and no more data can be
+// read or processed. More data must be provided to the buffer.
 var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
 // Sequence converts the next block of k bytes to a sequences. The block will be

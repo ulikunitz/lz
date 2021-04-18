@@ -1,7 +1,7 @@
 package lz
 
-// BackwardHashSequencer allows the creation of sequence blocks using a simple hash
-// table.
+// BackwardHashSequencer allows the creation of sequence blocks using a simple
+// hash table. It extends found matches by looking backward in the input stream.
 type BackwardHashSequencer struct {
 	seqBuffer
 
@@ -16,8 +16,8 @@ type BackwardHashSequencer struct {
 	// shift provides the shift required for the hash function
 	shift uint
 
-	inputLen    int
-	blockSize   int
+	inputLen  int
+	blockSize int
 }
 
 // hashes the masked x
@@ -25,7 +25,7 @@ func (s *BackwardHashSequencer) hash(x uint64) uint32 {
 	return uint32((x * prime) >> s.shift)
 }
 
-// NewBackwardHashSeqeuncer creates a new hash sequencer.
+// NewBackwardHashSequencer creates a new backward hash sequencer.
 func NewBackwardHashSequencer(cfg HSConfig) (s *BackwardHashSequencer, err error) {
 	var t BackwardHashSequencer
 	if err := t.Init(cfg); err != nil {
@@ -34,8 +34,8 @@ func NewBackwardHashSequencer(cfg HSConfig) (s *BackwardHashSequencer, err error
 	return &t, nil
 }
 
-// Init initialzes the hash sequencer. It returns an error if there is an issue
-// with the configuration paremeters.
+// Init initialzes the backward hash sequencer. It returns an error if there is an issue
+// with the configuration parameters.
 func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -66,6 +66,8 @@ func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
 	return nil
 }
 
+// Reset resets the backward hash sequencer to the initial state after Init has
+// returned.
 func (s *BackwardHashSequencer) Reset() {
 	s.seqBuffer.Reset()
 	s.pos = 0
@@ -74,7 +76,8 @@ func (s *BackwardHashSequencer) Reset() {
 	}
 }
 
-// Requested provides the number of bytes that the sequencer wants to filled.
+// Requested provides the number of bytes that the sequencer requests to be
+// filled.
 func (s *BackwardHashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {

@@ -1,6 +1,6 @@
 // Package lz provides encoders and decoders for LZ77 sequences. The term
-// sequence used here reflects the usage in the zstd format specification. We
-// use the term Sequencer as something that produces Sequences.
+// sequence used here reflects the usage in the zstd format specification. A
+// Sequencer is an object that can produce blocks of sequences.
 //
 // TODO: examples
 package lz
@@ -43,7 +43,7 @@ func (b *Block) Len() int64 {
 
 // Flags for the Sequence function.
 const (
-	// NoTrailingLiterals tells the sequencer that trailing literals don't
+	// NoTrailingLiterals tells a sequencer that trailing literals don't
 	// need to be included in the block.
 	NoTrailingLiterals = 1 << iota
 )

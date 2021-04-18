@@ -3,6 +3,7 @@ package lz
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 )
 
 const maxUint32 = 1<<32 - 1
@@ -242,13 +243,10 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		s.data = append(s.data, z[:k-m]...)[:m]
 	}
 	_p := s.data[:k]
-	m32 := 4
-	if s.inputLen < m32 {
-		m32 = s.inputLen
-	}
 
 	for ; i < inputEnd; i++ {
-		x := _getLE64(_p[i:]) & s.mask
+		y := _getLE64(_p[i:])
+		x := y & s.mask
 		h := s.hashValue(x)
 		entry := s.table[h]
 		v := uint32(x)
@@ -269,7 +267,13 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		if o <= 0 {
 			continue
 		}
-		k := m32 + matchLen(p[j+int64(m32):], p[i+int64(m32):])
+		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
+		if int64(k) > inputEnd-i {
+			k = int(inputEnd - i)
+		}
+		if k == 8 {
+			k = 8 + matchLen(p[j+8:], p[i+8:])
+		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{

@@ -66,23 +66,5 @@ func (h *hash) adapt(delta uint32) {
 const prime = 9920624304325388887
 
 func (h *hash) hash(x uint64) uint32 {
-	return uint32((x * prime)) >> h.shift
-}
-
-func (h *hash) putHash(x uint64, pos uint32) {
-	x &= h.mask
-	i := h.hash(x & h.mask)
-	h.table[i] = hashEntry{
-		pos:   pos,
-		value: uint32(x),
-	}
-}
-
-func (h *hash) exchangeHash(x uint64, newPos uint32) (oldPos uint32, ok bool) {
-	x &= h.mask
-	i := h.hash(x)
-	v := uint32(x)
-	entry := h.table[i]
-	h.table[i] = hashEntry{pos: newPos, value: v}
-	return entry.pos, v == entry.value
+	return uint32((x * prime) >> h.shift)
 }

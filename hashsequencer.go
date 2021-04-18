@@ -12,24 +12,12 @@ const maxUint32 = 1<<32 - 1
 type HashSequencer struct {
 	seqBuffer
 
-	hashTable []hashEntry
+	hash hash
 
 	// pos of the start of data in Buffer
 	pos uint32
 
-	// mask for input
-	mask uint64
-
-	// shift provides the shift required for the hash function
-	shift uint
-
-	inputLen  int
 	blockSize int
-}
-
-// hashes the masked x
-func (s *HashSequencer) hash(x uint64) uint32 {
-	return uint32((x * prime) >> s.shift)
 }
 
 // HSConfig provides the configuration parameters for the
@@ -138,25 +126,15 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
+
 	err = s.seqBuffer.Init(cfg.WindowSize, cfg.MaxSize, cfg.ShrinkSize)
 	if err != nil {
 		return err
 	}
-
-	n := 1 << cfg.HashBits
-	if n <= cap(s.hashTable) {
-		s.hashTable = s.hashTable[:n]
-		for i := range s.hashTable {
-			s.hashTable[i] = hashEntry{}
-		}
-	} else {
-		s.hashTable = make([]hashEntry, n)
+	if err = s.hash.init(cfg.InputLen, cfg.HashBits); err != nil {
+		return err
 	}
 
-	s.mask = 1<<(uint64(cfg.InputLen)*8) - 1
-	s.shift = 64 - uint(cfg.HashBits)
-
-	s.inputLen = cfg.InputLen
 	s.blockSize = cfg.BlockSize
 	s.pos = 0
 	return nil
@@ -166,10 +144,8 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 // after Init.
 func (s *HashSequencer) Reset() {
 	s.seqBuffer.Reset()
+	s.hash.reset()
 	s.pos = 0
-	for i := range s.hashTable {
-		s.hashTable[i] = hashEntry{}
-	}
 }
 
 // Requested provides the number of bytes that the sequencer requests to be
@@ -182,14 +158,7 @@ func (s *HashSequencer) Requested() int {
 	if s.available() < r {
 		s.pos += uint32(s.Shrink())
 		if int64(s.pos)+int64(s.max) > maxUint32 {
-			// adapt entries in hashTable since s.pos has changed.
-			for i, e := range s.hashTable {
-				if e.pos < s.pos {
-					s.hashTable[i] = hashEntry{}
-				} else {
-					s.hashTable[i].pos = e.pos - s.pos
-				}
-			}
+			s.hash.adapt(s.pos)
 			s.pos = 0
 		}
 	}
@@ -201,7 +170,7 @@ func (s *HashSequencer) hashSegment(a, b int) {
 		a = 0
 	}
 	n := len(s.data)
-	c := n - s.inputLen + 1
+	c := n - s.hash.inputLen + 1
 	if b > c {
 		b = c
 	}
@@ -216,9 +185,9 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	_p := s.data[:k]
 
 	for i := a; i < b; i++ {
-		x := _getLE64(_p[i:]) & s.mask
-		h := s.hash(x)
-		s.hashTable[h] = hashEntry{
+		x := _getLE64(_p[i:]) & s.hash.mask
+		h := s.hash.hash(x)
+		s.hash.table[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: uint32(x),
 		}
@@ -247,7 +216,7 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	}
 	if blk == nil {
 		t := s.w + n
-		s.hashSegment(s.w-s.inputLen+1, t)
+		s.hashSegment(s.w-s.hash.inputLen+1, t)
 		s.w = t
 		return n, nil
 	}
@@ -258,10 +227,10 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		return 0, ErrEmptyBuffer
 	}
 
-	s.hashSegment(s.w-s.inputLen+1, s.w)
+	s.hashSegment(s.w-s.hash.inputLen+1, s.w)
 	p := s.data[:s.w+n]
 
-	inputEnd := int64(len(p) - s.inputLen + 1)
+	inputEnd := int64(len(p) - s.hash.inputLen + 1)
 	i := int64(s.w)
 	litIndex := i
 
@@ -274,16 +243,16 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	}
 	_p := s.data[:k]
 	m32 := 4
-	if s.inputLen < m32 {
-		m32 = s.inputLen
+	if s.hash.inputLen < m32 {
+		m32 = s.hash.inputLen
 	}
 
 	for ; i < inputEnd; i++ {
-		x := _getLE64(_p[i:]) & s.mask
-		h := s.hash(x)
+		x := _getLE64(_p[i:]) & s.hash.mask
+		h := s.hash.hash(x)
 		v := uint32(x)
-		entry := s.hashTable[h]
-		s.hashTable[h] = hashEntry{
+		entry := s.hash.table[h]
+		s.hash.table[h] = hashEntry{
 			pos:   s.pos + uint32(i),
 			value: v,
 		}

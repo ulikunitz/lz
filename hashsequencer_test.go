@@ -41,10 +41,11 @@ func TestHashSequencerSimple(t *testing.T) {
 		t.Fatalf("s.Sequence returned %d; want %d", n, len(str))
 	}
 	t.Logf("sequences: %+v", blk.Sequences)
+	t.Logf("len(sequences): %d", len(blk.Sequences))
 	t.Logf("literals: %q", blk.Literals)
-	if len(blk.Sequences) == 0 {
-		t.Errorf("len(blk.Sequences)=%d; want value > 0",
-			len(blk.Sequences))
+	if len(blk.Sequences) != 5 {
+		t.Errorf("len(blk.Sequences)=%d; want %d",
+			len(blk.Sequences), 5)
 	}
 	if len(blk.Literals) >= len(str) {
 		t.Errorf("len(blk.Literals)=%d; should < %d",

@@ -179,7 +179,6 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	k := b + 8
 	if k > cap(s.data) {
 		var z [8]byte
-		n := len(s.data)
 		s.data = append(s.data, z[:k-n]...)[:n]
 	}
 	_p := s.data[:k]
@@ -205,10 +204,6 @@ var ErrEmptyBuffer = errors.New("lz: empty buffer")
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
 func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	// TODO: possible optimizations
-	// - use loaded 8-byte x loaded as a kind of buffer
-	// - combine hashing and match determination in loop
-
 	n = s.blockSize
 	buffered := s.buffered()
 	if n > buffered {
@@ -267,8 +262,8 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
-		if int64(k) > inputEnd-i {
-			k = int(inputEnd - i)
+		if k > len(p)-int(i) {
+			k = len(p) - int(i)
 		}
 		if k == 8 {
 			k = 8 + matchLen(p[j+8:], p[i+8:])

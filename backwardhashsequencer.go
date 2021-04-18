@@ -85,7 +85,6 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 	k := b + 8
 	if k > cap(s.data) {
 		var z [8]byte
-		n := len(s.data)
 		s.data = append(s.data, z[:k-n]...)[:n]
 	}
 	_p := s.data[:k]
@@ -169,8 +168,8 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
-		if int64(k) > inputEnd-i {
-			k = int(inputEnd - i)
+		if k > len(p)-int(i) {
+			k = len(p) - int(i)
 		}
 		if k == 8 {
 			k = 8 + matchLen(p[j+8:], p[i+8:])

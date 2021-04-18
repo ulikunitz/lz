@@ -26,6 +26,14 @@ func newTestBHS(tb testing.TB, cfg HSConfig) *BackwardHashSequencer {
 	return bhs
 }
 
+func newTestDHS(tb testing.TB, cfg DHSConfig) *DoubleHashSequencer {
+	dhs, err := NewDoubleHashSequencer(cfg)
+	if err != nil {
+		tb.Fatalf("NewDoubleHashSequencer(%+v) error %s", cfg, err)
+	}
+	return dhs
+}
+
 func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
@@ -96,7 +104,8 @@ func TestSequencers(t *testing.T) {
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
-			})},
+			}),
+		},
 		{
 			name: "BackwardHashSequencer-3",
 			ws: newTestBHS(t, HSConfig{
@@ -104,12 +113,107 @@ func TestSequencers(t *testing.T) {
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
-			})},
+			}),
+		},
+		{
+			name: "DoubleHashSequencer-3,8",
+			ws: newTestDHS(t, DHSConfig{
+				InputLen1:  3,
+				InputLen2:  8,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", enwik7, err)
 	}
+	hd := sha256.New()
+	hd.Write(data)
+	sumData := hd.Sum(nil)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h := sha256.New()
+			winSize := tc.ws.WindowSize()
+			d, err := NewDecoder(h, DConfig{
+				WindowSize: winSize,
+				MaxSize:    2 * winSize})
+			if err != nil {
+				t.Fatalf("NewDecoder error %s", err)
+			}
+
+			s := Wrap(bytes.NewReader(data), tc.ws)
+
+			var blk Block
+			for {
+				_, err := s.Sequence(&blk, 0)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("s.Sequencer error %s",
+						err)
+				}
+
+				_, _, _, err = d.WriteBlock(blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock error %s",
+						err)
+				}
+			}
+
+			if err = d.Flush(); err != nil {
+				t.Fatalf("d.Flush() error %s", err)
+			}
+
+			sum := h.Sum(nil)
+			if !bytes.Equal(sum, sumData) {
+				t.Fatalf("hash Is %x; want %x", sum, sumData)
+			}
+		})
+
+	}
+
+}
+
+func TestSequencersSimple(t *testing.T) {
+	const str = "=====FoobardeFoobarde======"
+	tests := []struct {
+		name string
+		ws   WriteSequencer
+	}{
+		{
+			name: "HashSequencer-3",
+			ws: newTestHashSequencer(t, HSConfig{
+				InputLen:   3,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+		{
+			name: "BackwardHashSequencer-3",
+			ws: newTestBHS(t, HSConfig{
+				InputLen:   3,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+		{
+			name: "DoubleHashSequencer-3,6",
+			ws: newTestDHS(t, DHSConfig{
+				InputLen1:  3,
+				InputLen2:  6,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+	}
+	data := []byte(str)
 	hd := sha256.New()
 	hd.Write(data)
 	sumData := hd.Sum(nil)
@@ -208,6 +312,24 @@ func BenchmarkSequencers(b *testing.B) {
 		})},
 		{"BackwardHashSequencer-8", newTestBHS(b, HSConfig{
 			InputLen:   8,
+			WindowSize: 8 << 20,
+			ShrinkSize: 32 << 10,
+			MaxSize:    8 << 20,
+		})},
+		{"DoubleHashSequencer-3,6", newTestDHS(b, DHSConfig{
+			InputLen1:  3,
+			InputLen2:  6,
+			HashBits1:  12,
+			HashBits2:  12,
+			WindowSize: 8 << 20,
+			ShrinkSize: 32 << 10,
+			MaxSize:    8 << 20,
+		})},
+		{"DoubleHashSequencer-4,6", newTestDHS(b, DHSConfig{
+			InputLen1:  3,
+			InputLen2:  6,
+			HashBits1:  12,
+			HashBits2:  12,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,

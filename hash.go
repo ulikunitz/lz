@@ -65,6 +65,6 @@ func (h *hash) adapt(delta uint32) {
 // prime is used for hashing
 const prime = 9920624304325388887
 
-func (h *hash) hash(x uint64) uint32 {
+func (h *hash) hashValue(x uint64) uint32 {
 	return uint32((x * prime) >> h.shift)
 }

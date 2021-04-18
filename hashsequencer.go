@@ -52,10 +52,10 @@ func (cfg *HSConfig) ApplyDefaults() {
 		cfg.WindowSize = 8 * 1024 * 1024
 	}
 	if cfg.MaxSize == 0 {
-		cfg.MaxSize = 8 * 1024 * 1024
+		cfg.MaxSize = 16 * 1024 * 1024
 	}
 	if cfg.InputLen == 0 {
-		cfg.InputLen = 4
+		cfg.InputLen = 3
 	}
 	if cfg.HashBits == 0 {
 		cfg.HashBits = 12

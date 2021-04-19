@@ -1,13 +1,12 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
 	"io"
 )
 
-// Buffer provides a simple buffer to decode sequences. The buffer can be
-// extened to max bytes.
+// Buffer provides a simple buffer to decode sequences. The max field gives a
+// target that can be exceeded once.
 type Buffer struct {
 	data []byte
 
@@ -68,7 +67,7 @@ func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 
 // shrink moves the window to the front of the buffer if n bytes will be made
 // available. Otherwise ErrFullBuffer will be returned.
-func (buf *Buffer) shrink(n int) error {
+func (buf *Buffer) shrink(n int64) error {
 	r := len(buf.data) - buf.windowSize
 	if r < 0 {
 		r = 0
@@ -76,7 +75,7 @@ func (buf *Buffer) shrink(n int) error {
 	if buf.r < r {
 		r = buf.r
 	}
-	if buf.available() < n-r {
+	if int64(buf.available()) < n-int64(r) {
 		return ErrFullBuffer
 	}
 	if r <= 0 {
@@ -92,7 +91,7 @@ func (buf *Buffer) shrink(n int) error {
 // accordingly.
 func (buf *Buffer) Write(p []byte) (n int, err error) {
 	if buf.available() < len(p) {
-		if err = buf.shrink(len(p)); err != nil {
+		if err = buf.shrink(int64(len(p))); err != nil {
 			return 0, err
 		}
 	}
@@ -119,7 +118,7 @@ func (buf *Buffer) copyMatch(n, off int) {
 // match.
 func (buf *Buffer) WriteMatch(n, offset int) error {
 	if n > buf.available() {
-		if err := buf.shrink(n); err != nil {
+		if err := buf.shrink(int64(n)); err != nil {
 			return err
 		}
 	}
@@ -137,58 +136,63 @@ func (buf *Buffer) WriteMatch(n, offset int) error {
 	return nil
 }
 
-// writeSeq writes the sequence to the buffer.
-func (buf *Buffer) writeSeq(s Seq, literals []byte) (l int, err error) {
-	if int64(s.LitLen) > int64(len(literals)) {
-		return 0, errors.New("lz: too few literals for sequence")
-	}
-	if n := s.Len(); n > int64(buf.available()) {
-		k := int(n)
-		if k < 0 {
-			return 0, ErrFullBuffer
-		}
-		if err = buf.shrink(k); err != nil {
-			return 0, err
-		}
-	}
-	if s.Offset == 0 {
-		return 0, errors.New("lz: sequence offset must be > 0")
-	}
-	w := int64(buf.len())
-	w += int64(s.LitLen)
-	if w > int64(buf.windowSize) {
-		w = int64(buf.windowSize)
-	}
-	if int64(s.Offset) > w {
-		return 0, errors.New("lz: offset too large")
-	}
-	l, err = buf.Write(literals[:s.LitLen])
-	if err != nil {
-		return l, err
-	}
-	buf.copyMatch(int(s.MatchLen), int(s.Offset))
-	return l, nil
-}
-
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
 func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
-	var s Seq
-	for k, s = range blk.Sequences {
-		m, err := buf.writeSeq(s, blk.Literals[l:])
-		l += m
-		n += int64(m)
-		if err != nil {
-			return k, l, n, err
+	a := len(buf.data)
+	ll := len(blk.Literals)
+	for k, s := range blk.Sequences {
+		if int64(s.LitLen) > int64(len(blk.Literals)) {
+			n = int64(len(buf.data) - a)
+			l = ll - len(blk.Literals)
+			return k, l, n, fmt.Errorf(
+				"lz: LitLen=%d too large; must <=%d",
+				s.LitLen, len(blk.Literals))
 		}
-		n += int64(s.MatchLen)
+		winSize := len(buf.data) + int(s.LitLen)
+		if winSize > buf.windowSize {
+			winSize = buf.windowSize
+		}
+		off := int(s.Offset)
+		if off > winSize {
+			l = ll - len(blk.Literals)
+			n = int64(len(buf.data) - a)
+			return k, l, n, fmt.Errorf("off must be <= window size")
+		}
+		_len := s.Len()
+		if _len > int64(buf.available()) {
+			if _len > int64(buf.windowSize) {
+				l = ll - len(blk.Literals)
+				n = int64(len(buf.data) - a)
+				return k, l, n, fmt.Errorf(
+					"seq length > windowSize")
+			}
+			if err = buf.shrink(_len); err != nil {
+				l = ll - len(blk.Literals)
+				n = int64(len(buf.data) - a)
+				return k, l, n, ErrFullBuffer
+			}
+		}
+		buf.data = append(buf.data, blk.Literals[:s.LitLen]...)
+		blk.Literals = blk.Literals[s.LitLen:]
+		m := int(s.MatchLen)
+		for m > off {
+			buf.data = append(buf.data,
+				buf.data[len(buf.data)-off:]...)
+			m -= off
+			if m <= off {
+				break
+			}
+			off *= 2
+		}
+		// m <= off
+		d := len(buf.data) - off
+		buf.data = append(buf.data, buf.data[d:d+m]...)
 	}
-	k = len(blk.Sequences)
-	m, err := buf.Write(blk.Literals[l:])
-	l += m
-	n += int64(m)
-	return k, l, n, err
+	buf.data = append(buf.data, blk.Literals...)
+	n = int64(len(buf.data) - a)
+	return len(blk.Sequences), ll, n, nil
 }
 
 // DConfig contains the configuration for a simple Decoder. It provides the

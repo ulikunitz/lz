@@ -476,8 +476,7 @@ func BenchmarkDecoders(b *testing.B) {
 			b.SetBytes(int64(len(data)))
 
 			var d interface {
-				WriteBlock(blk Block) (k, l int, n int64,
-					err error)
+				WriteBlock(blk Block) (k, l, n int, err error)
 				Flush() error
 				Reset(w io.Writer)
 			}
@@ -582,7 +581,7 @@ func TestBHSSimple(t *testing.T) {
 		t.Fatalf("dw.WriteBlock returned l=%d; want %d literals",
 			l, len(blk.Literals))
 	}
-	if m != int64(len(str)) {
+	if m != len(str) {
 		t.Fatalf("dw.WriteBlock(blk) returned %d; want %d bytes",
 			m, len(str))
 	}

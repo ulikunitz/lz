@@ -170,53 +170,53 @@ func (buf *RingBuffer) WriteMatch(n int, offset int) error {
 	return nil
 }
 
-// writeSeq writes the sequence to the buffer.
-func (buf *RingBuffer) writeSeq(s Seq, literals []byte) (l int, err error) {
-	if int64(s.LitLen) > int64(len(literals)) {
-		return 0, errors.New("lz: too few literals for serquence")
-	}
-	if s.Len() > int64(buf.available()) {
-		return 0, ErrFullBuffer
-	}
-	if s.Offset == 0 {
-		return 0, errors.New("lz: sequence offset must be > 0")
-	}
-	n := int64(buf.len())
-	n += int64(s.LitLen)
-	winSize := int64(len(buf.data)) - 1
-	if n > winSize {
-		n = winSize
-	}
-	if int64(s.Offset) > n {
-		return 0, errors.New("lz: offset too large")
-	}
-	l, err = buf.Write(literals[:s.LitLen])
-	if err != nil {
-		return l, err
-	}
-	buf.copyMatch(int(s.MatchLen), int(s.Offset))
-	return l, nil
-}
-
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
-func (buf *RingBuffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
+func (buf *RingBuffer) WriteBlock(blk Block) (k, l, n int, err error) {
+	a := len(buf.data)
+	ll := len(blk.Literals)
 	var s Seq
 	for k, s = range blk.Sequences {
-		m, err := buf.writeSeq(s, blk.Literals[l:])
-		l += m
-		n += int64(m)
+		if int64(s.LitLen) > int64(len(blk.Literals)) {
+			n = len(buf.data) - a
+			l = ll - len(blk.Literals)
+			return k, l, n, fmt.Errorf(
+				"lz: LitLen=%d too large; must <=%d",
+				s.LitLen, len(blk.Literals))
+		}
+		if s.Len() > int64(buf.available()) {
+			n = len(buf.data) - a
+			l = ll - len(blk.Literals)
+			return k, l, n, ErrFullBuffer
+		}
+		if s.Offset == 0 {
+			l = ll - len(blk.Literals)
+			n = len(buf.data) - a
+			return k, l, n, fmt.Errorf("offset must not be zero")
+		}
+		winSize := buf.len() + int(s.LitLen)
+		if winSize >= len(buf.data) {
+			winSize = len(buf.data) - 1
+		}
+		if int64(s.Offset) > int64(winSize) {
+			l = ll - len(blk.Literals)
+			n = len(buf.data) - a
+			return k, l, n, fmt.Errorf("off must be <= window size")
+		}
+		l, err = buf.Write(blk.Literals[:s.LitLen])
+		blk.Literals = blk.Literals[l:]
 		if err != nil {
+			l = ll - len(blk.Literals)
+			n = len(buf.data) - a
 			return k, l, n, err
 		}
-		n += int64(s.MatchLen)
+		buf.copyMatch(int(s.MatchLen), int(s.Offset))
 	}
-	k = len(blk.Sequences)
-	m, err := buf.Write(blk.Literals[l:])
-	l += m
-	n += int64(m)
-	return k, l, n, err
+	l, err = buf.Write(blk.Literals)
+	l += ll - len(blk.Literals)
+	n = len(buf.data) - a
+	return len(blk.Sequences), l, n, err
 }
 
 // A RingDecoder decodes sequences and writes data into the writer.
@@ -287,7 +287,7 @@ func (d *RingDecoder) WriteMatch(n int, offset int) error {
 }
 
 // WriteBlock writes a complete block into the decoder.
-func (d *RingDecoder) WriteBlock(blk Block) (k, l int, n int64, err error) {
+func (d *RingDecoder) WriteBlock(blk Block) (k, l, n int, err error) {
 	k, l, n, err = d.buf.WriteBlock(blk)
 	if err != ErrFullBuffer {
 		return k, l, n, err

@@ -139,12 +139,13 @@ func (buf *Buffer) WriteMatch(n, offset int) error {
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
-func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
+func (buf *Buffer) WriteBlock(blk Block) (k, l, n int, err error) {
 	a := len(buf.data)
 	ll := len(blk.Literals)
-	for k, s := range blk.Sequences {
+	var s Seq
+	for k, s = range blk.Sequences {
 		if int64(s.LitLen) > int64(len(blk.Literals)) {
-			n = int64(len(buf.data) - a)
+			n = len(buf.data) - a
 			l = ll - len(blk.Literals)
 			return k, l, n, fmt.Errorf(
 				"lz: LitLen=%d too large; must <=%d",
@@ -157,20 +158,20 @@ func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
 		off := int(s.Offset)
 		if off > winSize {
 			l = ll - len(blk.Literals)
-			n = int64(len(buf.data) - a)
+			n = len(buf.data) - a
 			return k, l, n, fmt.Errorf("off must be <= window size")
 		}
 		_len := s.Len()
 		if _len > int64(buf.available()) {
 			if _len > int64(buf.windowSize) {
 				l = ll - len(blk.Literals)
-				n = int64(len(buf.data) - a)
+				n = len(buf.data) - a
 				return k, l, n, fmt.Errorf(
 					"seq length > windowSize")
 			}
 			if err = buf.shrink(_len); err != nil {
 				l = ll - len(blk.Literals)
-				n = int64(len(buf.data) - a)
+				n = len(buf.data) - a
 				return k, l, n, ErrFullBuffer
 			}
 		}
@@ -191,7 +192,7 @@ func (buf *Buffer) WriteBlock(blk Block) (k, l int, n int64, err error) {
 		buf.data = append(buf.data, buf.data[d:d+m]...)
 	}
 	buf.data = append(buf.data, blk.Literals...)
-	n = int64(len(buf.data) - a)
+	n = len(buf.data) - a
 	return len(blk.Sequences), ll, n, nil
 }
 
@@ -298,7 +299,7 @@ func (d *Decoder) WriteMatch(n int, offset int) error {
 }
 
 // WriteBlock writes a complete block into the decoder.
-func (d *Decoder) WriteBlock(blk Block) (k, l int, n int64, err error) {
+func (d *Decoder) WriteBlock(blk Block) (k, l, n int, err error) {
 	k, l, n, err = d.buf.WriteBlock(blk)
 	if err != ErrFullBuffer {
 		return k, l, n, err

@@ -69,7 +69,7 @@ func TestHashSequencerSimple(t *testing.T) {
 		t.Fatalf("dw.WriteBlock returned l=%d; want %d literals",
 			l, len(blk.Literals))
 	}
-	if m != int64(len(str)) {
+	if m != len(str) {
 		t.Fatalf("dw.WriteBlock(blk) returned %d; want %d bytes",
 			m, len(str))
 	}

@@ -5,6 +5,7 @@ import (
 	"math/bits"
 )
 
+// DHSConfig provides the confifuration parameters for the DoubleHashSequencer.
 type DHSConfig struct {
 	// maximal window size
 	WindowSize int
@@ -24,6 +25,7 @@ type DHSConfig struct {
 	HashBits2 int
 }
 
+// Verify checks the configuration for errors.
 func (cfg *DHSConfig) Verify() error {
 	if !(2 <= cfg.InputLen1 && cfg.InputLen1 <= 8) {
 		return fmt.Errorf(
@@ -88,6 +90,8 @@ func (cfg *DHSConfig) Verify() error {
 	return nil
 }
 
+// ApplyDefaults uses the defaults for the configuration parameters that are set
+// to zero.
 func (cfg *DHSConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * 1024
@@ -112,6 +116,10 @@ func (cfg *DHSConfig) ApplyDefaults() {
 	}
 }
 
+// DoubleHashSequencer generates LZ77 sequences by using two hash tables. The
+// input length for the two hash tables will be different. The speed of the hash
+// sequencer is slower than sequencers using a single hash, but the compression
+// ratio is much better.
 type DoubleHashSequencer struct {
 	seqBuffer
 
@@ -124,6 +132,9 @@ type DoubleHashSequencer struct {
 	blockSize int
 }
 
+// NewDoubleHashSequencer allocates a new DoubleHashSequencer value and
+// initializes it. The function returns the first error found in the
+// configuration.
 func NewDoubleHashSequencer(cfg DHSConfig) (s *DoubleHashSequencer, err error) {
 	s = new(DoubleHashSequencer)
 	if err = s.Init(cfg); err != nil {
@@ -132,6 +143,8 @@ func NewDoubleHashSequencer(cfg DHSConfig) (s *DoubleHashSequencer, err error) {
 	return s, nil
 }
 
+// Init initializes the DoubleHashSequencer. The first error found in the
+// configuration will be returned.
 func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -154,6 +167,7 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 	return nil
 }
 
+// Reset puts the DoubleHashSequencer in its initial state.
 func (s *DoubleHashSequencer) Reset() {
 	s.seqBuffer.Reset()
 	s.h1.reset()
@@ -161,8 +175,12 @@ func (s *DoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
+// WindowSize returns the configured window size.
 func (s *DoubleHashSequencer) WindowSize() int { return s.windowSize }
 
+// Requested answers the question whether data needs to be provided to the
+// sequencer. If no data is need 0 will be returned and otherwise the number of
+// bytes that can be added to the internal buffer of the sequencer.
 func (s *DoubleHashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
@@ -179,6 +197,7 @@ func (s *DoubleHashSequencer) Requested() int {
 	return s.available()
 }
 
+// hashSegment1 hases the provided segment of data for the first hash table.
 func (s *DoubleHashSequencer) hashSegment1(a, b int) {
 	if a < 0 {
 		a = 0
@@ -206,6 +225,7 @@ func (s *DoubleHashSequencer) hashSegment1(a, b int) {
 	}
 }
 
+// hashSegment computes the hashes for the second hash table.
 func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 	if a < 0 {
 		a = 0
@@ -233,6 +253,9 @@ func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 	}
 }
 
+// Sequence generates the LZ77 sequences. It returns the number of bytes covered
+// by the new sequences. The block will be overwritten but the memory for the
+// slices will be reused.
 func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.blockSize
 	buffered := s.buffered()

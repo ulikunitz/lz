@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// seqBuffer provides an basic buffer for creating LZ77 sequences.
 type seqBuffer struct {
 	data []byte
 
@@ -15,6 +16,7 @@ type seqBuffer struct {
 	shrinkSize int
 }
 
+// Init initializes the buffer.
 func (s *seqBuffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize >= 1) {
 		return fmt.Errorf("lz: window size must be >= 1")
@@ -37,11 +39,14 @@ func (s *seqBuffer) Init(windowSize, max, shrink int) error {
 	return nil
 }
 
+// Reset puts the buffer in the state after Init. The s.data slice will be
+// reused.
 func (s *seqBuffer) Reset() {
 	s.data = s.data[:0]
 	s.w = 0
 }
 
+// Returns the number of bytes available for buffering.
 func (s *seqBuffer) available() int {
 	return s.max - len(s.data)
 }

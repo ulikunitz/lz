@@ -277,7 +277,18 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			})
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + int64(k)
-		s.hashSegment(int(i+1), int(litIndex))
+		b := litIndex
+		if litIndex > inputEnd {
+			b = inputEnd
+		}
+		for j = i + 1; j < b; j++ {
+			x := _getLE64(_p[j:]) & s.mask
+			h := s.hashValue(x)
+			s.table[h] = hashEntry{
+				pos:   s.pos + uint32(j),
+				value: uint32(x),
+			}
+		}
 		i = litIndex - 1
 	}
 

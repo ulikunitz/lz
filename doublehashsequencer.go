@@ -339,8 +339,34 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			})
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + int64(k)
-		s.hashSegment1(int(i+1), int(litIndex))
-		s.hashSegment2(int(i+1), int(litIndex))
+		b := litIndex
+		if litIndex > e2 {
+			b = e2
+		}
+		for j = i + 1; j < b; j++ {
+			y := _getLE64(_p[j:])
+			x := y & s.h2.mask
+			h := s.h2.hashValue(x)
+			pos := s.pos + uint32(j)
+			s.h2.table[h] = hashEntry{pos: pos, value: uint32(x)}
+			x = y & s.h1.mask
+			h = s.h1.hashValue(x)
+			s.h1.table[h] = hashEntry{pos: pos, value: uint32(x)}
+		}
+		if j < litIndex {
+			b = litIndex
+			if litIndex > e1 {
+				b = e1
+			}
+			for ; j < b; j++ {
+				x := _getLE64(_p[j:]) & s.h1.mask
+				h := s.h1.hashValue(x)
+				s.h1.table[h] = hashEntry{
+					pos:   s.pos + uint32(j),
+					value: uint32(x),
+				}
+			}
+		}
 		i = litIndex - 1
 	}
 	for ; i < e1; i++ {
@@ -382,7 +408,18 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			})
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + int64(k)
-		s.hashSegment1(int(i+1), int(litIndex))
+		b := litIndex
+		if b > e1 {
+			b = e1
+		}
+		for ; j < b; j++ {
+			x := _getLE64(_p[j:]) & s.h1.mask
+			h := s.h1.hashValue(x)
+			s.h1.table[h] = hashEntry{
+				pos:   s.pos + uint32(j),
+				value: uint32(x),
+			}
+		}
 		i = litIndex - 1
 	}
 

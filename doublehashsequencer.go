@@ -328,7 +328,27 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			k = len(p) - int(i)
 		}
 		if k == 8 {
-			k = 8 + matchLen(p[j+8:], p[i+8:])
+			r := p[j+8:]
+			q := p[i+8:]
+			for len(q) >= 8 {
+				x := _getLE64(r) ^ _getLE64(q)
+				b := bits.TrailingZeros64(x) >> 3
+				k += b
+				if b < 8 {
+					goto match
+				}
+				r = r[8:]
+				q = q[8:]
+			}
+			if len(q) > 0 {
+				x := getLE64(r) ^ getLE64(q)
+				b := bits.TrailingZeros64(x) >> 3
+				if b > len(q) {
+					b = len(q)
+				}
+				k += b
+			}
+		match:
 		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
@@ -397,7 +417,27 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			k = len(p) - int(i)
 		}
 		if k == 8 {
-			k = 8 + matchLen(p[j+8:], p[i+8:])
+			r := p[j+8:]
+			q := p[i+8:]
+			for len(q) >= 8 {
+				x := _getLE64(r) ^ _getLE64(q)
+				b := bits.TrailingZeros64(x) >> 3
+				k += b
+				if b < 8 {
+					goto match1
+				}
+				r = r[8:]
+				q = q[8:]
+			}
+			if len(q) > 0 {
+				x := getLE64(r) ^ getLE64(q)
+				b := bits.TrailingZeros64(x) >> 3
+				if b > len(q) {
+					b = len(q)
+				}
+				k += b
+			}
+		match1:
 		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,

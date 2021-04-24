@@ -62,9 +62,6 @@ func (s *BackwardDoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
-// WindowSize returns the window size of the sequencer.
-func (s *BackwardDoubleHashSequencer) WindowSize() int { return s.windowSize }
-
 // Requested returns the number of bytes that should be written into the
 // sequencer.
 func (s *BackwardDoubleHashSequencer) Requested() int {

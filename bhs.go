@@ -236,6 +236,3 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 	s.w = int(i)
 	return n, nil
 }
-
-// WindowSize returns the window size of the sequencer.
-func (s *BackwardHashSequencer) WindowSize() int { return s.windowSize }

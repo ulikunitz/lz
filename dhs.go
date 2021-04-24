@@ -175,9 +175,6 @@ func (s *DoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
-// WindowSize returns the configured window size.
-func (s *DoubleHashSequencer) WindowSize() int { return s.windowSize }
-
 // Requested answers the question whether data needs to be provided to the
 // sequencer. If no data is need 0 will be returned and otherwise the number of
 // bytes that can be added to the internal buffer of the sequencer.

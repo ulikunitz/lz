@@ -46,6 +46,9 @@ func (s *seqBuffer) Reset() {
 	s.w = 0
 }
 
+// WindowSize returns the configured window size for the sequencer.
+func (s *seqBuffer) WindowSize() int { return s.windowSize }
+
 // Returns the number of bytes available for buffering.
 func (s *seqBuffer) available() int {
 	return s.max - len(s.data)

@@ -322,6 +322,3 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	s.w = int(i)
 	return n, nil
 }
-
-// WindowSize returns the window size of the sequencer.
-func (s *HashSequencer) WindowSize() int { return s.windowSize }

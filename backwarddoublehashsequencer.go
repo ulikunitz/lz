@@ -4,6 +4,8 @@ import (
 	"math/bits"
 )
 
+// BackwardDoubleHashSequencer uses two hashes and tries to extend extensions
+// backward.
 type BackwardDoubleHashSequencer struct {
 	seqBuffer
 
@@ -16,6 +18,8 @@ type BackwardDoubleHashSequencer struct {
 	blockSize int
 }
 
+// NewBackwardDoubleHashSequencer creates a new sequencer. If the configuration
+// is invalid an error will be returned.
 func NewBackwardDoubleHashSequencer(cfg DHSConfig) (s *BackwardDoubleHashSequencer, err error) {
 	s = new(BackwardDoubleHashSequencer)
 	if err = s.Init(cfg); err != nil {
@@ -24,6 +28,9 @@ func NewBackwardDoubleHashSequencer(cfg DHSConfig) (s *BackwardDoubleHashSequenc
 	return s, nil
 }
 
+// Init initializes the sequencer. The method returns an error if the
+// configuration contains inconsistencies and the sequencer remains
+// uninitialized.
 func (s *BackwardDoubleHashSequencer) Init(cfg DHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -46,6 +53,8 @@ func (s *BackwardDoubleHashSequencer) Init(cfg DHSConfig) error {
 	return nil
 }
 
+// Reset puts the sequencer into the state after initialization. The allocated
+// memory in the buffer will be maintained.
 func (s *BackwardDoubleHashSequencer) Reset() {
 	s.seqBuffer.Reset()
 	s.h1.reset()
@@ -53,8 +62,11 @@ func (s *BackwardDoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
+// WindowSize returns the window size of the sequencer.
 func (s *BackwardDoubleHashSequencer) WindowSize() int { return s.windowSize }
 
+// Requested returns the number of bytes that should be written into the
+// sequencer.
 func (s *BackwardDoubleHashSequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
@@ -125,6 +137,9 @@ func (s *BackwardDoubleHashSequencer) hashSegment2(a, b int) {
 	}
 }
 
+// Sequence computes the LZ77 sequence for the next block. It returns the number
+// of bytes actually sequenced. ErrEmptyBuffer will be returned if there is no
+// data to sequence.
 func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.blockSize
 	buffered := s.buffered()

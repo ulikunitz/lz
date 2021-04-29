@@ -138,12 +138,11 @@ func (s *BackwardDoubleHashSequencer) hashSegment2(a, b int) {
 // of bytes actually sequenced. ErrEmptyBuffer will be returned if there is no
 // data to sequence.
 func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	n = s.blockSize
-	buffered := s.buffered()
-	if n > buffered {
-		n = buffered
-	}
+	n = s.buffered()
 	if blk == nil {
+		if n == 0 {
+			return 0, ErrEmptyBuffer
+		}
 		t := s.w + n
 		s.hashSegment1(s.w-s.h1.inputLen+1, t)
 		s.hashSegment2(s.w-s.h2.inputLen+1, t)
@@ -152,9 +151,11 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 	}
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
-
 	if n == 0 {
 		return 0, ErrEmptyBuffer
+	}
+	if n > s.blockSize {
+		n = s.blockSize
 	}
 
 	s.hashSegment1(s.w-s.h1.inputLen+1, s.w)

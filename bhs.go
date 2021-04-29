@@ -106,16 +106,11 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
 func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	// TODO: possible optimizations
-	// - use loaded 8-byte x loaded as a kind of buffer
-	// - combine hashing and match determination in loop
-
-	n = s.blockSize
-	buffered := s.buffered()
-	if n > buffered {
-		n = buffered
-	}
+	n = s.buffered()
 	if blk == nil {
+		if n == 0 {
+			return 0, ErrEmptyBuffer
+		}
 		t := s.w + n
 		s.hashSegment(s.w-s.inputLen+1, t)
 		s.w = t
@@ -123,9 +118,11 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 	}
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
-
 	if n == 0 {
 		return 0, ErrEmptyBuffer
+	}
+	if n > s.blockSize {
+		n = s.blockSize
 	}
 
 	s.hashSegment(s.w-s.inputLen+1, s.w)

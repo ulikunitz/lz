@@ -254,12 +254,12 @@ func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 // by the new sequences. The block will be overwritten but the memory for the
 // slices will be reused.
 func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	n = s.blockSize
-	buffered := s.buffered()
-	if n > buffered {
-		n = buffered
-	}
+	n = s.buffered()
 	if blk == nil {
+		if n == 0 {
+			return 0, ErrEmptyBuffer
+		}
+		// TODO: we need to iterate over the segment only once
 		t := s.w + n
 		s.hashSegment1(s.w-s.h1.inputLen+1, t)
 		s.hashSegment2(s.w-s.h2.inputLen+1, t)
@@ -268,11 +268,14 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 	}
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
-
 	if n == 0 {
 		return 0, ErrEmptyBuffer
 	}
+	if n > s.blockSize {
+		n = s.blockSize
+	}
 
+	// TODO: we need to iterate over the segment only once
 	s.hashSegment1(s.w-s.h1.inputLen+1, s.w)
 	s.hashSegment2(s.w-s.h2.inputLen+1, s.w)
 	p := s.data[:s.w+n]

@@ -41,6 +41,15 @@ func newTestBDHS(tb testing.TB, cfg DHSConfig) *BackwardDoubleHashSequencer {
 	}
 	return dhs
 }
+
+func newTestGSAS(tb testing.TB, cfg GSASConfig) *GreedySuffixArraySequencer {
+	s, err := NewGreedySuffixArraySeqeuncer(cfg)
+	if err != nil {
+		tb.Fatalf("NewGreedySuffixArraySeqeuncer(%+v) error %s",
+			cfg, err)
+	}
+	return s
+}
 func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
@@ -142,6 +151,14 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		{
+			name: "GSASequencer",
+			ws: newTestGSAS(t, GSASConfig{
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -234,6 +251,14 @@ func TestSequencersSimple(t *testing.T) {
 			ws: newTestBDHS(t, DHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+		{
+			name: "GSASequencer",
+			ws: newTestGSAS(t, GSASConfig{
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
@@ -386,6 +411,11 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		})},
+		{"GSASequencer", newTestGSAS(b, GSASConfig{
+			WindowSize: 8 << 20,
+			ShrinkSize: 32 << 10,
+			MaxSize:    8 << 20,
+		})},
 	}
 
 	for _, bm := range benchmarks {
@@ -524,16 +554,15 @@ func BenchmarkDecoders(b *testing.B) {
 	}
 }
 
-func TestBHSSimple(t *testing.T) {
+func TestGSASSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	var s BackwardHashSequencer
-	if err := s.Init(HSConfig{
+	var s GreedySuffixArraySequencer
+	if err := s.Init(GSASConfig{
 		WindowSize: 1024,
 		ShrinkSize: 1024,
 		BlockSize:  512,
 		MaxSize:    2 * 1024,
-		InputLen:   3,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}

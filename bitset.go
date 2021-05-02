@@ -54,6 +54,9 @@ func (b *bitset) memberBefore(i int) (k int, ok bool) {
 
 func (b *bitset) memberAfter(i int) (k int, ok bool) {
 	i++
+	if i >= b.n {
+		return 0, false
+	}
 	m := ^(uint64(1)<<uint(i&bsMask) - 1)
 	i >>= 6
 	k = bits.TrailingZeros64(b.a[i] & m)

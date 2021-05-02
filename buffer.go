@@ -156,6 +156,12 @@ func (buf *Buffer) WriteBlock(blk Block) (k, l, n int, err error) {
 			winSize = buf.windowSize
 		}
 		off := int(s.Offset)
+		if off <= 0 {
+			l = ll - len(blk.Literals)
+			n = len(buf.data) - a
+			return k, l, n, fmt.Errorf("off must be > 0")
+
+		}
 		if off > winSize {
 			l = ll - len(blk.Literals)
 			n = len(buf.data) - a

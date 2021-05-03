@@ -7,6 +7,8 @@ import (
 	"github.com/ulikunitz/lz/suffix"
 )
 
+// GSASConfig defines the configuration parameter for the greedy suffix array
+// seqeuncer.
 type GSASConfig struct {
 	// maximal window size
 	WindowSize int
@@ -14,12 +16,13 @@ type GSASConfig struct {
 	ShrinkSize int
 	// maximum size of the buffer
 	MaxSize int
-	// BlockSize: target size for a block
+	// target size for a block
 	BlockSize int
 	// minimum match len
 	MinMatchLen int
 }
 
+// Verify checks the configuration for inconsistencies.
 func (cfg *GSASConfig) Verify() error {
 	if !(2 <= cfg.MinMatchLen) {
 		return fmt.Errorf(
@@ -59,6 +62,8 @@ func (cfg *GSASConfig) Verify() error {
 	return nil
 }
 
+// ApplyDefaults sets configuration parameters to its defaults. The code doesn't
+// provide consistency.
 func (cfg *GSASConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * 1024
@@ -74,18 +79,33 @@ func (cfg *GSASConfig) ApplyDefaults() {
 	}
 }
 
+// GreedySuffixArraySequencer provides a sequencer that uses a suffix array for
+// the window and buffered data to create sequence. It looks for the two nearest
+// entries that have the longest match.
+//
+// Since computing the suffix array is rather slow, it consumes a lot of CPU.
+// Double Hash Sequencers are achieving almost the same compression rate with
+// much less CPU consumption.
 type GreedySuffixArraySequencer struct {
 	seqBuffer
 
-	sa    []int32
-	isa   []int32
-	bits  bitset
+	// suffix array
+	sa []int32
+	// inverse suffix array
+	isa []int32
+	// bits marks the positions in the suffix array sa that have already
+	// been processed
+	bits bitset
+	// saPos is the position of the start of the suffix array
 	saPos int
 
 	blockSize   int
 	minMatchLen int
 }
 
+// NewGreedySuffixArraySeqeuncer creates a new value using the provided
+// configuration. If the configuration has inconsistencies an error will be
+// returned and the value of the return value s will be nil.
 func NewGreedySuffixArraySeqeuncer(cfg GSASConfig) (s *GreedySuffixArraySequencer, err error) {
 	s = new(GreedySuffixArraySequencer)
 	err = s.Init(cfg)
@@ -95,6 +115,8 @@ func NewGreedySuffixArraySeqeuncer(cfg GSASConfig) (s *GreedySuffixArraySequence
 	return s, nil
 }
 
+// Init initializes the seequencer. If the configuration has inconsistencies or
+// invalid values the method returns an error.
 func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	cfg.ApplyDefaults()
 	var err error
@@ -114,6 +136,7 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	return nil
 }
 
+// Reset puts the sequencer in the initial state.
 func (s *GreedySuffixArraySequencer) Reset() {
 	s.seqBuffer.Reset()
 	s.saPos = 0
@@ -122,6 +145,9 @@ func (s *GreedySuffixArraySequencer) Reset() {
 	s.bits.clear()
 }
 
+// Requested returns the number of bytes the sequencer should be provided with
+// not to run in an error for the new Sequence call. The suffix array may be
+// reset if the buffer is changed.
 func (s *GreedySuffixArraySequencer) Requested() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
@@ -137,6 +163,9 @@ func (s *GreedySuffixArraySequencer) Requested() int {
 	return s.available()
 }
 
+// sort computes the suffix array and its inverse 2gqqfor the window and all
+// buffered data. The bits bitmap marks all sa entries that are part of the
+// window.
 func (s *GreedySuffixArraySequencer) sort() {
 	// Set the start of the array to the start of the window.
 	s.saPos = s.w - s.windowSize
@@ -168,6 +197,12 @@ func (s *GreedySuffixArraySequencer) sort() {
 	}
 }
 
+// Sequence computes the sequences for the next block. Data in the block will be
+// overwritten. The NoTrailingLiterals flag is supported. It returns the number
+// of bytes covered by the computed sequences. If the buffer is empty
+// ErrEmptyBuffer will be returned.
+//
+// The method might compute the suffix array anew using the sort method.
 func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.buffered()
 	if blk == nil {

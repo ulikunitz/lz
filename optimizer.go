@@ -47,7 +47,7 @@ func optimalSequence(
 				panic(fmt.Errorf("match %+v too long", m))
 			}
 			for i := k; i <= l-minMatchLen; i++ {
-				off := m.offset + uint32(i-k)
+				off := m.offset
 				for j := l; j >= i+minMatchLen; j-- {
 					c := cost(off, uint32(j-i))
 					if c >= d.at(i, j) {

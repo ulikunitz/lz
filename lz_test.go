@@ -50,6 +50,16 @@ func newTestGSAS(tb testing.TB, cfg GSASConfig) *GreedySuffixArraySequencer {
 	}
 	return s
 }
+
+func newTestOSAS(tb testing.TB, cfg OSASConfig) *OptimalSuffixArraySequencer {
+	s, err := NewOptimalSuffixArraySequencer(cfg)
+	if err != nil {
+		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
+			cfg, err)
+	}
+	return s
+}
+
 func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
@@ -159,6 +169,14 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		{
+			name: "OSASequencer",
+			ws: newTestOSAS(t, OSASConfig{
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -259,6 +277,14 @@ func TestSequencersSimple(t *testing.T) {
 		{
 			name: "GSASequencer",
 			ws: newTestGSAS(t, GSASConfig{
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
+			}),
+		},
+		{
+			name: "OSASequencer",
+			ws: newTestOSAS(t, OSASConfig{
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,

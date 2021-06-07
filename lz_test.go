@@ -51,6 +51,7 @@ func newTestGSAS(tb testing.TB, cfg GSASConfig) *GreedySuffixArraySequencer {
 	return s
 }
 
+/* Test is broken due to memory requirements.
 func newTestOSAS(tb testing.TB, cfg OSASConfig) *OptimalSuffixArraySequencer {
 	s, err := NewOptimalSuffixArraySequencer(cfg)
 	if err != nil {
@@ -59,6 +60,7 @@ func newTestOSAS(tb testing.TB, cfg OSASConfig) *OptimalSuffixArraySequencer {
 	}
 	return s
 }
+*/
 
 func TestReset(t *testing.T) {
 	const (
@@ -169,6 +171,7 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		/* Test is broken due to memory requirements.
 		{
 			name: "OSASequencer",
 			ws: newTestOSAS(t, OSASConfig{
@@ -177,6 +180,7 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		*/
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -282,6 +286,7 @@ func TestSequencersSimple(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		/* Test is broken due to memory requirements.
 		{
 			name: "OSASequencer",
 			ws: newTestOSAS(t, OSASConfig{
@@ -290,6 +295,7 @@ func TestSequencersSimple(t *testing.T) {
 				MaxSize:    8 << 20,
 			}),
 		},
+		*/
 	}
 	data := []byte(str)
 	hd := sha256.New()

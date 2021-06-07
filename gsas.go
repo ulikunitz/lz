@@ -95,7 +95,7 @@ type GreedySuffixArraySequencer struct {
 	isa []int32
 	// bits marks the positions in the suffix array sa that have already
 	// been processed
-	bits bitset
+	bits lbitset
 	// saPos is the position of the start of the suffix array
 	saPos int
 

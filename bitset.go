@@ -8,12 +8,12 @@ import (
 
 const bsMask = 1<<6 - 1
 
-type bitset struct {
+type lbitset struct {
 	a []uint64
 	n int
 }
 
-func (b *bitset) init(n int) {
+func (b *lbitset) init(n int) {
 	k := (n + 63) / 64
 	if k <= cap(b.a) {
 		b.a = b.a[:k]
@@ -26,21 +26,21 @@ func (b *bitset) init(n int) {
 	b.n = n
 }
 
-func (b *bitset) clear() {
+func (b *lbitset) clear() {
 	for i := range b.a {
 		b.a[i] = 0
 	}
 }
 
-func (b *bitset) insert(i int) {
+func (b *lbitset) insert(i int) {
 	b.a[i>>6] |= 1 << uint(i&bsMask)
 }
 
-func (b *bitset) isMember(i int) bool {
+func (b *lbitset) isMember(i int) bool {
 	return (b.a[i>>6] & (1 << uint(i&bsMask))) != 0
 }
 
-func (b *bitset) memberBefore(i int) (k int, ok bool) {
+func (b *lbitset) memberBefore(i int) (k int, ok bool) {
 	m := uint64(1)<<uint(i&bsMask) - 1
 	i >>= 6
 	k = 63 - bits.LeadingZeros64(b.a[i]&m)
@@ -56,7 +56,7 @@ func (b *bitset) memberBefore(i int) (k int, ok bool) {
 	}
 }
 
-func (b *bitset) memberAfter(i int) (k int, ok bool) {
+func (b *lbitset) memberAfter(i int) (k int, ok bool) {
 	i++
 	if i >= b.n {
 		return 0, false
@@ -76,7 +76,7 @@ func (b *bitset) memberAfter(i int) (k int, ok bool) {
 	}
 }
 
-func (b *bitset) pop() int {
+func (b *lbitset) pop() int {
 	n := 0
 	for _, x := range b.a {
 		n += bits.OnesCount64(x)

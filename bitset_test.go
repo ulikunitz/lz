@@ -5,7 +5,7 @@ import (
 )
 
 func TestBitsetSimple(t *testing.T) {
-	var b bitset
+	var b lbitset
 	b.init(130)
 	if b.isMember(10) {
 		t.Fatalf(

@@ -79,6 +79,10 @@ func (cfg *GSASConfig) ApplyDefaults() {
 	}
 }
 
+func (cfg GSASConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewGreedySuffixArraySeqeuncer(cfg)
+}
+
 // GreedySuffixArraySequencer provides a sequencer that uses a suffix array for
 // the window and buffered data to create sequence. It looks for the two nearest
 // entries that have the longest match.
@@ -102,6 +106,9 @@ type GreedySuffixArraySequencer struct {
 	blockSize   int
 	minMatchLen int
 }
+
+// BlockSize returns the block size supported by the sequencer.
+func (s *GreedySuffixArraySequencer) BlockSize() int { return s.blockSize }
 
 // NewGreedySuffixArraySeqeuncer creates a new value using the provided
 // configuration. If the configuration has inconsistencies an error will be

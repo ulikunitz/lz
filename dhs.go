@@ -116,6 +116,11 @@ func (cfg *DHSConfig) ApplyDefaults() {
 	}
 }
 
+// NewWriteSequencer creates a new DoubleHashSequencer.
+func (cfg DHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewDoubleHashSequencer(cfg)
+}
+
 // DoubleHashSequencer generates LZ77 sequences by using two hash tables. The
 // input length for the two hash tables will be different. The speed of the hash
 // sequencer is slower than sequencers using a single hash, but the compression
@@ -131,6 +136,9 @@ type DoubleHashSequencer struct {
 
 	blockSize int
 }
+
+// BlockSize returns the block size supported by the sequencer.
+func (s *DoubleHashSequencer) BlockSize() int { return s.blockSize }
 
 // NewDoubleHashSequencer allocates a new DoubleHashSequencer value and
 // initializes it. The function returns the first error found in the

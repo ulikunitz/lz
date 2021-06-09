@@ -1,6 +1,95 @@
 package lz
 
-import "math/bits"
+import (
+	"fmt"
+	"math/bits"
+)
+
+type BHSConfig struct {
+	// maximal window size
+	WindowSize int
+	// size of the window if the buffer is shrinked
+	ShrinkSize int
+	// maximum size of the buffer
+	MaxSize int
+	// BlockSize: target size for a block
+	BlockSize int
+	// number of bits of the hash index
+	HashBits int
+	// length of the input used; range [2,8]
+	InputLen int
+}
+
+// NewWriteSequencer create a new backward hash sequencer.
+func (cfg BHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewBackwardHashSequencer(cfg)
+}
+
+// ApplyDefaults sets values that are zero to their defaults values.
+func (cfg *HSConfig) ApplyDefaults() {
+	if cfg.BlockSize == 0 {
+		cfg.BlockSize = 128 * 1024
+	}
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * 1024 * 1024
+	}
+	if cfg.MaxSize == 0 {
+		cfg.MaxSize = 16 * 1024 * 1024
+	}
+	if cfg.InputLen == 0 {
+		cfg.InputLen = 3
+	}
+	if cfg.HashBits == 0 {
+		cfg.HashBits = 12
+	}
+}
+
+// Verify checks the config for correctness.
+func (cfg *HSConfig) Verify() error {
+	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
+		return fmt.Errorf(
+			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
+	}
+	if !(cfg.InputLen <= cfg.WindowSize) {
+		return fmt.Errorf(
+			"lz: cfg.WindowSize is %d; must be >= InputLen=%d",
+			cfg.WindowSize, cfg.InputLen)
+	}
+	if !(0 <= cfg.ShrinkSize && cfg.ShrinkSize <= cfg.WindowSize) {
+		return fmt.Errorf(
+			"lz: ShrinkSize=%d; must be <= WindowSize=%d",
+			cfg.ShrinkSize, cfg.WindowSize)
+	}
+	if !(cfg.WindowSize <= cfg.MaxSize) {
+		return fmt.Errorf(
+			"lz: WindowSize=%d; must be less than MaxSize=%d",
+			cfg.WindowSize, cfg.MaxSize)
+	}
+	if !(cfg.ShrinkSize < cfg.MaxSize) {
+		return fmt.Errorf(
+			"ls: shrinkSize must be less than cfg.MaxSize")
+	}
+	if !(int64(cfg.MaxSize) <= int64(maxUint32)) {
+		// We manage positions only as uint32 values and so this limit
+		// is necessary
+		return fmt.Errorf(
+			"lz: MaxSize=%d; must be less than MaxUint32=%d",
+			cfg.MaxSize, maxUint32)
+	}
+	if !(0 < cfg.BlockSize) {
+		return fmt.Errorf(
+			"lz: BlockSize=%d; must be positive", cfg.BlockSize)
+	}
+	maxHashBits := 32
+	if t := 8 * cfg.InputLen; t < maxHashBits {
+		maxHashBits = t
+	}
+	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
+		return fmt.Errorf("lz: HashBits=%d; must be <= %d",
+			cfg.HashBits, maxHashBits)
+	}
+	return nil
+}
 
 // BackwardHashSequencer allows the creation of sequence blocks using a simple
 // hash table. It extends found matches by looking backward in the input stream.
@@ -16,7 +105,7 @@ type BackwardHashSequencer struct {
 }
 
 // NewBackwardHashSequencer creates a new backward hash sequencer.
-func NewBackwardHashSequencer(cfg HSConfig) (s *BackwardHashSequencer, err error) {
+func NewBackwardHashSequencer(cfg BHSConfig) (s *BackwardHashSequencer, err error) {
 	var t BackwardHashSequencer
 	if err := t.Init(cfg); err != nil {
 		return nil, err
@@ -24,9 +113,12 @@ func NewBackwardHashSequencer(cfg HSConfig) (s *BackwardHashSequencer, err error
 	return &t, nil
 }
 
+// BlockSize returns the block size supported by the sequencer.
+func (s *BackwardHashSequencer) BlockSize() int { return s.blockSize }
+
 // Init initialzes the backward hash sequencer. It returns an error if there is an issue
 // with the configuration parameters.
-func (s *BackwardHashSequencer) Init(cfg HSConfig) error {
+func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {

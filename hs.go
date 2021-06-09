@@ -21,6 +21,9 @@ type HashSequencer struct {
 	blockSize int
 }
 
+// BlockSize returns the block size supported by the sequencer.
+func (s *HashSequencer) BlockSize() int { return s.blockSize }
+
 // HSConfig provides the configuration parameters for the
 // HashSequencer.
 //
@@ -107,6 +110,11 @@ func (cfg *HSConfig) Verify() error {
 			cfg.HashBits, maxHashBits)
 	}
 	return nil
+}
+
+// NewWriteSequencer creates a new hash sequencer.
+func (cfg HSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewHashSequencer(cfg)
 }
 
 // NewHashSequencer creates a new hash sequencer.

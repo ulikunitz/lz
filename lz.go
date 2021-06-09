@@ -23,7 +23,7 @@ import "io"
 // Seq represents a single Lempel-Ziv 77 Sequence describing a match,
 // consisting of the offset, the length of the match and the number of
 // literals preceding the match. The Aux field can be used on upper
-// layers to provide additional information.
+// layers to store additional information.
 type Seq struct {
 	LitLen   uint32
 	MatchLen uint32
@@ -66,6 +66,9 @@ const (
 // bytes sequences have been generated for. The block can be reused and will be
 // overwritten. If the block is nil k bytes will be skipped and no sequences
 // generated.
+//
+// Sequencer manages an internal buffer that provides a window on the data to be
+// compressed.
 type Sequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
 }
@@ -73,10 +76,56 @@ type Sequencer interface {
 // WriteSequencer buffers the data to generate LZ77 sequences for. It has
 // additional methods required to work with a WrappedSequencer. Requested
 // provides the number of bytes that can be written to the WriteSequencer.
+//
+// The Sequence method will return ErrEmptyBuffer if no data is avaialble in the
+// sequencer buffer.
 type WriteSequencer interface {
 	io.Writer
 	WindowSize() int
+	BlockSize() int
 	Requested() int
 	Reset()
 	Sequencer
+}
+
+// SequencerConfigurator defines a general interface for sequencer
+// configurations. The different Sequencers have all different configuration
+// parameters and require their own configuration. All configuration types must
+// support the NewWriteSequencer method.
+//
+// Using pattern language that is obviously a factory, but we support multiple
+// factories. A configuration structure like HashSequencerConfig creates only
+// HashSequencers but the general SequencerConfig structure can build different
+// WriteSequencer.
+type SequencerConfigurator interface {
+	NewWriteSequencer() (s WriteSequencer, err error)
+}
+
+// SequencerConfig provides a general method to create sequencers.
+type SequencerConfig struct {
+	// MemoryBudget specifies the memory budget in bytes for the sequencer. The
+	// budget controls how much memory the sequencer has for the window size and the
+	// match search data structures. It doesn't control temporary memory
+	// allocations. It is a budget, so it can be overdrawn, right?
+	MemoryBudget int
+	// Effort is scale from 1 to 10 controlling the CPU consumption. A
+	// sequencer with an effort of 1 might be extremely fast but will have a
+	// worse compression ratio. The default effort is 6 and will provide a
+	// reasonable compromise between compression speed and compression
+	// ratio. Effort 10 will provide the best compression ratio but will
+	// require a higher compression ratio but will be very slow.
+	Effort int
+	// MaxBlockSize defines a maximum block size. Note that the configurator
+	// might create a smaller block size to fit the match search data
+	// structures into the memory budget. The main consumer is ZStandard
+	// which has a maximum block size of 128 kByte.
+	MaxBlockSize int
+}
+
+// NewWriteSequencer creates a new sequencer according to the parameters
+// provided. The function will only return an error the parameters are negative
+// but otherwise always try to satisfy the requirements. If memory size is zero
+// the memory budget will be 8 MByte.
+func (cfg SequencerConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	panic("TODO")
 }

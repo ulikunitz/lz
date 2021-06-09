@@ -97,6 +97,10 @@ func (cfg *OSASConfig) ApplyDefaults() {
 	}
 }
 
+func (cfg OSASConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewOptimalSuffixArraySequencer(cfg)
+}
+
 type OptimalSuffixArraySequencer struct {
 	seqBuffer
 
@@ -115,6 +119,9 @@ type OptimalSuffixArraySequencer struct {
 
 	cost func(offset, matchLen uint32) uint32
 }
+
+// BlockSize returns the block size.
+func (s *OptimalSuffixArraySequencer) BlockSize() int { return s.blockSize }
 
 func NewOptimalSuffixArraySequencer(cfg OSASConfig) (s *OptimalSuffixArraySequencer, err error) {
 	s = new(OptimalSuffixArraySequencer)

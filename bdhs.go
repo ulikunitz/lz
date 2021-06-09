@@ -1,8 +1,125 @@
 package lz
 
 import (
+	"fmt"
 	"math/bits"
 )
+
+// BDHSConfig provides the confifuration parameters for the DoubleHashSequencer.
+type BDHSConfig struct {
+	// maximal window size
+	WindowSize int
+	// size of the window if the buffer is shrinked
+	ShrinkSize int
+	// maximum size of the buffer
+	MaxSize int
+	// BlockSize: target size for a block
+	BlockSize int
+	// smaller hash input length; range 2 to 8
+	InputLen1 int
+	// hash bits for the smaller hash input length
+	HashBits1 int
+	// larger input length; range 2 to 8
+	InputLen2 int
+	// hash bits for the larger hash input length
+	HashBits2 int
+}
+
+// Verify checks the configuration for errors.
+func (cfg *BDHSConfig) Verify() error {
+	if !(2 <= cfg.InputLen1 && cfg.InputLen1 <= 8) {
+		return fmt.Errorf(
+			"lz: InputLen=%d; must be in range [2,8]",
+			cfg.InputLen1)
+	}
+	if !(cfg.InputLen1 <= cfg.WindowSize) {
+		return fmt.Errorf(
+			"lz: cfg.WindowSize is %d;"+
+				" must be >= InputLen=%d",
+			cfg.WindowSize, cfg.InputLen1)
+	}
+	if !(0 <= cfg.ShrinkSize && cfg.ShrinkSize <= cfg.WindowSize) {
+		return fmt.Errorf(
+			"lz: ShrinkSize=%d; must be <= WindowSize=%d",
+			cfg.ShrinkSize, cfg.WindowSize)
+	}
+	if !(cfg.WindowSize <= cfg.MaxSize) {
+		return fmt.Errorf(
+			"lz: WindowSize=%d; must be less than MaxSize=%d",
+			cfg.WindowSize, cfg.MaxSize)
+	}
+	if !(cfg.ShrinkSize < cfg.MaxSize) {
+		return fmt.Errorf(
+			"lz: shrinkSize must be less than cfg.MaxSize")
+	}
+	if !(int64(cfg.MaxSize) <= int64(maxUint32)) {
+		// We manage positions only as uint32 values and so this limit
+		// is necessary
+		return fmt.Errorf(
+			"lz: MaxSize=%d; must be less than MaxUint32=%d",
+			cfg.MaxSize, maxUint32)
+	}
+	if !(0 < cfg.BlockSize) {
+		return fmt.Errorf(
+			"lz: BlockSize=%d; must be positive", cfg.BlockSize)
+	}
+	if !(cfg.InputLen1 < cfg.InputLen2 && cfg.InputLen2 <= 8) {
+		return fmt.Errorf(
+			"lz: cfg.InputLen2 is %d; must be in range [%d;%d]",
+			cfg.InputLen2, cfg.InputLen1+1, 8)
+	}
+
+	maxHashBits1 := 32
+	if t := 8 * cfg.InputLen1; t < maxHashBits1 {
+		maxHashBits1 = t
+	}
+	if !(0 <= cfg.HashBits1 && cfg.HashBits1 <= maxHashBits1) {
+		return fmt.Errorf("lz: HashBits1=%d; must be in range [%d,%d]",
+			cfg.HashBits1, 0, maxHashBits1)
+	}
+
+	maxHashBits2 := 32
+	if t := 8 * cfg.InputLen2; t < maxHashBits2 {
+		maxHashBits2 = t
+	}
+	if !(0 <= cfg.HashBits2 && cfg.HashBits2 <= maxHashBits2) {
+		return fmt.Errorf("lz: HashBits2=%d; must be in range [%d,%d]",
+			cfg.HashBits2, 0, maxHashBits2)
+	}
+
+	return nil
+}
+
+// ApplyDefaults uses the defaults for the configuration parameters that are set
+// to zero.
+func (cfg *BDHSConfig) ApplyDefaults() {
+	if cfg.BlockSize == 0 {
+		cfg.BlockSize = 128 * 1024
+	}
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * 1024 * 1024
+	}
+	if cfg.MaxSize == 0 {
+		cfg.MaxSize = 16 * 1024 * 1024
+	}
+	if cfg.InputLen1 == 0 {
+		cfg.InputLen1 = 3
+	}
+	if cfg.HashBits1 == 0 {
+		cfg.HashBits1 = 11
+	}
+	if cfg.InputLen2 == 0 {
+		cfg.InputLen2 = 7
+	}
+	if cfg.HashBits2 == 0 {
+		cfg.HashBits2 = 11
+	}
+}
+
+// NewWriteSequencer creates a new DoubleHashSequencer.
+func (cfg BDHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+	return NewDoubleHashSequencer(cfg)
+}
 
 // BackwardDoubleHashSequencer uses two hashes and tries to extend extensions
 // backward.
@@ -18,9 +135,14 @@ type BackwardDoubleHashSequencer struct {
 	blockSize int
 }
 
+// BlockSize provides the block size of the sequencer.
+func (s *BackwardDoubleHashSequencer) BlockSize() int {
+	return s.blockSize
+}
+
 // NewBackwardDoubleHashSequencer creates a new sequencer. If the configuration
 // is invalid an error will be returned.
-func NewBackwardDoubleHashSequencer(cfg DHSConfig) (s *BackwardDoubleHashSequencer, err error) {
+func NewBackwardDoubleHashSequencer(cfg BDHSConfig) (s *BackwardDoubleHashSequencer, err error) {
 	s = new(BackwardDoubleHashSequencer)
 	if err = s.Init(cfg); err != nil {
 		return nil, err
@@ -31,7 +153,7 @@ func NewBackwardDoubleHashSequencer(cfg DHSConfig) (s *BackwardDoubleHashSequenc
 // Init initializes the sequencer. The method returns an error if the
 // configuration contains inconsistencies and the sequencer remains
 // uninitialized.
-func (s *BackwardDoubleHashSequencer) Init(cfg DHSConfig) error {
+func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {

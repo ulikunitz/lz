@@ -429,7 +429,7 @@ func BenchmarkSequencers(b *testing.B) {
 				b.Fatalf("io.ReadFile(%q) error %s", enwik7,
 					err)
 			}
-			r := Wrap(bytes.NewReader(data), bm.ws)
+			r := Wrap(bytes.NewReader(data), ws)
 			b.SetBytes(int64(len(data)))
 			var cost int64
 			b.ResetTimer()

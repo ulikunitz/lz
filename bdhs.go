@@ -118,7 +118,7 @@ func (cfg *BDHSConfig) ApplyDefaults() {
 
 // NewWriteSequencer creates a new DoubleHashSequencer.
 func (cfg BDHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
-	return NewDoubleHashSequencer(cfg)
+	return NewBackwardDoubleHashSequencer(cfg)
 }
 
 // BackwardDoubleHashSequencer uses two hashes and tries to extend extensions

@@ -5,6 +5,7 @@ import (
 	"math/bits"
 )
 
+// BHSConfig provides the parameters for the backward hash sequencer.
 type BHSConfig struct {
 	// maximal window size
 	WindowSize int
@@ -26,7 +27,7 @@ func (cfg BHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
-func (cfg *HSConfig) ApplyDefaults() {
+func (cfg *BHSConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * 1024
 	}
@@ -45,7 +46,7 @@ func (cfg *HSConfig) ApplyDefaults() {
 }
 
 // Verify checks the config for correctness.
-func (cfg *HSConfig) Verify() error {
+func (cfg *BHSConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)

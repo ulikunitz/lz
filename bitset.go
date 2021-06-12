@@ -19,6 +19,69 @@ import (
 
 const bsMask = 1<<6 - 1
 
+type bitset struct {
+	// words of a
+	a []uint64
+	// number of zero words before a starts
+	off int
+}
+
+func (b *bitset) normalize() {
+	var i, j int
+	var x uint64
+	nonZero := false
+	for i, x = range b.a {
+		if x != 0 {
+			nonZero = true
+			break
+		}
+	}
+	if !nonZero {
+		i = len(b.a)
+	}
+	for j = len(b.a) - 1; j >= i; j-- {
+		if b.a[j] != 0 {
+			break
+		}
+	}
+	j++
+	if 0 < i {
+		a := b.a[:j-i]
+		copy(a, b.a[i:])
+		b.a = a
+		b.off += i
+	} else {
+		b.a = b.a[:j]
+	}
+}
+
+func (b *bitset) support(i int) {
+	panic("TODO")
+}
+
+func (b *bitset) insert(i ...int) *bitset {
+	min := i[0]
+	max := -1
+	for _, j := range i {
+		if j < min {
+			min = j
+		}
+		if j > max {
+			max = j
+		}
+	}
+	if min < 0 {
+		panic("negative arguments to bitset insert")
+	}
+	b.support(min)
+	b.support(max)
+	for _, j := range i {
+		k := min >> 6
+		b.a[k-b.off] |= 1 << uint(j&bsMask)
+	}
+	return b
+}
+
 type lbitset struct {
 	a []uint64
 	n int

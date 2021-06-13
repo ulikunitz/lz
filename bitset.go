@@ -73,7 +73,7 @@ func (b *bitset) support(min, max int) *bitset {
 	}
 	n := kmax + 1 - y.off
 	if n < d+len(b.a) {
-		n = d+len(b.a)
+		n = d + len(b.a)
 	}
 	if n > cap(b.a) {
 		y.a = make([]uint64, n)
@@ -218,18 +218,28 @@ func (b *bitset) intersect(u, v *bitset) *bitset {
 	if u == v {
 		return b.clone(u)
 	}
+	if u.off > v.off {
+		u, v = v, u
+	}
+	s, t := u.off+len(u.a), v.off+len(v.a)
+	if s <= v.off {
+		b.off = 0
+		b.a = b.a[:0]
+		return b
+	}
 	var y bitset
-	y.off = max(u.off, v.off)
-	n := min(u.off+len(u.a), v.off+len(v.a)) - y.off
+	y.off = v.off
+	n := min(s, t) - y.off
 	if b == u || b == v || n > cap(b.a) {
 		y.a = make([]uint64, n)
 	} else {
 		y.a = b.a[:n]
 	}
-	s, t := u.a[y.off-u.off:], v.a[y.off-v.off:]
+	p, q := u.a[y.off-u.off:], v.a[y.off-v.off:]
 	for k := range y.a {
-		y.a[k] = s[k] & t[k]
+		y.a[k] = p[k] & q[k]
 	}
+	y.normalize()
 	*b = y
 	return b
 }

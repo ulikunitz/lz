@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -151,5 +152,35 @@ func TestBitsetSimple2(t *testing.T) {
 	_, ok = a2.memberAfter(16500)
 	if ok {
 		t.Fatalf("a2.memberAfter(%d) returned true; want false", 16500)
+	}
+}
+
+func TestBitsetIntersect(t *testing.T) {
+	tests := []struct {
+		x, y, z  []int
+		lenSlice int
+	}{
+		{[]int{0, 64, 128, 256}, []int{1, 64, 129, 257}, []int{64}, 1},
+		{nil, nil, nil, 0},
+		{[]int{0, 1}, []int{3000}, nil, 0},
+	}
+	for i, tc := range tests {
+		t.Run(fmt.Sprintf("#%d", i+1), func(t *testing.T) {
+			var x, y, z bitset
+			x.insert(tc.x...)
+			y.insert(tc.y...)
+			z.intersect(&x, &y)
+			got := z.slice()
+			if !equalIntSlices(got, tc.z) {
+				var wz bitset
+				wz.insert(tc.z...)
+				t.Errorf("intersect(%s,%s) got %s; want %s",
+					&x, &y, &z, &wz)
+			}
+			if len(z.a) != tc.lenSlice {
+				t.Errorf("intersect(%s,%s) len(z.a)=%d; want %d",
+					&x, &y, len(z.a), tc.lenSlice)
+			}
+		})
 	}
 }

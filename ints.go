@@ -22,7 +22,7 @@ func iverson(f bool) int {
 }
 
 func doz(x, y int) int {
-	return (x-y) & (-iverson(x >= y))
+	return (x - y) & (-iverson(x >= y))
 }
 
 func max(x, y int) int {

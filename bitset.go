@@ -55,14 +55,48 @@ func (b *bitset) normalize() {
 	}
 }
 
-func (b *bitset) support(i int) {
-	panic("TODO")
+func (b *bitset) support(min, max int) {
+	kmin, kmax := min>>6, max>>6
+	if b.off <= kmin && kmax < b.off+len(b.a) {
+		return
+	}
+	a := b.a
+	u := b.off - kmin
+	if u > 0 {
+		b.off = kmin
+	} else {
+		u = 0
+	}
+	w := u + len(a)
+	v := kmax - b.off
+	n := w
+	if v > n {
+		n = v
+	}
+	if n > cap(a) {
+		a = make([]uint64, n)
+		copy(a[u:], b.a)
+	} else {
+		a = a[:n]
+		copy(a[u:], a)
+		for i := range a[:u] {
+			a[i] = 0
+		}
+		t := a[w:]
+		for i := range t {
+			t[i] = 0
+		}
+	}
+	b.a = a
 }
 
 func (b *bitset) insert(i ...int) *bitset {
+	if len(i) == 0 {
+		return b
+	}
 	min := i[0]
-	max := -1
-	for _, j := range i {
+	max := min
+	for _, j := range i[1:] {
 		if j < min {
 			min = j
 		}
@@ -71,13 +105,11 @@ func (b *bitset) insert(i ...int) *bitset {
 		}
 	}
 	if min < 0 {
-		panic("negative arguments to bitset insert")
+		panic("lz: negative arguments to bitset insert")
 	}
-	b.support(min)
-	b.support(max)
+	b.support(min, max)
 	for _, j := range i {
-		k := min >> 6
-		b.a[k-b.off] |= 1 << uint(j&bsMask)
+		b.a[(j>>6)-b.off] |= 1 << uint(j&63)
 	}
 	return b
 }

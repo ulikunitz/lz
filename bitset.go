@@ -55,39 +55,42 @@ func (b *bitset) normalize() {
 	}
 }
 
-func (b *bitset) support(min, max int) {
+func (b *bitset) support(min, max int) *bitset {
 	kmin, kmax := min>>6, max>>6
 	if b.off <= kmin && kmax < b.off+len(b.a) {
-		return
+		return b
 	}
-	a := b.a
-	u := b.off - kmin
-	if u > 0 {
+	var y bitset
+	d := 0
+	if len(b.a) == 0 {
 		b.off = kmin
+		y.off = kmin
+	} else if kmin < b.off {
+		y.off = kmin
+		d = b.off - y.off
 	} else {
-		u = 0
+		y.off = b.off
 	}
-	w := u + len(a)
-	v := kmax - b.off
-	n := w
-	if v > n {
-		n = v
+	n := kmax + 1 - y.off
+	if n < d+len(b.a) {
+		n = d+len(b.a)
 	}
-	if n > cap(a) {
-		a = make([]uint64, n)
-		copy(a[u:], b.a)
+	if n > cap(b.a) {
+		y.a = make([]uint64, n)
+		copy(y.a[d:], b.a)
 	} else {
-		a = a[:n]
-		copy(a[u:], a)
-		for i := range a[:u] {
-			a[i] = 0
+		y.a = b.a[:n]
+		for i := range y.a[:d] {
+			y.a[i] = 0
 		}
-		t := a[w:]
+		d += copy(y.a[d:], b.a)
+		t := y.a[d:]
 		for i := range t {
 			t[i] = 0
 		}
 	}
-	b.a = a
+	*b = y
+	return b
 }
 
 func (b *bitset) insert(i ...int) *bitset {
@@ -106,83 +109,30 @@ func (b *bitset) insert(i ...int) *bitset {
 	}
 	if min < 0 {
 		panic("lz: negative arguments to bitset insert")
+
 	}
 	b.support(min, max)
 	for _, j := range i {
-		b.a[(j>>6)-b.off] |= 1 << uint(j&63)
+		k := j>>6 - b.off
+		b.a[k] |= 1 << uint(j&63)
 	}
 	return b
 }
 
-type lbitset struct {
-	a []uint64
-	n int
+func (b *bitset) clear() {
+	b.a = b.a[:0]
+	b.off = 0
 }
 
-func (b *lbitset) init(n int) {
-	k := (n + 63) / 64
-	if k <= cap(b.a) {
-		b.a = b.a[:k]
-		for i := range b.a {
-			b.a[i] = 0
-		}
-	} else {
-		b.a = make([]uint64, k)
+func (b *bitset) member(i int) bool {
+	k := (i >> 6) - b.off
+	if !(0 <= k && k < len(b.a)) {
+		return false
 	}
-	b.n = n
+	return b.a[k]&(1<<uint(i&63)) != 0
 }
 
-func (b *lbitset) clear() {
-	for i := range b.a {
-		b.a[i] = 0
-	}
-}
-
-func (b *lbitset) insert(i int) {
-	b.a[i>>6] |= 1 << uint(i&bsMask)
-}
-
-func (b *lbitset) isMember(i int) bool {
-	return (b.a[i>>6] & (1 << uint(i&bsMask))) != 0
-}
-
-func (b *lbitset) memberBefore(i int) (k int, ok bool) {
-	m := uint64(1)<<uint(i&bsMask) - 1
-	i >>= 6
-	k = 63 - bits.LeadingZeros64(b.a[i]&m)
-	for {
-		if k >= 0 {
-			return i<<6 + k, true
-		}
-		i--
-		if i < 0 {
-			return 0, false
-		}
-		k = 63 - bits.LeadingZeros64(b.a[i])
-	}
-}
-
-func (b *lbitset) memberAfter(i int) (k int, ok bool) {
-	i++
-	if i >= b.n {
-		return 0, false
-	}
-	m := ^(uint64(1)<<uint(i&bsMask) - 1)
-	i >>= 6
-	k = bits.TrailingZeros64(b.a[i] & m)
-	for {
-		if k < 64 {
-			return i<<6 + k, true
-		}
-		i++
-		if i >= len(b.a) {
-			return 0, false
-		}
-		k = bits.TrailingZeros64(b.a[i])
-	}
-}
-
-func (b *lbitset) pop() int {
+func (b *bitset) pop() int {
 	n := 0
 	for _, x := range b.a {
 		n += bits.OnesCount64(x)
@@ -190,143 +140,121 @@ func (b *lbitset) pop() int {
 	return n
 }
 
-type xset []uint64
-
-func (s *xset) clear() *xset {
-	*s = (*s)[:0]
-	return s
-}
-
-func (s *xset) ensureLen(k int) *xset {
-	a := *s
-	if k <= len(a) {
-		return s
+func (b *bitset) memberBefore(i int) (j int, ok bool) {
+	k := i>>6 - b.off
+	if k < 0 {
+		return -1, false
 	}
-	if k <= cap(a) {
-		n := len(a)
-		a = a[:k]
-		b := a[n:]
-		for i := range b {
-			b[i] = 0
-		}
-		*s = a
-		return s
+	if k < len(b.a) {
+		m := uint64(1)<<uint(i&63) - 1
+		j = 63 - bits.LeadingZeros64(b.a[k]&m)
+	} else {
+		k = len(b.a)
+		j = -1
 	}
-	b := make([]uint64, k)
-	copy(b, a)
-	*s = b
-	return s
-}
-
-func (s *xset) insert(i ...int) *xset {
-	a := *s
-	for _, j := range i {
-		k := j >> 6
-		if k >= len(a) {
-			a = *(s.ensureLen(k + 1))
-		}
-		a[k] |= 1 << uint(j&bsMask)
-	}
-	return s
-}
-
-func (s *xset) isMember(i int) bool {
-	a := *s
-	k := i >> 6
-	if k >= len(a) {
-		return false
-	}
-	return (a[k] & (1 << uint(i&bsMask))) != 0
-}
-
-func (s *xset) memberAfter(i int) (k int, ok bool) {
-	a := *s
-	i++
-	j := i >> 6
-	if j >= len(a) {
-		return 0, false
-	}
-	m := ^(uint64(1)<<uint(i&bsMask) - 1)
-	k = bits.TrailingZeros64(a[j] & m)
 	for {
-		if k < 64 {
-			return j<<6 + k, true
+		if j >= 0 {
+			return (b.off+k)<<6 + j, true
 		}
-		j++
-		if j >= len(a) {
-			return 0, false
+		k--
+		if k < 0 {
+			return -1, false
 		}
-		k = bits.TrailingZeros64(a[j])
+		j = 63 - bits.LeadingZeros64(b.a[k])
 	}
 }
 
-func (s *xset) firstMember() (k int, ok bool) {
-	a := *s
-	for j := 0; j < len(a); j++ {
-		k = bits.TrailingZeros64(a[j])
-		if k < 64 {
-			return j<<6 + k, true
+func (b *bitset) memberAfter(i int) (j int, ok bool) {
+	i++
+	k := i>>6 - b.off
+	if k >= len(b.a) {
+		return -1, false
+	}
+	if k >= 0 {
+		m := ^(uint64(1)<<uint(i&bsMask) - 1)
+		j = bits.TrailingZeros64(b.a[k] & m)
+	} else {
+		k = -1
+		j = 64
+	}
+	for {
+		if j < 64 {
+			return (b.off+k)<<6 + j, true
 		}
+		k++
+		if k >= len(b.a) {
+			return -1, false
+		}
+		j = bits.TrailingZeros64(b.a[k])
 	}
-	return 0, false
 }
 
-func (s *xset) assign(u *xset) *xset {
-	if s == u {
-		return s
+func (b *bitset) firstMember() (j int, ok bool) {
+	if len(b.a) == 0 {
+		return -1, false
 	}
-	s.ensureLen(len(*u))
-	*s = (*s)[:len(*u)]
-	copy(*s, *u)
-	return s
+	j = bits.TrailingZeros64(b.a[0])
+	if j >= 64 {
+		panic("b is not normalized")
+	}
+	return (b.off << 6) + j, true
 }
 
-func (s *xset) intersect(u, v *xset) *xset {
-	s.assign(u)
+func (b *bitset) clone(u *bitset) *bitset {
+	if b == u {
+		return b
+	}
+	b.off = u.off
+	if len(u.a) > cap(b.a) {
+		b.a = make([]uint64, len(u.a))
+	} else {
+		b.a = b.a[:len(u.a)]
+	}
+	copy(b.a, u.a)
+	return b
+}
+
+func (b *bitset) intersect(u, v *bitset) *bitset {
 	if u == v {
-		return s
+		return b.clone(u)
 	}
-	a, b := *s, *v
-	n := len(a)
-	if len(b) < n {
-		n = len(b)
+	var y bitset
+	y.off = max(u.off, v.off)
+	n := min(u.off+len(u.a), v.off+len(v.a)) - y.off
+	if b == u || b == v || n > cap(b.a) {
+		y.a = make([]uint64, n)
+	} else {
+		y.a = b.a[:n]
 	}
-	for i, v := range b[:n] {
-		a[i] &= v
+	s, t := u.a[y.off-u.off:], v.a[y.off-v.off:]
+	for k := range y.a {
+		y.a[k] = s[k] & t[k]
 	}
-	for n--; n >= 0 && a[n] == 0; n-- {
+	*b = y
+	return b
+}
+
+func (b *bitset) slice() []int {
+	var s []int
+	for k, x := range b.a {
+		base := (b.off + k) << 6
+		for x != 0 {
+			i := bits.TrailingZeros64(x)
+			s = append(s, base+i)
+			x &^= 1 << uint(i)
+		}
 	}
-	n++
-	*s = a[:n]
 	return s
 }
 
-func (s *xset) slice() []int {
-	var a []int
-	for i, x := range *s {
-		j := i << 6
-		for {
-			k := bits.TrailingZeros64(x)
-			if k >= 64 {
-				break
-			}
-			j += k
-			a = append(a, j)
-			x >>= k + 1
-			j++
-		}
-	}
-	return a
-}
-
-func (s *xset) String() string {
+func (b *bitset) String() string {
 	var sb strings.Builder
 	sb.WriteByte('{')
-	for i, k := range s.slice() {
+	for i, j := range b.slice() {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		fmt.Fprint(&sb, k)
+		fmt.Fprint(&sb, j)
 	}
 	sb.WriteByte('}')
 	return sb.String()

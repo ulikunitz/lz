@@ -99,7 +99,7 @@ type GreedySuffixArraySequencer struct {
 	isa []int32
 	// bits marks the positions in the suffix array sa that have already
 	// been processed
-	bits lbitset
+	bits bitset
 	// saPos is the position of the start of the suffix array
 	saPos int
 
@@ -197,7 +197,7 @@ func (s *GreedySuffixArraySequencer) sort() {
 	for i, j := range s.sa {
 		s.isa[j] = int32(i)
 	}
-	s.bits.init(n)
+	s.bits.clear()
 	t := s.w - s.saPos
 	for i := 0; i < t; i++ {
 		s.bits.insert(int(s.isa[i]))

@@ -13,3 +13,22 @@ func iverson64(f bool) int64 {
 func doz64(x, y int64) int64 {
 	return (x - y) & (-iverson64(x >= y))
 }
+
+func iverson(f bool) int {
+	if f {
+		return 1
+	}
+	return 0
+}
+
+func doz(x, y int) int {
+	return (x-y) & (-iverson(x >= y))
+}
+
+func max(x, y int) int {
+	return y + doz(x, y)
+}
+
+func min(x, y int) int {
+	return x - doz(x, y)
+}

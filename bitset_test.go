@@ -5,16 +5,15 @@ import (
 )
 
 func TestBitsetSimple(t *testing.T) {
-	var b lbitset
-	b.init(130)
-	if b.isMember(10) {
+	var b bitset
+	if b.member(10) {
 		t.Fatalf(
-			"b.IsMember(10) returned true; want false")
+			"b.member(10) returned true; want false")
 	}
 	b.insert(10)
-	if !b.isMember(10) {
+	if !b.member(10) {
 		t.Fatalf(
-			"b.IsMember(10) returned false; want true")
+			"b.member(10) returned false; want true")
 	}
 	_, ok := b.memberBefore(10)
 	if ok {
@@ -51,8 +50,8 @@ func TestBitsetSimple(t *testing.T) {
 
 	b.insert(127)
 
-	if !b.isMember(127) {
-		t.Fatalf("b.isMember(%d) is false; want true", 127)
+	if !b.member(127) {
+		t.Fatalf("b.member(%d) is false; want true", 127)
 	}
 
 	_, ok = b.memberAfter(127)
@@ -89,18 +88,18 @@ func equalIntSlices(a, b []int) bool {
 	return true
 }
 
-func TestXSetSimple(t *testing.T) {
-	var a xset
-	if a.isMember(64) {
-		t.Fatalf("a.isMember(%d) returns true; want false", 64)
+func TestBitsetSimple2(t *testing.T) {
+	var a bitset
+	if a.member(64) {
+		t.Fatalf("a.member(%d) returns true; want false", 64)
 	}
 	_, ok := a.firstMember()
 	if ok {
 		t.Fatalf("a.firstMember returns true; want false")
 	}
 	a.insert(64)
-	if !a.isMember(64) {
-		t.Fatalf("a.isMember(%d) returns false; want true", 64)
+	if !a.member(64) {
+		t.Fatalf("a.member(%d) returns false; want true", 64)
 	}
 	var i int
 	i, ok = a.firstMember()
@@ -124,18 +123,19 @@ func TestXSetSimple(t *testing.T) {
 	u1 := []int{1, 2, 3, 63, 64, 65, 127, 128, 129}
 	u2 := []int{65, 66, 230, 16500}
 	v := []int{65}
-	var a1, a2, b xset
+	var a1, a2, b bitset
 	a1.insert(u1...)
 	a2.insert(u2...)
+	v2 := a2.slice()
+	if !equalIntSlices(v2, u2) {
+		t.Fatalf("v2=%d; want u2=%d", v2, u2)
+	}
 	a2str := a2.String()
 	const wa2str = "{65, 66, 230, 16500}"
 	if a2str != wa2str {
 		t.Fatalf("a2.String() returned %q; want %q", a2str, wa2str)
 	}
 	b.intersect(&a1, &a2)
-	if len(b) != 2 {
-		t.Fatalf("len(b) is %d; want %d", len(b), 2)
-	}
 	u := b.slice()
 	if !equalIntSlices(u, v) {
 		t.Fatalf("b.intersect(&a1,&a2) is %d; want %d", u, v)

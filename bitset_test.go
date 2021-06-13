@@ -184,3 +184,23 @@ func TestBitsetIntersect(t *testing.T) {
 		})
 	}
 }
+
+func TestBitsetDelete(t *testing.T) {
+	var b bitset
+	b.insert(1, 2, 65)
+	b.delete(3)
+	if len(b.a) != 2 {
+		t.Fatalf("b.delete(%d): len(b.a)=%d; want %d",
+			3, len(b.a), 2)
+	}
+	b.delete(65)
+	if len(b.a) != 1 {
+		t.Fatalf("b.delete(%d): len(b.a)=%d; want %d",
+			65, len(b.a), 1)
+	}
+	s := b.slice()
+	w := []int{1, 2}
+	if !equalIntSlices(w, s) {
+		t.Fatalf("b.delete(%d) b=%d; want %d", 65, s, w)
+	}
+}

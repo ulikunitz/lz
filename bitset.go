@@ -119,6 +119,19 @@ func (b *bitset) insert(i ...int) *bitset {
 	return b
 }
 
+func (b *bitset) delete(i int) *bitset {
+	k := i>>6 - b.off
+	if !(0 <= k && k < len(b.a)) {
+		// nothing todo
+		return b
+	}
+	b.a[k] &^= 1 << uint(i&63)
+	if k == 0 || k+1 == len(b.a) {
+		b.normalize()
+	}
+	return b
+}
+
 func (b *bitset) clear() {
 	b.a = b.a[:0]
 	b.off = 0

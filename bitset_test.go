@@ -180,6 +180,7 @@ func TestBitsetIntersect(t *testing.T) {
 			if len(z.a) != tc.lenSlice {
 				t.Errorf("intersect(%s,%s) len(z.a)=%d; want %d",
 					&x, &y, len(z.a), tc.lenSlice)
+
 			}
 		})
 	}
@@ -202,5 +203,15 @@ func TestBitsetDelete(t *testing.T) {
 	w := []int{1, 2}
 	if !equalIntSlices(w, s) {
 		t.Fatalf("b.delete(%d) b=%d; want %d", 65, s, w)
+	}
+}
+
+func TestBitsetString(t *testing.T) {
+	var b bitset
+	b.insert(1, 3, 5, 129)
+	s := b.String()
+	const want = "{1, 3, 5, 129}"
+	if s != want {
+		t.Fatalf("b.String() returned %q; want %q", s, want)
 	}
 }

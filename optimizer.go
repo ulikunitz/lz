@@ -4,6 +4,27 @@ import (
 	"fmt"
 )
 
+// We need to rethink this.
+// So we want to have a list of matches represented as tuples (a, b, o) where a
+// is the index in the block of the start of the match and b the first index
+// after the match and o the offset. An offset of 0 could identify a literal
+// copy but the sequencers don't need to provide those to the optimizer.
+//
+// In a first step the optimizer would sort the matches after the a component
+// followed by the offset and then the b component.
+//
+// In the second step all shadowed matched can be removed. A match is shadowed
+// if there is a match that covers the match but has a smaller offset. We are
+// doing it by scanning through the matches and keep two sets: a life set and
+// copy survivors to the front of the slice.
+//
+// Now the idea is the old one: Start with position zero and map out all the
+// ways to reach other positions. Do it for the second position but only update
+// if you there is a smaller cost. To do it we are keeping a set of life
+// matches. Literals need only be regarded for the next positions, we can always
+// extned them. We need to store the cost, the last postiion and the offset for
+// position in the block.
+
 type match struct {
 	offset   uint32
 	matchLen uint32

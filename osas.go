@@ -107,7 +107,7 @@ type OptimalSuffixArraySequencer struct {
 	sa  []int32
 	isa []int32
 
-	// longest common prefix array lcp[io describes lcp of sa[i] and sa[i+1]
+	// longest common prefix array lcp[i] describes lcp of sa[i] and sa[i+1]
 	lcp   []int32
 	saPos int
 
@@ -276,6 +276,7 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 		i = s.w - s.saPos
 	}
 	s.blockEnd = i + n
+	// TODO: We need to rewrite it.
 	matchMap := make([][]match, 0, n)
 	for ; i < s.blockEnd; i++ {
 		matchMap = append(matchMap, s.matches(i))

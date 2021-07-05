@@ -25,9 +25,11 @@ func doz(x, y int) int {
 	return (x - y) & (-iverson(x >= y))
 }
 
+/*
 func max(x, y int) int {
 	return y + doz(x, y)
 }
+*/
 
 func min(x, y int) int {
 	return x - doz(x, y)

@@ -212,10 +212,9 @@ func (s *OptimalSuffixArraySequencer) sort() {
 }
 
 // matches identifies the matches at postion s.saPos + i.
-func (s *OptimalSuffixArraySequencer) matches(i int) []match {
+func (s *OptimalSuffixArraySequencer) appendMatches(m []match, i int) []match {
 	matchLen := s.blockEnd - i
 	// look forward
-	var matches []match
 	j := int(s.isa[i])
 	for j < len(s.sa)-1 {
 		if int(s.lcp[j]) < matchLen {
@@ -229,8 +228,8 @@ func (s *OptimalSuffixArraySequencer) matches(i int) []match {
 		if !(0 < offset && offset <= s.windowSize) {
 			continue
 		}
-		matches = append(matches, match{
-			matchLen: uint32(matchLen), offset: uint32(offset)})
+		m = append(m, match{a: uint32(i), b: uint32(i + matchLen),
+			o: uint32(offset)})
 	}
 	// look backward
 	matchLen = s.blockEnd - i
@@ -247,10 +246,10 @@ func (s *OptimalSuffixArraySequencer) matches(i int) []match {
 		if !(0 < offset && offset <= s.windowSize) {
 			continue
 		}
-		matches = append(matches, match{
-			matchLen: uint32(matchLen), offset: uint32(offset)})
+		m = append(m, match{a: uint32(i), b: uint32(i + matchLen),
+			o: uint32(offset)})
 	}
-	return matches
+	return m
 }
 
 func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
@@ -276,14 +275,13 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 		i = s.w - s.saPos
 	}
 	s.blockEnd = i + n
-	// TODO: We need to rewrite it.
-	matchMap := make([][]match, 0, n)
-	for ; i < s.blockEnd; i++ {
-		matchMap = append(matchMap, s.matches(i))
 
+	var m []match
+	for j := 0; j < n; j++ {
+		m = s.appendMatches(m, i)
 	}
-	n = optimalSequence(blk, s.data[s.w:s.w+n], matchMap, s.cost,
-		s.minMatchLen, flags)
+	n = optimalSequence(blk, s.data[s.w:s.w+n], m, s.cost, s.minMatchLen,
+		flags)
 	s.w += n
 	return n, nil
 }

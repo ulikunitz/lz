@@ -71,8 +71,11 @@ func reduceMatches(matches []match, n int) []match {
 	s := make([]uint32, n)
 	for _, x := range matches {
 		// ignore everything that doesn't make sense
-		if !(x.o > 0 && x.a < x.b && int(x.b) <= n) {
+		if !(x.o > 0 && x.a < x.b && int64(x.a) < int64(n)) {
 			continue
+		}
+		if int64(x.b) >= int64(n) {
+			x.b = uint32(n)
 		}
 		// ignore shadowed matches
 		if s[x.a] >= x.b {

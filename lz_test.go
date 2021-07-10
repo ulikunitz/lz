@@ -256,16 +256,14 @@ func TestSequencersSimple(t *testing.T) {
 				MaxSize:    8 << 20,
 			},
 		},
-		/* Test is broken due to memory requirements.
 		{
 			name: "OSASequencer",
-			ws: newTestOSAS(t, OSASConfig{
+			cfg: OSASConfig{
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
-			}),
+			},
 		},
-		*/
 	}
 	data := []byte(str)
 	hd := sha256.New()

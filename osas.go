@@ -278,10 +278,16 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 
 	var m []match
 	for j := 0; j < n; j++ {
-		m = s.appendMatches(m, i)
+		m = s.appendMatches(m, j)
 	}
-	n = optimalSequence(blk, s.data[s.w:s.w+n], m, s.cost, s.minMatchLen,
-		flags)
+	n = (&optimizer{
+		blk:         blk,
+		p:           s.data[s.w : s.w+n],
+		m:           m,
+		cost:        s.cost,
+		minMatchLen: uint32(s.minMatchLen),
+		flags:       flags,
+	}).sequence()
 	s.w += n
 	return n, nil
 }

@@ -2,6 +2,7 @@ package lz
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/bits"
 
@@ -118,6 +119,8 @@ type OptimalSuffixArraySequencer struct {
 	minMatchLen int
 
 	cost func(offset, matchLen uint32) uint32
+
+	matches []match
 }
 
 // BlockSize returns the block size.
@@ -180,6 +183,7 @@ func (s *OptimalSuffixArraySequencer) sort() {
 		s.saPos = 0
 	}
 	n := len(s.data) - s.saPos
+	log.Printf("sort: saPos %d n %d", s.saPos, n)
 	if n > math.MaxInt32 {
 		panic("n too large")
 	}
@@ -209,12 +213,14 @@ func (s *OptimalSuffixArraySequencer) sort() {
 		s.lcp[i] = int32(matchLen(p[j0:], p[j1:]))
 		j0 = j1
 	}
+	log.Printf("sort: end")
 }
 
 // matches identifies the matches at postion s.saPos + i.
-func (s *OptimalSuffixArraySequencer) appendMatches(m []match, i int) []match {
+func (s *OptimalSuffixArraySequencer) addMatches(i int) {
 	matchLen := s.blockEnd - i
 	// look forward
+	a := uint32(i + s.saPos - s.w)
 	j := int(s.isa[i])
 	for j < len(s.sa)-1 {
 		if int(s.lcp[j]) < matchLen {
@@ -228,8 +234,8 @@ func (s *OptimalSuffixArraySequencer) appendMatches(m []match, i int) []match {
 		if !(0 < offset && offset <= s.windowSize) {
 			continue
 		}
-		m = append(m, match{a: uint32(i), b: uint32(i + matchLen),
-			o: uint32(offset)})
+		s.matches = append(s.matches,
+			match{a: a, b: a + uint32(matchLen), o: uint32(offset)})
 	}
 	// look backward
 	matchLen = s.blockEnd - i
@@ -246,13 +252,14 @@ func (s *OptimalSuffixArraySequencer) appendMatches(m []match, i int) []match {
 		if !(0 < offset && offset <= s.windowSize) {
 			continue
 		}
-		m = append(m, match{a: uint32(i), b: uint32(i + matchLen),
-			o: uint32(offset)})
+		s.matches = append(s.matches,
+			match{a: a, b: a + uint32(matchLen), o: uint32(offset)})
 	}
-	return m
 }
 
 func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
+	log.Printf("Sequence: start")
+	defer log.Printf("Sequence: end")
 	n = s.buffered()
 	if blk == nil {
 		if n == 0 {
@@ -276,18 +283,21 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 	}
 	s.blockEnd = i + n
 
-	var m []match
-	for j := 0; j < n; j++ {
-		m = s.appendMatches(m, j)
+	log.Printf("Sequencer: collect matches")
+	s.matches = s.matches[:0]
+	for j := i; j < s.blockEnd; j++ {
+		s.addMatches(j)
 	}
+	log.Printf("Sequencer: end collect %d matches", len(s.matches))
 	n = (&optimizer{
 		blk:         blk,
 		p:           s.data[s.w : s.w+n],
-		m:           m,
+		m:           s.matches,
 		cost:        s.cost,
 		minMatchLen: uint32(s.minMatchLen),
 		flags:       flags,
 	}).sequence()
 	s.w += n
+	log.Printf("s.w: %d", s.w)
 	return n, nil
 }

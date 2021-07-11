@@ -94,53 +94,54 @@ func TestSequencers(t *testing.T) {
 		name string
 		cfg  SequencerConfigurator
 	}{
-		{
-			name: "HashSequencer-3",
-			cfg: HSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+		/*
+			{
+				name: "HashSequencer-3",
+				cfg: HSConfig{
+					InputLen:   3,
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
-		{
-			name: "BackwardHashSequencer-3",
-			cfg: BHSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+			{
+				name: "BackwardHashSequencer-3",
+				cfg: BHSConfig{
+					InputLen:   3,
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
-		{
-			name: "DoubleHashSequencer-3,8",
-			cfg: DHSConfig{
-				InputLen1:  3,
-				InputLen2:  8,
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+			{
+				name: "DoubleHashSequencer-3,8",
+				cfg: DHSConfig{
+					InputLen1:  3,
+					InputLen2:  8,
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
-		{
-			name: "BDHSequencer-3,8",
-			cfg: BDHSConfig{
-				InputLen1:  3,
-				InputLen2:  8,
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+			{
+				name: "BDHSequencer-3,8",
+				cfg: BDHSConfig{
+					InputLen1:  3,
+					InputLen2:  8,
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
-		{
-			name: "GSASequencer",
-			cfg: GSASConfig{
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+			{
+				name: "GSASequencer",
+				cfg: GSASConfig{
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
-		/* Test is broken due to memory requirements.
+		*/
 		{
 			name: "OSASequencer",
 			cfg: OSASConfig{
@@ -149,7 +150,6 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			},
 		},
-		*/
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {

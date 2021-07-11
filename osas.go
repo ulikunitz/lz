@@ -2,7 +2,6 @@ package lz
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/bits"
 
@@ -25,6 +24,9 @@ type OSASConfig struct {
 	// function for computing the costs of a match or literal string if
 	// offset is zero in bits. Note these costs are independent of position.
 	Cost func(offset, matchLen uint32) uint32
+	// MatchesPerPos provide the numer of matches that should be generated
+	// per position in a block.
+	MatchesPerPos int
 }
 
 // Verify checks the configuration for inconsistencies.
@@ -67,6 +69,9 @@ func (cfg *OSASConfig) Verify() error {
 	if cfg.Cost == nil {
 		return fmt.Errorf("lz: Cost must be non-nil")
 	}
+	if !(0 < cfg.MatchesPerPos) {
+		return fmt.Errorf("lz: MathecsPerPos must larger zero")
+	}
 	return nil
 }
 
@@ -96,6 +101,9 @@ func (cfg *OSASConfig) ApplyDefaults() {
 	if cfg.Cost == nil {
 		cfg.Cost = defaultCost
 	}
+	if cfg.MatchesPerPos == 0 {
+		cfg.MatchesPerPos = 4
+	}
 }
 
 func (cfg OSASConfig) NewWriteSequencer() (s WriteSequencer, err error) {
@@ -119,6 +127,8 @@ type OptimalSuffixArraySequencer struct {
 	minMatchLen int
 
 	cost func(offset, matchLen uint32) uint32
+
+	budget int
 
 	matches []match
 }
@@ -152,6 +162,7 @@ func (s *OptimalSuffixArraySequencer) Init(cfg OSASConfig) error {
 	s.isa = s.isa[:0]
 	s.lcp = s.lcp[:0]
 	s.cost = cfg.Cost
+	s.budget = cfg.BlockSize * cfg.MatchesPerPos
 	return nil
 }
 
@@ -183,7 +194,6 @@ func (s *OptimalSuffixArraySequencer) sort() {
 		s.saPos = 0
 	}
 	n := len(s.data) - s.saPos
-	log.Printf("sort: saPos %d n %d", s.saPos, n)
 	if n > math.MaxInt32 {
 		panic("n too large")
 	}
@@ -213,53 +223,72 @@ func (s *OptimalSuffixArraySequencer) sort() {
 		s.lcp[i] = int32(matchLen(p[j0:], p[j1:]))
 		j0 = j1
 	}
-	log.Printf("sort: end")
 }
 
 // matches identifies the matches at postion s.saPos + i.
 func (s *OptimalSuffixArraySequencer) addMatches(i int) {
 	matchLen := s.blockEnd - i
-	// look forward
+	// maximal number of matches for this position
+	n := (s.budget - len(s.matches)) / matchLen
 	a := uint32(i + s.saPos - s.w)
-	j := int(s.isa[i])
-	for j < len(s.sa)-1 {
-		if int(s.lcp[j]) < matchLen {
-			matchLen = int(s.lcp[j])
+	jup := int(s.isa[i])
+	mlup := matchLen
+	jdown := int(s.isa[i]) - 1
+	mldown := matchLen
+	for {
+		for mlup >= mldown {
+			if jup >= len(s.sa)-1 {
+				mlup = 0
+				break
+			}
+			if int(s.lcp[jup]) < mlup {
+				mlup = int(s.lcp[jup])
+			}
+			if mlup < s.minMatchLen {
+				break
+			}
+			jup++
+			offset := i - int(s.sa[jup])
+			if !(0 < offset && offset <= s.windowSize) {
+				continue
+			}
+			s.matches = append(s.matches,
+				match{a: a, b: a + uint32(mlup), o: uint32(offset)})
+			n--
+			if n <= 0 {
+				return
+			}
 		}
-		if matchLen < s.minMatchLen {
-			break
+		for mldown >= mlup {
+			if jdown < 0 {
+				mldown = 0
+				break
+			}
+			if int(s.lcp[jdown]) < mldown {
+				mldown = int(s.lcp[jdown])
+			}
+			if mldown < s.minMatchLen {
+				break
+			}
+			offset := i - int(s.sa[jdown])
+			jdown--
+			if !(0 < offset && offset <= s.windowSize) {
+				continue
+			}
+			s.matches = append(s.matches,
+				match{a: a, b: a + uint32(mldown), o: uint32(offset)})
+			n--
+			if n <= 0 {
+				return
+			}
 		}
-		j++
-		offset := i - int(s.sa[j])
-		if !(0 < offset && offset <= s.windowSize) {
-			continue
+		if mldown < s.minMatchLen && mlup < s.minMatchLen {
+			return
 		}
-		s.matches = append(s.matches,
-			match{a: a, b: a + uint32(matchLen), o: uint32(offset)})
-	}
-	// look backward
-	matchLen = s.blockEnd - i
-	j = int(s.isa[i] - 1)
-	for j >= 0 {
-		if int(s.lcp[j]) < matchLen {
-			matchLen = int(s.lcp[j])
-		}
-		if matchLen < s.minMatchLen {
-			break
-		}
-		offset := i - int(s.sa[j])
-		j--
-		if !(0 < offset && offset <= s.windowSize) {
-			continue
-		}
-		s.matches = append(s.matches,
-			match{a: a, b: a + uint32(matchLen), o: uint32(offset)})
 	}
 }
 
 func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	log.Printf("Sequence: start")
-	defer log.Printf("Sequence: end")
 	n = s.buffered()
 	if blk == nil {
 		if n == 0 {
@@ -283,12 +312,10 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 	}
 	s.blockEnd = i + n
 
-	log.Printf("Sequencer: collect matches")
 	s.matches = s.matches[:0]
 	for j := i; j < s.blockEnd; j++ {
 		s.addMatches(j)
 	}
-	log.Printf("Sequencer: end collect %d matches", len(s.matches))
 	n = (&optimizer{
 		blk:         blk,
 		p:           s.data[s.w : s.w+n],
@@ -298,6 +325,5 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 		flags:       flags,
 	}).sequence()
 	s.w += n
-	log.Printf("s.w: %d", s.w)
 	return n, nil
 }

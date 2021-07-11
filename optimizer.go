@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"log"
 	"sort"
 )
 
@@ -186,11 +185,8 @@ func (o *optimizer) addMatch(i int, matchLen uint32, offset uint32) {
 }
 
 func (o *optimizer) sequence() int {
-	log.Printf("optimizer.sequence: len(o.m)=%d start", len(o.m))
-	defer log.Printf("optimizer.sequence: stop")
 	n := len(o.p)
 	o.m = reduceMatches(o.m, n)
-	log.Printf("optimizer.sequence: len(o.m)=%d reduced", len(o.m))
 	// Now we need to manage a life set and a slice of struc
 	var l bitset
 	// index into m
@@ -278,7 +274,5 @@ func (o *optimizer) sequence() int {
 	o.blk.Sequences = sequences
 	o.blk.Literals = literals
 
-	log.Printf("optimizer: %d sequences, %d literals", len(sequences),
-		len(literals))
 	return n
 }

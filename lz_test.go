@@ -94,54 +94,52 @@ func TestSequencers(t *testing.T) {
 		name string
 		cfg  SequencerConfigurator
 	}{
-		/*
-			{
-				name: "HashSequencer-3",
-				cfg: HSConfig{
-					InputLen:   3,
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
+		{
+			name: "HashSequencer-3",
+			cfg: HSConfig{
+				InputLen:   3,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
 			},
-			{
-				name: "BackwardHashSequencer-3",
-				cfg: BHSConfig{
-					InputLen:   3,
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
+		},
+		{
+			name: "BackwardHashSequencer-3",
+			cfg: BHSConfig{
+				InputLen:   3,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
 			},
-			{
-				name: "DoubleHashSequencer-3,8",
-				cfg: DHSConfig{
-					InputLen1:  3,
-					InputLen2:  8,
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
+		},
+		{
+			name: "DoubleHashSequencer-3,8",
+			cfg: DHSConfig{
+				InputLen1:  3,
+				InputLen2:  8,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
 			},
-			{
-				name: "BDHSequencer-3,8",
-				cfg: BDHSConfig{
-					InputLen1:  3,
-					InputLen2:  8,
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
+		},
+		{
+			name: "BDHSequencer-3,8",
+			cfg: BDHSConfig{
+				InputLen1:  3,
+				InputLen2:  8,
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
 			},
-			{
-				name: "GSASequencer",
-				cfg: GSASConfig{
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
+		},
+		{
+			name: "GSASequencer",
+			cfg: GSASConfig{
+				WindowSize: 8 << 20,
+				ShrinkSize: 32 << 10,
+				MaxSize:    8 << 20,
 			},
-		*/
+		},
 		{
 			name: "OSASequencer",
 			cfg: OSASConfig{
@@ -161,6 +159,7 @@ func TestSequencers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
+			hOrig := sha256.New()
 			h := sha256.New()
 			winSize := ws.WindowSize()
 			d, err := NewDecoder(h, DConfig{
@@ -172,9 +171,11 @@ func TestSequencers(t *testing.T) {
 
 			s := Wrap(bytes.NewReader(data), ws)
 
+			n := 0
 			var blk Block
 			for {
-				_, err := s.Sequence(&blk, 0)
+
+				k, err := s.Sequence(&blk, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -182,11 +183,24 @@ func TestSequencers(t *testing.T) {
 					t.Fatalf("s.Sequencer error %s",
 						err)
 				}
+				hOrig.Write(data[n : n+k])
+				n += k
+				sumOrig := hOrig.Sum(nil)
 
 				_, _, _, err = d.WriteBlock(blk)
 				if err != nil {
 					t.Fatalf("d.WriteBlock error %s",
 						err)
+				}
+
+				if err = d.Flush(); err != nil {
+					t.Fatalf("d.Flush() error %s", err)
+				}
+
+				sum := h.Sum(nil)
+
+				if !bytes.Equal(sumOrig, sum) {
+					t.Fatalf("error in block")
 				}
 			}
 

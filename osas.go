@@ -130,7 +130,7 @@ type OptimalSuffixArraySequencer struct {
 
 	budget int
 
-	matches []match
+	matches matchMap
 }
 
 // BlockSize returns the block size.
@@ -227,65 +227,68 @@ func (s *OptimalSuffixArraySequencer) sort() {
 
 // matches identifies the matches at postion s.saPos + i.
 func (s *OptimalSuffixArraySequencer) addMatches(i int) {
-	matchLen := s.blockEnd - i
-	// maximal number of matches for this position
-	n := (s.budget - len(s.matches)) / matchLen
-	a := uint32(i + s.saPos - s.w)
-	jup := int(s.isa[i])
-	mlup := matchLen
-	jdown := int(s.isa[i]) - 1
-	mldown := matchLen
-	for {
-		for mlup >= mldown {
-			if jup >= len(s.sa)-1 {
-				mlup = 0
-				break
+	/*
+		matchLen := s.blockEnd - i
+		// maximal number of matches for this position
+		n := (s.budget - len(s.matches)) / matchLen
+		a := uint32(i + s.saPos - s.w)
+		jup := int(s.isa[i])
+		mlup := matchLen
+		jdown := int(s.isa[i]) - 1
+		mldown := matchLen
+		for {
+			for mlup >= mldown {
+				if jup >= len(s.sa)-1 {
+					mlup = 0
+					break
+				}
+				if int(s.lcp[jup]) < mlup {
+					mlup = int(s.lcp[jup])
+				}
+				if mlup < s.minMatchLen {
+					break
+				}
+				jup++
+				offset := i - int(s.sa[jup])
+				if !(0 < offset && offset <= s.windowSize) {
+					continue
+				}
+				s.matches = append(s.matches,
+					match{a: a, b: a + uint32(mlup), o: uint32(offset)})
+				n--
+				if n <= 0 {
+					return
+				}
 			}
-			if int(s.lcp[jup]) < mlup {
-				mlup = int(s.lcp[jup])
+			for mldown >= mlup {
+				if jdown < 0 {
+					mldown = 0
+					break
+				}
+				if int(s.lcp[jdown]) < mldown {
+					mldown = int(s.lcp[jdown])
+				}
+				if mldown < s.minMatchLen {
+					break
+				}
+				offset := i - int(s.sa[jdown])
+				jdown--
+				if !(0 < offset && offset <= s.windowSize) {
+					continue
+				}
+				s.matches = append(s.matches,
+					match{a: a, b: a + uint32(mldown), o: uint32(offset)})
+				n--
+				if n <= 0 {
+					return
+				}
 			}
-			if mlup < s.minMatchLen {
-				break
-			}
-			jup++
-			offset := i - int(s.sa[jup])
-			if !(0 < offset && offset <= s.windowSize) {
-				continue
-			}
-			s.matches = append(s.matches,
-				match{a: a, b: a + uint32(mlup), o: uint32(offset)})
-			n--
-			if n <= 0 {
+			if mldown < s.minMatchLen && mlup < s.minMatchLen {
 				return
 			}
 		}
-		for mldown >= mlup {
-			if jdown < 0 {
-				mldown = 0
-				break
-			}
-			if int(s.lcp[jdown]) < mldown {
-				mldown = int(s.lcp[jdown])
-			}
-			if mldown < s.minMatchLen {
-				break
-			}
-			offset := i - int(s.sa[jdown])
-			jdown--
-			if !(0 < offset && offset <= s.windowSize) {
-				continue
-			}
-			s.matches = append(s.matches,
-				match{a: a, b: a + uint32(mldown), o: uint32(offset)})
-			n--
-			if n <= 0 {
-				return
-			}
-		}
-		if mldown < s.minMatchLen && mlup < s.minMatchLen {
-			return
-		}
-	}
+	*/
+	panic("TODO")
 }
 
 func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {

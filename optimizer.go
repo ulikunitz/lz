@@ -9,6 +9,44 @@ type match struct {
 	m, o uint32
 }
 
+func mergeMatches(out, a, b []match) []match {
+	for {
+		if len(a) == 0 {
+			return append(out, b...)
+		}
+		if len(b) == 0 {
+			return append(out, a...)
+		}
+		x, y := a[0], b[0]
+		for {
+			switch {
+			case x.m > y.m:
+				out = append(out, x)
+				a = a[1:]
+				if len(a) == 0 {
+					return append(out, b...)
+				}
+				x = a[0]
+				continue
+			case x.m < y.m:
+				out = append(out, y)
+				b = b[1:]
+				if len(b) == 0 {
+					return append(out, a...)
+				}
+				y = a[0]
+				continue
+			case x.o < y.o:
+				out = append(out, x)
+			default:
+				out = append(out, y)
+			}
+			a, b = a[1:], b[1:]
+			break
+		}
+	}
+}
+
 type matchMap [][]match
 
 type optrec struct {

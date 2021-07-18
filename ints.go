@@ -1,5 +1,10 @@
 package lz
 
+const (
+	intSize = 32 << (^uint(0) >> 63)
+	maxInt  = 1<<(intSize-1) - 1
+)
+
 // iverson converts a bool into an integer. The function will be inlined without
 // without jumps.
 func iverson64(f bool) int64 {

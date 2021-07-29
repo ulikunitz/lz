@@ -1,5 +1,10 @@
 package lz
 
+import (
+	"fmt"
+	"math"
+)
+
 // We have to rethink this again.
 //
 // We keep it simply we maintain a descending list of matches (m, o) for each
@@ -9,43 +14,7 @@ type match struct {
 	m, o uint32
 }
 
-func mergeMatches(out, a, b []match) []match {
-	for {
-		if len(a) == 0 {
-			return append(out, b...)
-		}
-		if len(b) == 0 {
-			return append(out, a...)
-		}
-		x, y := a[0], b[0]
-		for {
-			switch {
-			case x.m > y.m:
-				out = append(out, x)
-				a = a[1:]
-				if len(a) == 0 {
-					return append(out, b...)
-				}
-				x = a[0]
-				continue
-			case x.m < y.m:
-				out = append(out, y)
-				b = b[1:]
-				if len(b) == 0 {
-					return append(out, a...)
-				}
-				y = a[0]
-				continue
-			case x.o < y.o:
-				out = append(out, x)
-			default:
-				out = append(out, y)
-			}
-			a, b = a[1:], b[1:]
-			break
-		}
-	}
-}
+
 
 type matchMap [][]match
 
@@ -58,7 +27,7 @@ type optrec struct {
 type optimizer struct {
 	blk         *Block
 	p           []byte
-	m           [][]match
+	m           matchMap
 	cost        costFn
 	minMatchLen uint32
 	flags       int
@@ -68,54 +37,98 @@ type optimizer struct {
 type costFn func(offset, matchLen uint32) uint32
 
 func (o *optimizer) sequence() int {
-	/*
-		n := len(o.p)
+	n := len(o.p)
+	if len(o.m) != n {
+		panic(fmt.Errorf("len(o.m)=%d != len(o.p)=%d",
+			len(o.m), len(o.p)))
+	}
 
-		// reconstruct seq and handle literals
-		o.m = o.m[:0]
-		i := n
-		for i > 0 {
-			r := o.a[i]
-			o.m = append(o.m, match{b: r.matchLen, o: r.off})
-			i -= int(r.matchLen)
-		}
-		if i < 0 {
-			panic("matchLen issue")
-		}
+	if n+1 < cap(o.a) {
+		o.a = o.a[:n+1]
+	} else {
+		o.a = make([]optrec, n+1)
+	}
+	for i := range o.a {
+		o.a[i] = optrec{c: math.MaxUint32}
+	}
 
-		sequences := o.blk.Sequences[:0]
-		literals := o.blk.Literals[:0]
-		var seq Seq
-		i = 0
-		for j := len(o.m) - 1; j >= 0; j-- {
-			u := o.m[j]
-			if u.o == 0 {
-				seq.LitLen += u.b
-				k = i + int(u.b)
-				literals = append(literals, o.p[i:k]...)
-				i = k
-			} else {
-				seq.Offset = u.o
-				seq.MatchLen = u.b
-				i += int(u.b)
-				sequences = append(sequences, seq)
-				seq = Seq{}
+	// TODO: optimize, extend current match and stop if current match
+	// doesn't update costs; don't do the initial stuff
+	for i, m := range o.m {
+		ml := uint32(n + 1 - i)
+		off := uint32(0)
+		r := o.a[i]
+		for _, x := range m {
+			for ; ml > x.m; ml-- {
+				c := r.c + o.cost(off, ml)
+				p := &o.a[i+int(ml)]
+				if c < p.c {
+					*p = optrec{c: c, matchLen: ml,
+						off: off}
+				}
+			}
+			off = x.o
+		}
+		for ; ml >= o.minMatchLen; ml-- {
+			c := r.c + o.cost(off, ml)
+			p := &o.a[i+int(ml)]
+			if c < p.c {
+				*p = optrec{c: c, matchLen: ml, off: off}
 			}
 		}
-
-		if seq.LitLen > 0 {
-			if o.flags&NoTrailingLiterals != 0 {
-				literals = literals[:len(literals)-int(seq.LitLen)]
-			} else {
-				sequences = append(sequences, seq)
+		off = 0
+		for ; ml > 0; ml-- {
+			c := r.c + o.cost(off, ml)
+			p := &o.a[i+int(ml)]
+			if c < p.c {
+				*p = optrec{c: c, matchLen: ml, off: off}
 			}
 		}
+	}
 
-		o.blk.Sequences = sequences
-		o.blk.Literals = literals
+	m := o.m[0][:0]
 
-		return n
-	*/
+	// reconstruct seq and handle literals
+	i := n
+	for i > 0 {
+		r := o.a[i]
+		m = append(m, match{m: r.matchLen, o: r.off})
+		i -= int(r.matchLen)
+	}
+	if i < 0 {
+		panic("matchLen issue")
+	}
 
-	panic("TODO")
+	sequences := o.blk.Sequences[:0]
+	literals := o.blk.Literals[:0]
+	var seq Seq
+	i = 0
+	for j := len(m) - 1; j >= 0; j-- {
+		u := m[j]
+		if u.o == 0 {
+			seq.LitLen += u.m
+			k := i + int(u.m)
+			literals = append(literals, o.p[i:k]...)
+			i = k
+		} else {
+			seq.Offset = u.o
+			seq.MatchLen = u.m
+			i += int(u.m)
+			sequences = append(sequences, seq)
+			seq = Seq{}
+		}
+	}
+
+	if seq.LitLen > 0 {
+		if o.flags&NoTrailingLiterals != 0 {
+			literals = literals[:len(literals)-int(seq.LitLen)]
+		} else {
+			sequences = append(sequences, seq)
+		}
+	}
+
+	o.blk.Sequences = sequences
+	o.blk.Literals = literals
+
+	return n
 }

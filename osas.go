@@ -130,6 +130,9 @@ type OptimalSuffixArraySequencer struct {
 
 	budget int
 
+	m       []match
+	a       []match
+	b       []match
 	matches matchMap
 }
 
@@ -226,12 +229,17 @@ func (s *OptimalSuffixArraySequencer) sort() {
 	}
 }
 
-// matches identifies the matches at postion s.saPos + i.
-func (s *OptimalSuffixArraySequencer) addMatches(i int) {
-	var m []match
+func (s *OptimalSuffixArraySequencer) getMatches(m []match, i int) (n int) {
+	var a []match
+	if len(m) <= cap(s.a) {
+		a = s.a[:len(m)]
+	} else {
+		s.a = make([]match, len(m))
+		a = s.a
+	}
+	k := 0
 	offset := s.windowSize + 1
 	matchLen := s.blockEnd - i
-	// ignore budget
 	j := int(s.isa[i])
 	for j < len(s.sa)-1 {
 		if int(s.lcp[j]) < matchLen {
@@ -246,13 +254,26 @@ func (s *OptimalSuffixArraySequencer) addMatches(i int) {
 			continue
 		}
 		offset = o
-		if len(m) > 0 && m[len(m)-1].m == uint32(matchLen) {
-			m[len(m)-1].o = uint32(offset)
+		if k > 0 && a[k-1].m == uint32(matchLen) {
+			a[k-1].o = uint32(offset)
+			continue
 		}
-		m = append(m, match{m: uint32(matchLen), o: uint32(offset)})
+		a[k] = match{m: uint32(matchLen), o: uint32(offset)}
+		k++
+		if k >= len(a) {
+			break
+		}
 	}
-	a := m
-	m = m[len(m):]
+	a = a[:k]
+
+	var b []match
+	if len(m) <= cap(s.b) {
+		a = s.b[:len(m)]
+	} else {
+		s.b = make([]match, len(m))
+		b = s.b
+	}
+	k = 0
 	offset = s.windowSize + 1
 	matchLen = s.blockEnd - i
 	j = int(s.isa[i]) - 1
@@ -269,13 +290,69 @@ func (s *OptimalSuffixArraySequencer) addMatches(i int) {
 			continue
 		}
 		offset = o
-		if len(m) > 0 && m[len(m)-1].m == uint32(matchLen) {
-			m[len(m)-1].o = uint32(offset)
+		if len(b) > 0 && b[k-1].m == uint32(matchLen) {
+			b[k-1].o = uint32(offset)
+			continue
 		}
-		m = append(m, match{m: uint32(matchLen), o: uint32(offset)})
+		b[k] = match{m: uint32(matchLen), o: uint32(offset)}
+		k++
+		if k >= len(a) {
+			break
+		}
 	}
-	p := &s.matches[i-s.w]
-	*p = mergeMatches((*p)[0:], a, m)
+	b = b[:k]
+
+	for {
+		if len(a) == 0 {
+			n += copy(m[n:], b)
+			return n
+		}
+		if len(b) == 0 {
+			n += copy(m[n:], a)
+			return n
+		}
+		x, y := a[0], b[0]
+		for {
+			switch {
+			case x.m > y.m:
+				m[n] = x
+				n++
+				if n >= len(m) {
+					return n
+				}
+				a = a[1:]
+				if len(a) == 0 {
+					n += copy(m[n:], b)
+					return n
+				}
+				x = a[0]
+				continue
+			case x.m < y.m:
+				m[n] = y
+				n++
+				if n >= len(m) {
+					return n
+				}
+				b = b[1:]
+				if len(b) == 0 {
+					n += copy(m[n:], a)
+					return n
+				}
+				y = a[0]
+				continue
+			case x.o < y.o:
+				m[n] = x
+			default:
+				m[n] = y
+			}
+			n++
+			if n >= len(m) {
+				return n
+			}
+			a, b = a[1:], b[1:]
+			break
+		}
+	}
 }
 
 func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
@@ -302,8 +379,19 @@ func (s *OptimalSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, er
 	}
 	s.blockEnd = i + n
 
+	s.matches = s.matches[:n]
+	var m []match
+	if s.budget <= cap(s.m) {
+		m = s.m[:s.budget]
+	} else {
+		s.m = make([]match, s.budget)
+		m = s.m
+	}
 	for j := i; j < s.blockEnd; j++ {
-		s.addMatches(j)
+		k := len(m) / (s.blockEnd - j)
+		k = s.getMatches(m[:k], j)
+		s.matches[j-i] = m[:k:k]
+		m = m[k:]
 	}
 	n = (&optimizer{
 		blk:         blk,

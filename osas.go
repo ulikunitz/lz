@@ -290,13 +290,13 @@ func (s *OptimalSuffixArraySequencer) getMatches(m []match, i int) (n int) {
 			continue
 		}
 		offset = o
-		if len(b) > 0 && b[k-1].m == uint32(matchLen) {
+		if k > 0 && b[k-1].m == uint32(matchLen) {
 			b[k-1].o = uint32(offset)
 			continue
 		}
 		b[k] = match{m: uint32(matchLen), o: uint32(offset)}
 		k++
-		if k >= len(a) {
+		if k >= len(b) {
 			break
 		}
 	}

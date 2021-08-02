@@ -14,8 +14,6 @@ type match struct {
 	m, o uint32
 }
 
-
-
 type matchMap [][]match
 
 type optrec struct {
@@ -36,6 +34,27 @@ type optimizer struct {
 
 type costFn func(offset, matchLen uint32) uint32
 
+func (o *optimizer) add(i int, off, ml uint32) bool {
+	p := &o.a[i+int(ml)]
+	q := o.a[i]
+	r := optrec{off: off}
+	if q.off == off {
+		r.matchLen = q.matchLen + ml
+		r.c = o.a[i-int(q.matchLen)].c + o.cost(off, r.matchLen)
+		if r.c <= p.c {
+			*p = r
+			return true
+		}
+	}
+	r.c = q.c + o.cost(off, ml)
+	if r.c <= p.c {
+		r.matchLen = ml
+		*p = r
+		return true
+	}
+	return false
+}
+
 func (o *optimizer) sequence() int {
 	n := len(o.p)
 	if len(o.m) != n {
@@ -48,41 +67,30 @@ func (o *optimizer) sequence() int {
 	} else {
 		o.a = make([]optrec, n+1)
 	}
-	for i := range o.a {
-		o.a[i] = optrec{c: math.MaxUint32}
+	for i := 1; i < len(o.a); i++ {
+		o.a[i].c = math.MaxUint32
 	}
 
-	// TODO: optimize, extend current match and stop if current match
-	// doesn't update costs; don't do the initial stuff
 	for i, m := range o.m {
-		ml := uint32(n + 1 - i)
-		off := uint32(0)
-		r := o.a[i]
-		for _, x := range m {
-			for ; ml > x.m; ml-- {
-				c := r.c + o.cost(off, ml)
-				p := &o.a[i+int(ml)]
-				if c < p.c {
-					*p = optrec{c: c, matchLen: ml,
-						off: off}
+		for j, x := range m {
+			var mlEnd uint32
+			if j+1 >= len(m) {
+				mlEnd = o.minMatchLen - 1
+			} else {
+				mlEnd = m[j+1].m
+			}
+			for ml := x.m; ml > mlEnd; ml-- {
+				if !o.add(i, x.o, ml) {
+					break
 				}
 			}
-			off = x.o
 		}
-		for ; ml >= o.minMatchLen; ml-- {
-			c := r.c + o.cost(off, ml)
-			p := &o.a[i+int(ml)]
-			if c < p.c {
-				*p = optrec{c: c, matchLen: ml, off: off}
-			}
+		ml := o.minMatchLen - 1
+		if int(ml) > n-i {
+			ml = uint32(n - i)
 		}
-		off = 0
 		for ; ml > 0; ml-- {
-			c := r.c + o.cost(off, ml)
-			p := &o.a[i+int(ml)]
-			if c < p.c {
-				*p = optrec{c: c, matchLen: ml, off: off}
-			}
+			o.add(i, 0, ml)
 		}
 	}
 

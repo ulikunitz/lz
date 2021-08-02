@@ -219,7 +219,7 @@ func TestSequencers(t *testing.T) {
 }
 
 func TestSequencersSimple(t *testing.T) {
-	const str = "=====FoobardeFoobarde======"
+	const str = "=====foofoobarfoobar bartender======"
 	tests := []struct {
 		name string
 		cfg  SequencerConfigurator
@@ -295,6 +295,7 @@ func TestSequencersSimple(t *testing.T) {
 				t.Fatalf("NewDecoder error %s", err)
 			}
 
+			t.Logf("%q", data)
 			s := Wrap(bytes.NewReader(data), ws)
 
 			var blk Block
@@ -307,6 +308,9 @@ func TestSequencersSimple(t *testing.T) {
 					t.Fatalf("s.Sequencer error %s",
 						err)
 				}
+
+				t.Logf("sequences: %+v", blk.Sequences)
+				t.Logf("literals: %q", blk.Literals)
 
 				_, _, _, err = d.WriteBlock(blk)
 				if err != nil {

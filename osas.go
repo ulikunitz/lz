@@ -268,7 +268,7 @@ func (s *OptimalSuffixArraySequencer) getMatches(m []match, i int) (n int) {
 
 	var b []match
 	if len(m) <= cap(s.b) {
-		a = s.b[:len(m)]
+		b = s.b[:len(m)]
 	} else {
 		s.b = make([]match, len(m))
 		b = s.b

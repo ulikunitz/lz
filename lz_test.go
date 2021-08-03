@@ -646,3 +646,79 @@ func TestGSASSimple(t *testing.T) {
 	}
 	t.Logf("g: %q", g)
 }
+
+func TestOSAS(t *testing.T) {
+	const enwik7 = "testdata/enwik7"
+	cfg := OSASConfig{
+		WindowSize: 8 << 20,
+		MaxSize:    8 << 20,
+	}
+	f, err := os.Open(enwik7)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", enwik7, err)
+	}
+	data := make([]byte, 500*1024)
+	if _, err := io.ReadFull(f, data); err != nil {
+		t.Fatalf("io.ReadFull(f, data) error %s", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("f.Close() error %s", err)
+	}
+	hd := sha256.New()
+	hd.Write(data)
+	sumData := hd.Sum(nil)
+	ws := newTestSequencer(t, cfg)
+	hOrig := sha256.New()
+	h := sha256.New()
+	winSize := ws.WindowSize()
+	d, err := NewDecoder(h, DConfig{
+		WindowSize: winSize,
+		MaxSize:    2 * winSize})
+	if err != nil {
+		t.Fatalf("NewDecoder error %s", err)
+	}
+
+	s := Wrap(bytes.NewReader(data), ws)
+
+	n := 0
+	var blk Block
+	for {
+
+		k, err := s.Sequence(&blk, 0)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("s.Sequencer error %s",
+				err)
+		}
+		hOrig.Write(data[n : n+k])
+		n += k
+		sumOrig := hOrig.Sum(nil)
+
+		_, _, _, err = d.WriteBlock(blk)
+		if err != nil {
+			t.Fatalf("d.WriteBlock error %s",
+				err)
+		}
+
+		if err = d.Flush(); err != nil {
+			t.Fatalf("d.Flush() error %s", err)
+		}
+
+		sum := h.Sum(nil)
+
+		if !bytes.Equal(sumOrig, sum) {
+			t.Fatalf("error in block")
+		}
+	}
+
+	if err = d.Flush(); err != nil {
+		t.Fatalf("d.Flush() error %s", err)
+	}
+
+	sum := h.Sum(nil)
+	if !bytes.Equal(sum, sumData) {
+		t.Fatalf("hash Is %x; want %x", sum, sumData)
+	}
+}

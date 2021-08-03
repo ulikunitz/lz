@@ -140,14 +140,16 @@ func TestSequencers(t *testing.T) {
 				MaxSize:    8 << 20,
 			},
 		},
-		{
-			name: "OSASequencer",
-			cfg: OSASConfig{
-				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
+		/*
+			{
+				name: "OSASequencer",
+				cfg: OSASConfig{
+					WindowSize: 8 << 20,
+					ShrinkSize: 32 << 10,
+					MaxSize:    8 << 20,
+				},
 			},
-		},
+		*/
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {

@@ -10,17 +10,6 @@ import (
 	"testing"
 )
 
-/* Test is broken due to memory requirements.
-func newTestOSAS(tb testing.TB, cfg OSASConfig) *OptimalSuffixArraySequencer {
-	s, err := NewOptimalSuffixArraySequencer(cfg)
-	if err != nil {
-		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
-			cfg, err)
-	}
-	return s
-}
-*/
-
 func newTestSequencer(tb testing.TB, cfg SequencerConfigurator) WriteSequencer {
 	s, err := cfg.NewWriteSequencer()
 	if err != nil {

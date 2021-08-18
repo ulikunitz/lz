@@ -3,6 +3,7 @@ package lz
 import (
 	"fmt"
 	"math/bits"
+	"reflect"
 )
 
 // BDHSConfig provides the confifuration parameters for the DoubleHashSequencer.
@@ -133,6 +134,15 @@ type BackwardDoubleHashSequencer struct {
 	pos uint32
 
 	blockSize int
+}
+
+// MemSize returns the consumed memory size by the sequencer.
+func (s *BackwardDoubleHashSequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += s.seqBuffer.additionalMemSize()
+	n += s.h1.additionalMemSize()
+	n += s.h2.additionalMemSize()
+	return n
 }
 
 // BlockSize provides the block size of the sequencer.

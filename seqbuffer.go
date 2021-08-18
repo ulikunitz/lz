@@ -16,6 +16,10 @@ type seqBuffer struct {
 	shrinkSize int
 }
 
+func (s *seqBuffer) additionalMemSize() uintptr {
+	return uintptr(cap(s.data))
+}
+
 // Init initializes the buffer.
 func (s *seqBuffer) Init(windowSize, max, shrink int) error {
 	if !(windowSize >= 1) {

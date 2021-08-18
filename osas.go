@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"reflect"
 
 	"github.com/ulikunitz/lz/suffix"
 )
@@ -134,6 +135,22 @@ type OptimalSuffixArraySequencer struct {
 	a       []match
 	b       []match
 	matches matchMap
+}
+
+func (s *OptimalSuffixArraySequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += s.seqBuffer.additionalMemSize()
+	n += uintptr(cap(s.sa)) * reflect.TypeOf(int32(0)).Size()
+	n += uintptr(cap(s.isa)) * reflect.TypeOf(int32(0)).Size()
+	n += uintptr(cap(s.lcp)) * reflect.TypeOf(int32(0)).Size()
+	n += uintptr(cap(s.m)) * reflect.TypeOf(match{}).Size()
+	n += uintptr(cap(s.a)) * reflect.TypeOf(match{}).Size()
+	n += uintptr(cap(s.b)) * reflect.TypeOf(match{}).Size()
+	for _, m := range s.matches {
+		n += reflect.TypeOf(m).Size()
+		n += uintptr(cap(m)) * reflect.TypeOf(match{}).Size()
+	}
+	return n
 }
 
 // BlockSize returns the block size.

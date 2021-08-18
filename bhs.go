@@ -3,6 +3,7 @@ package lz
 import (
 	"fmt"
 	"math/bits"
+	"reflect"
 )
 
 // BHSConfig provides the parameters for the backward hash sequencer.
@@ -103,6 +104,14 @@ type BackwardHashSequencer struct {
 	pos uint32
 
 	blockSize int
+}
+
+// MemSize returns the consumed memory size by the sequencer.
+func (s *BackwardHashSequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += s.seqBuffer.additionalMemSize()
+	n += s.hash.additionalMemSize()
+	return n
 }
 
 // NewBackwardHashSequencer creates a new backward hash sequencer.

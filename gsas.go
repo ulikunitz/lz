@@ -3,6 +3,7 @@ package lz
 import (
 	"fmt"
 	"math"
+	"reflect"
 
 	"github.com/ulikunitz/lz/suffix"
 )
@@ -105,6 +106,14 @@ type GreedySuffixArraySequencer struct {
 
 	blockSize   int
 	minMatchLen int
+}
+
+// MemSize returns the consumed memory size by the
+func (s *GreedySuffixArraySequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += uintptr(cap(s.sa)) * reflect.TypeOf(int32(0)).Size()
+	n += uintptr(cap(s.isa)) * reflect.TypeOf(int32(0)).Size()
+	return n
 }
 
 // BlockSize returns the block size supported by the sequencer.

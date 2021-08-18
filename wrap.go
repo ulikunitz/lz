@@ -2,6 +2,7 @@ package lz
 
 import (
 	"io"
+	"reflect"
 )
 
 // Wrap combines a reader and a WriteSequencer and makes a Sequencer. The user
@@ -16,6 +17,16 @@ func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
 type WrappedSequencer struct {
 	r    io.Reader
 	wseq WriteSequencer
+}
+
+type memSizer interface {
+	MemSize() uintptr
+}
+
+func (s *WrappedSequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += s.wseq.(memSizer).MemSize()
+	return n
 }
 
 // Sequence creates a block of sequences but reads the required data from the

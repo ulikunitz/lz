@@ -1,6 +1,9 @@
 package lz
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
 // hashEntry is used for hashEntry. The value field allows a fast check whether
 // a match has been found, which is cache-optimized.
@@ -14,6 +17,10 @@ type hash struct {
 	mask     uint64
 	shift    uint
 	inputLen int
+}
+
+func (h *hash) additionalMemSize() uintptr {
+	return uintptr(cap(h.table)) * reflect.TypeOf(hashEntry{}).Size()
 }
 
 func (h *hash) init(inputLen, hashBits int) error {

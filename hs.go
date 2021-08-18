@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
+	"reflect"
 )
 
 const maxUint32 = 1<<32 - 1
@@ -19,6 +20,13 @@ type HashSequencer struct {
 	pos uint32
 
 	blockSize int
+}
+
+func (s *HashSequencer) MemSize() uintptr {
+	n := reflect.TypeOf(*s).Size()
+	n += s.seqBuffer.additionalMemSize()
+	n += s.hash.additionalMemSize()
+	return n
 }
 
 // BlockSize returns the block size supported by the sequencer.

@@ -23,7 +23,7 @@ type OSASConfig struct {
 	MinMatchLen int
 	// function for computing the costs of a match or literal string if
 	// offset is zero in bits. Note these costs are independent of position.
-	Cost func(offset, matchLen uint32) uint32
+	Cost func(offset, matchLen uint32) uint32 `json:"-"`
 	// MatchesPerPos provide the numer of matches that should be generated
 	// per position in a block.
 	MatchesPerPos int

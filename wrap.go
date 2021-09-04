@@ -23,6 +23,7 @@ type memSizer interface {
 	MemSize() uintptr
 }
 
+// MemSize returns the memory consumption of the wrapped sequencer.
 func (s *WrappedSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.wseq.(memSizer).MemSize()

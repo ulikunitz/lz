@@ -194,8 +194,9 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	// Ensure that we can use _getLE64 all the time.
 	k := b + 8
 	if k > cap(s.data) {
-		var z [8]byte
-		s.data = append(s.data, z[:k-n]...)[:n]
+		z := make([]byte, len(s.data), k)
+		copy(z, s.data)
+		s.data = z
 	}
 	_p := s.data[:k]
 
@@ -250,9 +251,9 @@ func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	// Ensure that we can use _getLE64 all the time.
 	k := int(inputEnd + 8)
 	if k > cap(s.data) {
-		var z [8]byte
-		m := len(s.data)
-		s.data = append(s.data, z[:k-m]...)[:m]
+		z := make([]byte, len(s.data), k)
+		copy(z, s.data)
+		s.data = z
 	}
 	_p := s.data[:k]
 

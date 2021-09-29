@@ -70,7 +70,15 @@ func (s *seqBuffer) Write(p []byte) (n int, err error) {
 		p = p[:n]
 		err = ErrFullBuffer
 	}
-	s.data = append(s.data, p...)
+	n = len(s.data)+len(p)
+	if n > cap(s.data) {
+		z := make([]byte, n)
+		copy(z, s.data)
+		copy(z[len(s.data):], p)
+		s.data = z
+	} else {
+		s.data = append(s.data, p...)
+	}
 	return len(p), err
 }
 

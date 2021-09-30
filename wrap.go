@@ -37,6 +37,8 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	if r := s.wseq.Requested(); r > 0 {
 		// We are reading as much bytes as we can. Copy returns nil if
 		// s.r has reached io.EOF.
+		// Copy requires the seqBuffer ReadFrom method. io.Copy works
+		// incorrect with Write.
 		_, err = io.Copy(s.wseq, s.r)
 	}
 	var serr error

@@ -122,7 +122,7 @@ func (cfg BDHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
 	return NewBackwardDoubleHashSequencer(cfg)
 }
 
-// BackwardDoubleHashSequencer uses two hashes and tries to extend extensions
+// BackwardDoubleHashSequencer uses two hashes and tries to extend matches
 // backward.
 type BackwardDoubleHashSequencer struct {
 	seqBuffer
@@ -224,8 +224,7 @@ func (s *BackwardDoubleHashSequencer) hashSegment1(a, b int) {
 
 	k := e1 + 8
 	if k > cap(s.data) {
-		var z [8]byte
-		s.data = append(s.data, z[:k-n]...)[:n]
+		s.extend(k)
 	}
 	_p := s.data[:k]
 
@@ -251,8 +250,7 @@ func (s *BackwardDoubleHashSequencer) hashSegment2(a, b int) {
 
 	k := e2 + 8
 	if k > cap(s.data) {
-		var z [8]byte
-		s.data = append(s.data, z[:k-n]...)[:n]
+		s.extend(k)
 	}
 	_p := s.data[:k]
 
@@ -302,9 +300,7 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 	// Ensure that we can use _getLE64 all the time.
 	k := int(e1 + 8)
 	if k > cap(s.data) {
-		var z [8]byte
-		m := len(s.data)
-		s.data = append(s.data, z[:k-m]...)[:m]
+		s.extend(k)
 	}
 	_p := s.data[:k]
 

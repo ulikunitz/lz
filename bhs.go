@@ -186,8 +186,7 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 	// Ensure that we can use _getLE64 all the time.
 	k := b + 8
 	if k > cap(s.data) {
-		var z [8]byte
-		s.data = append(s.data, z[:k-n]...)[:n]
+		s.extend(k)
 	}
 	_p := s.data[:k]
 
@@ -237,9 +236,7 @@ func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 	// Ensure that we can use _getLE64 all the time.
 	k := int(inputEnd + 8)
 	if k > cap(s.data) {
-		var z [8]byte
-		m := len(s.data)
-		s.data = append(s.data, z[:k-m]...)[:m]
+		s.extend(k)
 	}
 	_p := s.data[:k]
 

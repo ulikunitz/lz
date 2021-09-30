@@ -70,7 +70,7 @@ func (s *seqBuffer) Write(p []byte) (n int, err error) {
 		p = p[:n]
 		err = ErrFullBuffer
 	}
-	n = len(s.data)+len(p)
+	n = len(s.data) + len(p)
 	if n > cap(s.data) {
 		z := make([]byte, n)
 		copy(z, s.data)
@@ -146,4 +146,14 @@ func (s *seqBuffer) Shrink() int {
 	s.data = s.data[:len(s.data)-r]
 	s.w -= r
 	return r
+}
+
+// extend increases the capacity of the data slice.
+func (s *seqBuffer) extend(n int) {
+	if n <= cap(s.data) {
+		return
+	}
+	data := make([]byte, len(s.data), n)
+	copy(data, s.data)
+	s.data = data
 }

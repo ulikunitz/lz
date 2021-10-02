@@ -153,9 +153,6 @@ func (s *OptimalSuffixArraySequencer) MemSize() uintptr {
 	return n
 }
 
-// BlockSize returns the block size.
-func (s *OptimalSuffixArraySequencer) BlockSize() int { return s.blockSize }
-
 func NewOptimalSuffixArraySequencer(cfg OSASConfig) (s *OptimalSuffixArraySequencer, err error) {
 	s = new(OptimalSuffixArraySequencer)
 	err = s.Init(cfg)

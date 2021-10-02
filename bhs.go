@@ -123,9 +123,6 @@ func NewBackwardHashSequencer(cfg BHSConfig) (s *BackwardHashSequencer, err erro
 	return &t, nil
 }
 
-// BlockSize returns the block size supported by the sequencer.
-func (s *BackwardHashSequencer) BlockSize() int { return s.blockSize }
-
 // Init initialzes the backward hash sequencer. It returns an error if there is an issue
 // with the configuration parameters.
 func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {

@@ -145,11 +145,6 @@ func (s *BackwardDoubleHashSequencer) MemSize() uintptr {
 	return n
 }
 
-// BlockSize provides the block size of the sequencer.
-func (s *BackwardDoubleHashSequencer) BlockSize() int {
-	return s.blockSize
-}
-
 // NewBackwardDoubleHashSequencer creates a new sequencer. If the configuration
 // is invalid an error will be returned.
 func NewBackwardDoubleHashSequencer(cfg BDHSConfig) (s *BackwardDoubleHashSequencer, err error) {

@@ -29,9 +29,6 @@ func (s *HashSequencer) MemSize() uintptr {
 	return n
 }
 
-// BlockSize returns the block size supported by the sequencer.
-func (s *HashSequencer) BlockSize() int { return s.blockSize }
-
 // HSConfig provides the configuration parameters for the
 // HashSequencer.
 //

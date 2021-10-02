@@ -147,9 +147,6 @@ func (s *DoubleHashSequencer) MemSize() uintptr {
 	return n
 }
 
-// BlockSize returns the block size supported by the sequencer.
-func (s *DoubleHashSequencer) BlockSize() int { return s.blockSize }
-
 // NewDoubleHashSequencer allocates a new DoubleHashSequencer value and
 // initializes it. The function returns the first error found in the
 // configuration.

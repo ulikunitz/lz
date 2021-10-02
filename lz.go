@@ -82,7 +82,6 @@ type Sequencer interface {
 type WriteSequencer interface {
 	io.Writer
 	WindowSize() int
-	BlockSize() int
 	Requested() int
 	Reset()
 	Sequencer

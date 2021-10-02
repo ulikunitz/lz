@@ -116,9 +116,6 @@ func (s *GreedySuffixArraySequencer) MemSize() uintptr {
 	return n
 }
 
-// BlockSize returns the block size supported by the sequencer.
-func (s *GreedySuffixArraySequencer) BlockSize() int { return s.blockSize }
-
 // NewGreedySuffixArraySeqeuncer creates a new value using the provided
 // configuration. If the configuration has inconsistencies an error will be
 // returned and the value of the return value s will be nil.

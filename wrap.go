@@ -5,10 +5,10 @@ import (
 	"reflect"
 )
 
-// Wrap combines a reader and a WriteSequencer and makes a Sequencer. The user
+// Wrap combines a reader and a InputSequencer and makes a Sequencer. The user
 // doesn't need to take care of filling the Sequencer with additional data. The
 // returned sequencer returns EOF if no further data is available.
-func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
+func Wrap(r io.Reader, wseq InputSequencer) *WrappedSequencer {
 	return &WrappedSequencer{r: r, wseq: wseq}
 }
 
@@ -16,7 +16,7 @@ func Wrap(r io.Reader, wseq WriteSequencer) *WrappedSequencer {
 // method and reads the data required automatically from the stored reader.
 type WrappedSequencer struct {
 	r    io.Reader
-	wseq WriteSequencer
+	wseq InputSequencer
 }
 
 type memSizer interface {
@@ -34,7 +34,7 @@ func (s *WrappedSequencer) MemSize() uintptr {
 // reader if necessary. The function returns io.EOF if no further data is
 // available.
 func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
-	if r := s.wseq.Requested(); r > 0 {
+	if r := s.wseq.RequestBuffer(); r > 0 {
 		// We are reading as much bytes as we can. Copy returns nil if
 		// s.r has reached io.EOF.
 		// Copy requires the seqBuffer ReadFrom method. io.Copy works

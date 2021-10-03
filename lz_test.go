@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-func newTestSequencer(tb testing.TB, cfg SequencerConfigurator) WriteSequencer {
-	s, err := cfg.NewWriteSequencer()
+func newTestSequencer(tb testing.TB, cfg SequencerConfigurator) InputSequencer {
+	s, err := cfg.NewInputSequencer()
 	if err != nil {
 		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
 			cfg, err)

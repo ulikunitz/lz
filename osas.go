@@ -107,7 +107,7 @@ func (cfg *OSASConfig) ApplyDefaults() {
 	}
 }
 
-func (cfg OSASConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+func (cfg OSASConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewOptimalSuffixArraySequencer(cfg)
 }
 
@@ -191,7 +191,7 @@ func (s *OptimalSuffixArraySequencer) Reset() {
 	s.isa = s.isa[:0]
 }
 
-func (s *OptimalSuffixArraySequencer) Requested() int {
+func (s *OptimalSuffixArraySequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

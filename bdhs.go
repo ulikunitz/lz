@@ -117,8 +117,8 @@ func (cfg *BDHSConfig) ApplyDefaults() {
 	}
 }
 
-// NewWriteSequencer creates a new DoubleHashSequencer.
-func (cfg BDHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+// NewInputSequencer creates a new DoubleHashSequencer.
+func (cfg BDHSConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewBackwardDoubleHashSequencer(cfg)
 }
 
@@ -189,9 +189,9 @@ func (s *BackwardDoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
-// Requested returns the number of bytes that should be written into the
+// RequestBuffer returns the number of bytes that should be written into the
 // sequencer.
-func (s *BackwardDoubleHashSequencer) Requested() int {
+func (s *BackwardDoubleHashSequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

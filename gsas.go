@@ -80,7 +80,7 @@ func (cfg *GSASConfig) ApplyDefaults() {
 	}
 }
 
-func (cfg GSASConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+func (cfg GSASConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewGreedySuffixArraySeqeuncer(cfg)
 }
 
@@ -158,10 +158,10 @@ func (s *GreedySuffixArraySequencer) Reset() {
 	s.bits.clear()
 }
 
-// Requested returns the number of bytes the sequencer should be provided with
+// RequestBuffer returns the number of bytes the sequencer should be provided with
 // not to run in an error for the new Sequence call. The suffix array may be
 // reset if the buffer is changed.
-func (s *GreedySuffixArraySequencer) Requested() int {
+func (s *GreedySuffixArraySequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

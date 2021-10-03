@@ -22,8 +22,8 @@ type BHSConfig struct {
 	InputLen int
 }
 
-// NewWriteSequencer create a new backward hash sequencer.
-func (cfg BHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+// NewInputSequencer create a new backward hash sequencer.
+func (cfg BHSConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewBackwardHashSequencer(cfg)
 }
 
@@ -152,9 +152,9 @@ func (s *BackwardHashSequencer) Reset() {
 	s.pos = 0
 }
 
-// Requested provides the number of bytes that the sequencer requests to be
+// RequestBuffer provides the number of bytes that the sequencer requests to be
 // filled.
-func (s *BackwardHashSequencer) Requested() int {
+func (s *BackwardHashSequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

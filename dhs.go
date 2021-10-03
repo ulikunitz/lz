@@ -117,8 +117,8 @@ func (cfg *DHSConfig) ApplyDefaults() {
 	}
 }
 
-// NewWriteSequencer creates a new DoubleHashSequencer.
-func (cfg DHSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+// NewInputSequencer creates a new DoubleHashSequencer.
+func (cfg DHSConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewDoubleHashSequencer(cfg)
 }
 
@@ -190,10 +190,10 @@ func (s *DoubleHashSequencer) Reset() {
 	s.pos = 0
 }
 
-// Requested answers the question whether data needs to be provided to the
+// RequestBuffer answers the question whether data needs to be provided to the
 // sequencer. If no data is need 0 will be returned and otherwise the number of
 // bytes that can be added to the internal buffer of the sequencer.
-func (s *DoubleHashSequencer) Requested() int {
+func (s *DoubleHashSequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

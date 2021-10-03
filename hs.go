@@ -117,8 +117,8 @@ func (cfg *HSConfig) Verify() error {
 	return nil
 }
 
-// NewWriteSequencer creates a new hash sequencer.
-func (cfg HSConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+// NewInputSequencer creates a new hash sequencer.
+func (cfg HSConfig) NewInputSequencer() (s InputSequencer, err error) {
 	return NewHashSequencer(cfg)
 }
 
@@ -161,9 +161,9 @@ func (s *HashSequencer) Reset() {
 	s.pos = 0
 }
 
-// Requested provides the number of bytes that the sequencer requests to be
+// RequestBuffer provides the number of bytes that the sequencer requests to be
 // provided.
-func (s *HashSequencer) Requested() int {
+func (s *HashSequencer) RequestBuffer() int {
 	r := s.blockSize - s.buffered()
 	if r <= 0 {
 		return 0

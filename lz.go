@@ -73,16 +73,17 @@ type Sequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
 }
 
-// WriteSequencer buffers the data to generate LZ77 sequences for. It has
-// additional methods required to work with a WrappedSequencer. Requested
-// provides the number of bytes that can be written to the WriteSequencer.
+// InputSequencer buffers the data to generate LZ77 sequences for. It has
+// additional methods required to work with a WrappedSequencer. RequestBuffer
+// provides the number of bytes that can be written to the InputSequencer.
 //
 // The Sequence method will return ErrEmptyBuffer if no data is avaialble in the
 // sequencer buffer.
-type WriteSequencer interface {
+type InputSequencer interface {
 	io.Writer
+	io.ReaderFrom
 	WindowSize() int
-	Requested() int
+	RequestBuffer() int
 	Reset()
 	Sequencer
 }
@@ -90,14 +91,14 @@ type WriteSequencer interface {
 // SequencerConfigurator defines a general interface for sequencer
 // configurations. The different Sequencers have all different configuration
 // parameters and require their own configuration. All configuration types must
-// support the NewWriteSequencer method.
+// support the NewInputSequencer method.
 //
 // Using pattern language that is obviously a factory, but we support multiple
 // factories. A configuration structure like HashSequencerConfig creates only
 // HashSequencers but the general SequencerConfig structure can build different
-// WriteSequencer.
+// InputSequencer.
 type SequencerConfigurator interface {
-	NewWriteSequencer() (s WriteSequencer, err error)
+	NewInputSequencer() (s InputSequencer, err error)
 }
 
 // SequencerConfig provides a general method to create sequencers.
@@ -121,10 +122,10 @@ type SequencerConfig struct {
 	MaxBlockSize int
 }
 
-// NewWriteSequencer creates a new sequencer according to the parameters
+// NewInputSequencer creates a new sequencer according to the parameters
 // provided. The function will only return an error the parameters are negative
 // but otherwise always try to satisfy the requirements. If memory size is zero
 // the memory budget will be 8 MByte.
-func (cfg SequencerConfig) NewWriteSequencer() (s WriteSequencer, err error) {
+func (cfg SequencerConfig) NewInputSequencer() (s InputSequencer, err error) {
 	panic("TODO")
 }

@@ -22,6 +22,7 @@ type HashSequencer struct {
 	blockSize int
 }
 
+// MemSize returns the the memory that the HashSequencer occupies.
 func (s *HashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.seqBuffer.additionalMemSize()

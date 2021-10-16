@@ -138,7 +138,7 @@ type DoubleHashSequencer struct {
 	blockSize int
 }
 
-// MemSize returns the consumed memory size by the
+// MemSize returns the consumed memory size by the data structure.
 func (s *DoubleHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.seqBuffer.additionalMemSize()

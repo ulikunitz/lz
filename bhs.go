@@ -64,7 +64,8 @@ func (cfg *BHSConfig) Verify() error {
 	}
 	if !(cfg.WindowSize <= cfg.MaxSize) {
 		return fmt.Errorf(
-			"lz: WindowSize=%d; must be less than MaxSize=%d",
+			"lz: WindowSize=%d; "+
+				"must be less or equal than MaxSize=%d",
 			cfg.WindowSize, cfg.MaxSize)
 	}
 	if !(cfg.ShrinkSize < cfg.MaxSize) {

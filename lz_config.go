@@ -105,9 +105,9 @@ type hsParams struct {
 
 func findHSParams(p []hsParams, m int) hsParams {
 	a := 0
-	b := len(p)
+	b := len(p) - 1
 	for a < b {
-		i := (a + b) / 2
+		i := (a + b + 1) / 2
 		if m < p[i].memSize {
 			b = i - 1
 			continue
@@ -127,9 +127,9 @@ type dhsParams struct {
 
 func findDHSParams(p []dhsParams, m int) dhsParams {
 	a := 0
-	b := len(p)
+	b := len(p) - 1
 	for a < b {
-		i := (a + b) / 2
+		i := (a + b + 1) / 2
 		if m < p[i].memSize {
 			b = i - 1
 			continue

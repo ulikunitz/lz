@@ -88,7 +88,7 @@ type InputSequencer interface {
 	Sequencer
 }
 
-// SequencerConfigurator defines a general interface for sequencer
+// Configurator defines a general interface for sequencer
 // configurations. The different Sequencers have all different configuration
 // parameters and require their own configuration. All configuration types must
 // support the NewInputSequencer method.
@@ -97,35 +97,6 @@ type InputSequencer interface {
 // factories. A configuration structure like HashSequencerConfig creates only
 // HashSequencers but the general SequencerConfig structure can build different
 // InputSequencer.
-type SequencerConfigurator interface {
+type Configurator interface {
 	NewInputSequencer() (s InputSequencer, err error)
-}
-
-// SequencerConfig provides a general method to create sequencers.
-type SequencerConfig struct {
-	// MemoryBudget specifies the memory budget in bytes for the sequencer. The
-	// budget controls how much memory the sequencer has for the window size and the
-	// match search data structures. It doesn't control temporary memory
-	// allocations. It is a budget, so it can be overdrawn, right?
-	MemoryBudget int
-	// Effort is scale from 1 to 10 controlling the CPU consumption. A
-	// sequencer with an effort of 1 might be extremely fast but will have a
-	// worse compression ratio. The default effort is 6 and will provide a
-	// reasonable compromise between compression speed and compression
-	// ratio. Effort 10 will provide the best compression ratio but will
-	// require a higher compression ratio but will be very slow.
-	Effort int
-	// MaxBlockSize defines a maximum block size. Note that the configurator
-	// might create a smaller block size to fit the match search data
-	// structures into the memory budget. The main consumer is ZStandard
-	// which has a maximum block size of 128 kByte.
-	MaxBlockSize int
-}
-
-// NewInputSequencer creates a new sequencer according to the parameters
-// provided. The function will only return an error the parameters are negative
-// but otherwise always try to satisfy the requirements. If memory size is zero
-// the memory budget will be 8 MByte.
-func (cfg SequencerConfig) NewInputSequencer() (s InputSequencer, err error) {
-	panic("TODO")
 }

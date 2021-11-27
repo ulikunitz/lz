@@ -29,22 +29,19 @@ type Config struct {
 // is set to 2 MB, the effort to 5 and the block size to 128 kByte unless no
 // other non-zero values have been set.
 func (cfg *Config) ApplyDefaults() {
-	if cfg.MemoryBudget == 0 {
-		cfg.MemoryBudget = cfg.WindowSize + 2*1024*1024
-	}
 	if cfg.Effort == 0 {
 		cfg.Effort = 5
 	}
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * 1024
 	}
-	// WindowSize stays 0 if none is given
+	// WindowSize and MemoryBudget stays 0 if none is given
 }
 
 // Verify checks the configuration for errors. Use ApplyDefaults before this
 // function because it doesn't support zero values in all cases.
 func (cfg *Config) Verify() error {
-	if cfg.MemoryBudget <= 0 {
+	if cfg.MemoryBudget < 0 {
 		return fmt.Errorf("lz: cfg.MemoryBudget must be positive")
 	}
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
@@ -63,12 +60,102 @@ func (cfg *Config) Verify() error {
 	return nil
 }
 
-// computeConfig computes the configuration extremely fast.
-func computeConfig(cfg *Config) (c Configurator, err error) {
-	panic("TODO")
+var memoryBudgetTable = []int{
+	1: 768 * kb,
+	2: 2 * mb,
+	3: 768 * kb,
+	4: 2 * mb,
+	5: 768 * kb,
+	6: 2 * mb,
+	7: 8 * mb,
+	8: 768 * kb,
+	9: 8 * mb,
 }
 
-func computeConfigWindow(cfg *Config) (c Configurator, err error) {
+// computeConfig computes the configuration extremely fast.
+func computeConfig(cfg Config) (c Configurator, err error) {
+	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
+		return nil, fmt.Errorf("lz: effort %d not supported",
+			cfg.Effort)
+	}
+	if cfg.MemoryBudget == 0 {
+		cfg.MemoryBudget = memoryBudgetTable[cfg.Effort]
+	}
+	switch cfg.Effort {
+	case 1, 2:
+		hsParams := findHSParams(hsParameters, cfg.MemoryBudget)
+		hscfg := HSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen:  hsParams.inputLen,
+			HashBits:  hsParams.bits,
+		}
+		hscfg.WindowSize = cfg.MemoryBudget - (1<<hscfg.HashBits)*8
+		hscfg.MaxSize = hscfg.WindowSize
+		if hscfg.WindowSize < 64*kb {
+			hscfg.ShrinkSize = hscfg.WindowSize / 2
+		} else {
+			hscfg.ShrinkSize = 32 * kb
+		}
+		return &hscfg, nil
+	case 3, 4:
+		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget)
+		bhscfg := BHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen:  hsParams.inputLen,
+			HashBits:  hsParams.bits,
+		}
+		bhscfg.WindowSize = cfg.MemoryBudget - (1<<bhscfg.HashBits)*8
+		bhscfg.MaxSize = bhscfg.WindowSize
+		if bhscfg.WindowSize < 64*kb {
+			bhscfg.ShrinkSize = bhscfg.WindowSize / 2
+		} else {
+			bhscfg.ShrinkSize = 32 * kb
+		}
+		return &bhscfg, nil
+	case 5, 6, 7:
+		dhsParams := findDHSParams(dhsParameters, cfg.MemoryBudget)
+		dhscfg := DHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen1: dhsParams.inputLen1,
+			HashBits1: dhsParams.bits1,
+			InputLen2: dhsParams.inputLen2,
+			HashBits2: dhsParams.bits2,
+		}
+		dhscfg.WindowSize = cfg.MemoryBudget -
+			(1<<dhscfg.HashBits1)*8 -
+			(1<<dhscfg.HashBits2)*8
+		dhscfg.MaxSize = dhscfg.WindowSize
+		if dhscfg.WindowSize < 64*kb {
+			dhscfg.ShrinkSize = dhscfg.WindowSize / 2
+		} else {
+			dhscfg.ShrinkSize = 32 * kb
+		}
+		return &dhscfg, nil
+	case 8, 9:
+		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget)
+		bdhscfg := BDHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen1: bdhsParams.inputLen1,
+			HashBits1: bdhsParams.bits1,
+			InputLen2: bdhsParams.inputLen2,
+			HashBits2: bdhsParams.bits2,
+		}
+		bdhscfg.WindowSize = cfg.MemoryBudget -
+			(1<<bdhscfg.HashBits1)*8 -
+			(1<<bdhscfg.HashBits2)*8
+		bdhscfg.MaxSize = bdhscfg.WindowSize
+		if bdhscfg.WindowSize < 64*kb {
+			bdhscfg.ShrinkSize = bdhscfg.WindowSize / 2
+		} else {
+			bdhscfg.ShrinkSize = 32 * kb
+		}
+		return &bdhscfg, nil
+	default:
+		panic("unreachable")
+	}
+}
+
+func computeConfigWindow(cfg Config) (c Configurator, err error) {
 	panic("TODO")
 }
 
@@ -78,9 +165,9 @@ func (cfg Config) computeConfig() (c Configurator, err error) {
 		return nil, err
 	}
 	if cfg.WindowSize == 0 {
-		return computeConfig(&cfg)
+		return computeConfig(cfg)
 	}
-	return computeConfigWindow(&cfg)
+	return computeConfigWindow(cfg)
 
 }
 
@@ -95,7 +182,10 @@ func (cfg *Config) NewInputSequencer() (s InputSequencer, err error) {
 	return c.NewInputSequencer()
 }
 
-const kb = 1024
+const (
+	kb = 1024
+	mb = 1024 * 1024
+)
 
 type hsParams struct {
 	memSize  int

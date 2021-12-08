@@ -1,6 +1,8 @@
 package lz
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Config provides a general method to create sequencers.
 type Config struct {
@@ -83,7 +85,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 	}
 	switch cfg.Effort {
 	case 1, 2:
-		hsParams := findHSParams(hsParameters, cfg.MemoryBudget)
+		hsParams := findHSParams(hsParameters, cfg.MemoryBudget,
+			memSizeHS)
 		hscfg := HSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen:  hsParams.inputLen,
@@ -98,7 +101,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 		}
 		return &hscfg, nil
 	case 3, 4:
-		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget)
+		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget,
+			memSizeHS)
 		bhscfg := BHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen:  hsParams.inputLen,
@@ -113,7 +117,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 		}
 		return &bhscfg, nil
 	case 5, 6, 7:
-		dhsParams := findDHSParams(dhsParameters, cfg.MemoryBudget)
+		dhsParams := findDHSParams(dhsParameters, cfg.MemoryBudget,
+			memSizeDHS)
 		dhscfg := DHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen1: dhsParams.inputLen1,
@@ -132,7 +137,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 		}
 		return &dhscfg, nil
 	case 8, 9:
-		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget)
+		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget,
+			memSizeDHS)
 		bdhscfg := BDHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen1: bdhsParams.inputLen1,
@@ -155,8 +161,92 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 	}
 }
 
+// computeConfigWindow computes the configuration for a given window size.
 func computeConfigWindow(cfg Config) (c Configurator, err error) {
-	panic("TODO")
+	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
+		return nil, fmt.Errorf("lz: effort %d not supported",
+			cfg.Effort)
+	}
+	if cfg.MemoryBudget == 0 {
+		cfg.MemoryBudget = cfg.WindowSize +
+			memoryBudgetTable[cfg.Effort]
+	}
+	b := cfg.WindowSize + 1024
+	if b > cfg.MemoryBudget {
+		cfg.MemoryBudget = b
+	}
+	switch cfg.Effort {
+	case 1, 2:
+		p := windowHS(hsWinParameters, cfg.WindowSize)
+		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
+		hscfg := HSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen:  hsParams.inputLen,
+			HashBits:  hsParams.bits,
+		}
+		hscfg.WindowSize = cfg.WindowSize
+		hscfg.MaxSize = hscfg.WindowSize
+		if hscfg.WindowSize < 64*kb {
+			hscfg.ShrinkSize = hscfg.WindowSize / 2
+		} else {
+			hscfg.ShrinkSize = 32 * kb
+		}
+		return &hscfg, nil
+	case 3, 4:
+		p := windowHS(bhsWinParameters, cfg.WindowSize)
+		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
+		bhscfg := BHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen:  hsParams.inputLen,
+			HashBits:  hsParams.bits,
+		}
+		bhscfg.WindowSize = cfg.WindowSize
+		bhscfg.MaxSize = bhscfg.WindowSize
+		if bhscfg.WindowSize < 64*kb {
+			bhscfg.ShrinkSize = bhscfg.WindowSize / 2
+		} else {
+			bhscfg.ShrinkSize = 32 * kb
+		}
+		return &bhscfg, nil
+	case 5, 6, 7:
+		p := windowDHS(dhsWinParameters, cfg.WindowSize)
+		dhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
+		dhscfg := DHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen1: dhsParams.inputLen1,
+			HashBits1: dhsParams.bits1,
+			InputLen2: dhsParams.inputLen2,
+			HashBits2: dhsParams.bits2,
+		}
+		dhscfg.WindowSize = cfg.WindowSize
+		dhscfg.MaxSize = dhscfg.WindowSize
+		if dhscfg.WindowSize < 64*kb {
+			dhscfg.ShrinkSize = dhscfg.WindowSize / 2
+		} else {
+			dhscfg.ShrinkSize = 32 * kb
+		}
+		return &dhscfg, nil
+	case 8, 9:
+		p := windowDHS(bdhsWinParameters, cfg.WindowSize)
+		bdhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
+		bdhscfg := BDHSConfig{
+			BlockSize: cfg.BlockSize,
+			InputLen1: bdhsParams.inputLen1,
+			HashBits1: bdhsParams.bits1,
+			InputLen2: bdhsParams.inputLen2,
+			HashBits2: bdhsParams.bits2,
+		}
+		bdhscfg.WindowSize = cfg.WindowSize
+		bdhscfg.MaxSize = bdhscfg.WindowSize
+		if bdhscfg.WindowSize < 64*kb {
+			bdhscfg.ShrinkSize = bdhscfg.WindowSize / 2
+		} else {
+			bdhscfg.ShrinkSize = 32 * kb
+		}
+		return &bdhscfg, nil
+	default:
+		panic("unreachable")
+	}
 }
 
 func (cfg Config) computeConfig() (c Configurator, err error) {
@@ -188,39 +278,31 @@ const (
 )
 
 type hsParams struct {
-	memSize  int
+	size     int
 	inputLen int
 	bits     int
 }
 
-func findHSParams(p []hsParams, m int) hsParams {
-	a := 0
-	b := len(p) - 1
-	for a < b {
-		i := (a + b + 1) / 2
-		if m < p[i].memSize {
-			b = i - 1
-			continue
-		}
-		a = i
-	}
-	return p[a]
-}
-
 type dhsParams struct {
-	memSize   int
+	size      int
 	inputLen1 int
 	bits1     int
 	inputLen2 int
 	bits2     int
 }
 
-func findDHSParams(p []dhsParams, m int) dhsParams {
+func memSizeHS(p hsParams) int { return p.size }
+
+func memSizeHSWin(p hsParams) int {
+	return (1<<p.bits)*8 + 161 - p.inputLen + p.size
+}
+
+func findHSParams(p []hsParams, m int, mem func(hsParams) int) hsParams {
 	a := 0
 	b := len(p) - 1
 	for a < b {
 		i := (a + b + 1) / 2
-		if m < p[i].memSize {
+		if m < mem(p[i]) {
 			b = i - 1
 			continue
 		}
@@ -229,66 +311,86 @@ func findDHSParams(p []dhsParams, m int) dhsParams {
 	return p[a]
 }
 
-var hsParameters = []hsParams{
-	{64 * kb, 3, 11},
-	{128 * kb, 3, 13},
-	{256 * kb, 3, 14},
-	{384 * kb, 3, 15},
-	{640 * kb, 3, 16},
-	{2048 * kb, 4, 17},
-	{4096 * kb, 4, 18},
-	{5120 * kb, 5, 18},
-	{6144 * kb, 5, 19},
-	{13312 * kb, 5, 20},
-	{25600 * kb, 5, 21},
-	{50176 * kb, 5, 22},
+func memSizeDHS(p dhsParams) int { return p.size }
+
+func memSizeDHSWin(p dhsParams) int {
+	return ((1<<p.bits1)+(1<<p.bits2))*8 + 207 + p.size
 }
 
-var bhsParameters = []hsParams{
-	{64 * kb, 3, 11},
-	{128 * kb, 3, 13},
-	{256 * kb, 3, 14},
-	{384 * kb, 3, 15},
-	{960 * kb, 3, 16},
-	{2048 * kb, 4, 17},
-	{4096 * kb, 4, 18},
-	{5120 * kb, 5, 18},
-	{7168 * kb, 5, 19},
-	{14336 * kb, 5, 20},
-	{27548 * kb, 5, 21},
-	{54272 * kb, 5, 22},
+func findDHSParams(p []dhsParams, m int, mem func(dhsParams) int) dhsParams {
+	a := 0
+	b := len(p) - 1
+	for a < b {
+		i := (a + b + 1) / 2
+		if m < mem(p[i]) {
+			b = i - 1
+			continue
+		}
+		a = i
+	}
+	return p[a]
 }
 
-var dhsParameters = []dhsParams{
-	{64 * kb, 2, 10, 4, 11},
-	{128 * kb, 2, 11, 5, 13},
-	{192 * kb, 2, 12, 5, 13},
-	{256 * kb, 2, 12, 5, 14},
-	{320 * kb, 3, 13, 6, 14},
-	{384 * kb, 3, 14, 6, 14},
-	{512 * kb, 3, 15, 6, 14},
-	{640 * kb, 3, 15, 7, 15},
-	{2048 * kb, 3, 16, 7, 16},
-	{3072 * kb, 3, 16, 7, 17},
-	{4068 * kb, 3, 16, 7, 18},
-	{9216 * kb, 3, 16, 8, 19},
-	{16384 * kb, 3, 16, 8, 20},
-	{27684 * kb, 3, 16, 8, 21},
-	{65536 * kb, 3, 16, 8, 22},
+func windowHS(p []hsParams, winSize int) []hsParams {
+	if len(p) == 0 {
+		return nil
+	}
+	if winSize < p[0].size {
+		winSize = p[0].size
+	}
+	a, b := 0, len(p)
+	for a < b {
+		i := (a + b) / 2
+		s := p[i].size
+		if winSize < s {
+			b = i
+			continue
+		}
+		a = i + 1
+	}
+	v := a
+	a, b = 0, v-1
+	winSize = p[b].size
+	for a < b {
+		i := (a + b) / 2
+		s := p[i].size
+		if s < winSize {
+			a = i + 1
+			continue
+		}
+		b = i
+	}
+	return p[a:v]
 }
 
-var bdhsParameters = []dhsParams{
-	{64 * kb, 2, 10, 4, 11},
-	{128 * kb, 2, 11, 5, 13},
-	{256 * kb, 2, 11, 5, 14},
-	{320 * kb, 3, 13, 6, 14},
-	{512 * kb, 3, 14, 7, 15},
-	{640 * kb, 3, 15, 7, 15},
-	{2048 * kb, 3, 15, 7, 17},
-	{4096 * kb, 3, 15, 7, 18},
-	{6144 * kb, 3, 16, 7, 18},
-	{8192 * kb, 3, 16, 8, 19},
-	{14336 * kb, 3, 16, 8, 20},
-	{27548 * kb, 3, 16, 8, 21},
-	{54278 * kb, 3, 16, 8, 22},
+func windowDHS(p []dhsParams, winSize int) []dhsParams {
+	if len(p) == 0 {
+		return nil
+	}
+	if winSize < p[0].size {
+		winSize = p[0].size
+	}
+	a, b := 0, len(p)
+	for a < b {
+		i := (a + b) / 2
+		s := p[i].size
+		if winSize < s {
+			b = i
+			continue
+		}
+		a = i + 1
+	}
+	v := a
+	a, b = 0, v-1
+	winSize = p[b].size
+	for a < b {
+		i := (a + b) / 2
+		s := p[i].size
+		if s < winSize {
+			a = i + 1
+			continue
+		}
+		b = i
+	}
+	return p[a:v]
 }

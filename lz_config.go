@@ -55,7 +55,7 @@ func (cfg *Config) Verify() error {
 	if cfg.WindowSize < 0 {
 		return fmt.Errorf("lz: cfg.WindowSize must be non-negative")
 	}
-	if cfg.WindowSize > cfg.MemoryBudget {
+	if cfg.MemoryBudget > 0 && cfg.WindowSize > cfg.MemoryBudget {
 		return fmt.Errorf("lz: memory budget must be larger" +
 			" or equal window size")
 	}
@@ -92,7 +92,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 			InputLen:  hsParams.inputLen,
 			HashBits:  hsParams.bits,
 		}
-		hscfg.WindowSize = cfg.MemoryBudget - (1<<hscfg.HashBits)*8
+		hscfg.WindowSize = cfg.MemoryBudget - (1<<hscfg.HashBits)*8 -
+			161 + hscfg.InputLen
 		hscfg.MaxSize = hscfg.WindowSize
 		if hscfg.WindowSize < 64*kb {
 			hscfg.ShrinkSize = hscfg.WindowSize / 2
@@ -108,7 +109,8 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 			InputLen:  hsParams.inputLen,
 			HashBits:  hsParams.bits,
 		}
-		bhscfg.WindowSize = cfg.MemoryBudget - (1<<bhscfg.HashBits)*8
+		bhscfg.WindowSize = cfg.MemoryBudget - (1<<bhscfg.HashBits)*8 -
+			161 + bhscfg.InputLen
 		bhscfg.MaxSize = bhscfg.WindowSize
 		if bhscfg.WindowSize < 64*kb {
 			bhscfg.ShrinkSize = bhscfg.WindowSize / 2
@@ -126,7 +128,7 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 			InputLen2: dhsParams.inputLen2,
 			HashBits2: dhsParams.bits2,
 		}
-		dhscfg.WindowSize = cfg.MemoryBudget -
+		dhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<dhscfg.HashBits1)*8 -
 			(1<<dhscfg.HashBits2)*8
 		dhscfg.MaxSize = dhscfg.WindowSize
@@ -146,7 +148,7 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 			InputLen2: bdhsParams.inputLen2,
 			HashBits2: bdhsParams.bits2,
 		}
-		bdhscfg.WindowSize = cfg.MemoryBudget -
+		bdhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<bdhscfg.HashBits1)*8 -
 			(1<<bdhscfg.HashBits2)*8
 		bdhscfg.MaxSize = bdhscfg.WindowSize

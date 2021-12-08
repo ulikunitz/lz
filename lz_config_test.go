@@ -57,6 +57,7 @@ func TestComputeConfig(t *testing.T) {
 		{Config{Effort: 1}, "HSConfig"},
 		{Config{Effort: 9}, "BDHSConfig"},
 		{Config{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
+		{Config{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
 	}
 	for _, tc := range tests {
 		c, err := tc.cfg.computeConfig()
@@ -79,7 +80,7 @@ func TestComputeConfig(t *testing.T) {
 		} else {
 			budget = tc.cfg.MemoryBudget
 		}
-		if ms > budget+1024 {
+		if ms > budget {
 			t.Fatalf("memSize: got %d; must be <= %d",
 				ms, tc.cfg.MemoryBudget)
 		}

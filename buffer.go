@@ -10,6 +10,8 @@ import (
 type Buffer struct {
 	data []byte
 
+	start int64
+
 	r int
 
 	windowSize int
@@ -35,8 +37,23 @@ func (buf *Buffer) Init(windowSize, max int) error {
 	return nil
 }
 
+// Pos returns the file position of the window head.
+func (buf *Buffer) Pos() int64 {
+	return buf.start + int64(len(buf.data))
+}
+
+// ByteAtEnd reads the byte with offset i from the end. If it it points outside
+// the window the value returned is 0.
+func (buf *Buffer) ByteAtEnd(i int) byte {
+	if !(0 < i && i <= buf.winLen()) {
+		return 0
+	}
+	return buf.data[len(buf.data)-i]
+}
+
 // Reset puts the buffer into its initial state.
 func (buf *Buffer) Reset() {
+	buf.start = 0
 	buf.data = buf.data[:0]
 	buf.r = 0
 }
@@ -96,6 +113,7 @@ func (buf *Buffer) shrink(n int64) error {
 	if r <= 0 {
 		return nil
 	}
+	buf.start += int64(r)
 	k := copy(buf.data, buf.data[r:])
 	buf.data = buf.data[:k]
 	buf.r -= r
@@ -112,6 +130,17 @@ func (buf *Buffer) Write(p []byte) (n int, err error) {
 	}
 	buf.data = append(buf.data, p...)
 	return len(p), nil
+}
+
+// WriteByte writes a single byte to the buffer and extends the window.
+func (buf *Buffer) WriteByte(c byte) error {
+	if buf.available() < 1 {
+		if err := buf.shrink(int64(1)); err != nil {
+			return err
+		}
+	}
+	buf.data = append(buf.data, c)
+	return nil
 }
 
 func (buf *Buffer) copyMatch(n, off int) {

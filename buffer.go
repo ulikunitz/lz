@@ -43,7 +43,28 @@ func (buf *Buffer) Reset() {
 
 func (buf *Buffer) available() int { return buf.max - len(buf.data) }
 
-func (buf *Buffer) len() int {
+func (buf *Buffer) shrinkable() int {
+	r := len(buf.data) - buf.windowSize
+	if buf.r < r {
+		r = buf.r
+	}
+	if r < 0 {
+		r = 0
+	}
+	return r
+}
+
+// Available provides the amount of data that can be written into the buffer.
+func (buf *Buffer) Available() int {
+	return buf.shrinkable() + buf.available()
+}
+
+// Len returns the number of bytes in the unread portion of the buffer.
+func (buf *Buffer) Len() int {
+	return len(buf.data) - buf.r
+}
+
+func (buf *Buffer) winLen() int {
 	n := len(buf.data)
 	if n > buf.windowSize {
 		n = buf.windowSize
@@ -68,14 +89,8 @@ func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 // shrink moves the window to the front of the buffer if n bytes will be made
 // available. Otherwise ErrFullBuffer will be returned.
 func (buf *Buffer) shrink(n int64) error {
-	r := len(buf.data) - buf.windowSize
-	if r < 0 {
-		r = 0
-	}
-	if buf.r < r {
-		r = buf.r
-	}
-	if int64(buf.available()) < n-int64(r) {
+	r := buf.shrinkable()
+	if int64(buf.available())+int64(r) < n {
 		return ErrFullBuffer
 	}
 	if r <= 0 {
@@ -128,7 +143,7 @@ func (buf *Buffer) WriteMatch(n, offset int) error {
 	if n < 0 {
 		return fmt.Errorf("lz: n=%d; must be >= 0", n)
 	}
-	if k := buf.len(); offset > k {
+	if k := buf.winLen(); offset > k {
 		return fmt.Errorf("lz: offset=%d; should be <= window (%d)",
 			offset, k)
 	}

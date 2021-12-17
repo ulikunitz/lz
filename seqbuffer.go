@@ -1,11 +1,13 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
 
-// seqBuffer provides an basic buffer for creating LZ77 sequences.
+// seqBuffer provides an basic buffer for creating LZ77 sequences. Pos stores
+// the position of the start of the data buffer.
 type seqBuffer struct {
 	data []byte
 
@@ -14,6 +16,8 @@ type seqBuffer struct {
 	windowSize int
 	max        int
 	shrinkSize int
+
+	pos int64
 }
 
 func (s *seqBuffer) additionalMemSize() uintptr {
@@ -48,6 +52,22 @@ func (s *seqBuffer) Init(windowSize, max, shrink int) error {
 func (s *seqBuffer) Reset() {
 	s.data = s.data[:0]
 	s.w = 0
+	s.pos = 0
+}
+
+// Pos returns the position of the window head.
+func (s *seqBuffer) Pos() int64 {
+	return s.pos + int64(s.w)
+}
+
+var errOutside = errors.New("lz: pos outside of buffer")
+
+func (s *seqBuffer) ByteAt(pos int64) (c byte, err error) {
+	pos -= s.pos
+	if !(0 <= pos && pos < int64(len(s.data))) {
+		return 0, errOutside
+	}
+	return s.data[pos], nil
 }
 
 // WindowSize returns the configured window size for the sequencer.
@@ -65,14 +85,24 @@ func (s *seqBuffer) buffered() int {
 // Write writes data into the buffer that will be later processed by the
 // Sequence method.
 func (s *seqBuffer) Write(p []byte) (n int, err error) {
-	n = s.available()
-	if len(p) > n {
-		p = p[:n]
+	a := s.available()
+	if len(p) > a {
+		p = p[:a]
 		err = ErrFullBuffer
 	}
 	n = len(s.data) + len(p)
 	if n > cap(s.data) {
-		z := make([]byte, n)
+		k := 2 * cap(s.data)
+		if k < 1024 {
+			k = 1024
+		}
+		if k > s.max || k < 0 {
+			k = s.max
+		}
+		if n > k {
+			k = n
+		}
+		z := make([]byte, n, k)
 		copy(z, s.data)
 		copy(z[len(s.data):], p)
 		s.data = z
@@ -122,12 +152,8 @@ func (s *seqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 			k = s.max
 		}
 		q := make([]byte, k)
-		// don't copy data before the window starts
-		r := s.w - s.windowSize
-		if r < 0 {
-			r = 0
-		}
-		copy(q[r:], p[r:])
+		// TODO: shrink the buffer to copy less?
+		copy(q, p)
 		p = q
 	}
 	n = int64(i - len(s.data))
@@ -142,9 +168,10 @@ func (s *seqBuffer) Shrink() int {
 	if r < 0 {
 		r = 0
 	}
-	copy(s.data, s.data[r:])
-	s.data = s.data[:len(s.data)-r]
+	k := copy(s.data, s.data[r:])
+	s.data = s.data[:k]
 	s.w -= r
+	s.pos += int64(r)
 	return r
 }
 

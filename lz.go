@@ -76,16 +76,21 @@ type Sequencer interface {
 // InputSequencer buffers the data to generate LZ77 sequences for. It has
 // additional methods required to work with a WrappedSequencer. RequestBuffer
 // provides the number of bytes that can be written to the InputSequencer.
+// ByteAt returns the byte at absolute position pos and returns an error if pos
+// refers to a position outside of the current buffer. Pos returns the absolute
+// position of the window head.
 //
 // The Sequence method will return ErrEmptyBuffer if no data is avaialble in the
 // sequencer buffer.
 type InputSequencer interface {
+	Sequencer
 	io.Writer
 	io.ReaderFrom
 	WindowSize() int
 	RequestBuffer() int
 	Reset()
-	Sequencer
+	Pos() int64
+	ByteAt(pos int64) (c byte, err error)
 }
 
 // Configurator defines a general interface for sequencer

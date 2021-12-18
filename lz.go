@@ -61,15 +61,15 @@ const (
 	NoTrailingLiterals = 1 << iota
 )
 
-// Sequencer transforms byte streams into a block of sequences. The target block
+// OldSequencer transforms byte streams into a block of sequences. The target block
 // size under control of the sequencer. The method returns the actual number of
 // bytes sequences have been generated for. The block can be reused and will be
 // overwritten. If the block is nil k bytes will be skipped and no sequences
 // generated.
 //
-// Sequencer manages an internal buffer that provides a window on the data to be
+// OldSequencer manages an internal buffer that provides a window on the data to be
 // compressed.
-type Sequencer interface {
+type OldSequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
 }
 
@@ -83,7 +83,7 @@ type Sequencer interface {
 // The Sequence method will return ErrEmptyBuffer if no data is avaialble in the
 // sequencer buffer.
 type InputSequencer interface {
-	Sequencer
+	OldSequencer
 	io.Writer
 	io.ReaderFrom
 	WindowSize() int

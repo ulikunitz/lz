@@ -156,24 +156,20 @@ func (w *Window) ByteAt(pos int64) (c byte, err error) {
 // Literals extracts the byte slice of all literals defines by sequence. This
 // command has been introduced to support zstd-like compression.
 func (w *Window) Literals(in []byte, pos int64, seq []Seq) (literals []byte, err error) {
-	ii := pos - w.start
-	if !(0 <= ii && ii < int64(len(w.data))) {
+	i := pos - w.start
+	if !(0 <= i && i < int64(len(w.data))) {
 		return in, errors.New("lz: pos out ouf bounds")
 
 	}
 
 	literals = in
-	i := uint32(ii)
 	for _, s := range seq {
-		j := i + s.LitLen
-		if j > uint32(len(w.data)) || j < i {
+		j := i + int64(s.LitLen)
+		if j > int64(len(w.data)) {
 			return in, errors.New("lz: sequences exceed window buffer")
 		}
 		literals = append(literals, w.data[i:j]...)
-		i = j + s.MatchLen
-		if i < j {
-			return in, errors.New("lz: sequence exceed window buffer")
-		}
+		i = j + int64(s.MatchLen)
 	}
 
 	return literals, nil

@@ -2,11 +2,18 @@ package lz
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"strings"
 	"testing"
 )
 
-func TestWHashSequencer(t *testing.T) {
+func TestHashSequencerSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
+	const blockSize = 512
 
 	var s HashSequencer
 	if err := s.Init(HSConfig{
@@ -24,7 +31,7 @@ func TestWHashSequencer(t *testing.T) {
 	}
 
 	var blk Block
-	n, err = s.Sequence(&blk, 64, 0)
+	n, err = s.Sequence(&blk, blockSize, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}
@@ -73,4 +80,237 @@ func TestWHashSequencer(t *testing.T) {
 		t.Fatalf("uncompressed string %q; want %q", g, str)
 	}
 	t.Logf("g: %q", g)
+}
+
+func TestWrapOldHashSequencer(t *testing.T) {
+	const (
+		windowSize = 1024
+		blockSize  = 512
+		str        = "=====foofoobarfoobar bartender===="
+	)
+
+	ws, err := NewHashSequencer(HSConfig{
+		WindowSize: windowSize,
+		InputLen:   3,
+	})
+	if err != nil {
+		t.Fatalf("NewHashSequencer error %s", err)
+	}
+	s := Wrap(strings.NewReader(str), ws)
+
+	var builder strings.Builder
+	var decoder Decoder
+	decoder.Init(&builder, DConfig{WindowSize: windowSize})
+
+	var blk Block
+	for {
+		if _, err := s.Sequence(&blk, blockSize, 0); err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("s.Sequence error %s", err)
+		}
+		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
+			t.Fatalf("decoder.WriteBlock error %s", err)
+		}
+	}
+	if err := decoder.Flush(); err != nil {
+		t.Fatalf("decoder.Flush error %s", err)
+	}
+
+	g := builder.String()
+	if g != str {
+		t.Fatalf("got string %q; want %q", g, str)
+	}
+}
+
+func TestHashSequencerEnwik7(t *testing.T) {
+	const (
+		enwik7     = "testdata/enwik7"
+		blockSize  = 128 * 1024
+		windowSize = 2*blockSize + 123
+	)
+	f, err := os.Open(enwik7)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", enwik7, err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			t.Fatalf("f.Close() error %s", err)
+		}
+	}()
+	h1 := sha256.New()
+	r := io.TeeReader(f, h1)
+
+	cfg := HSConfig{
+		WindowSize: windowSize,
+		InputLen:   3,
+	}
+	ws, err := NewHashSequencer(cfg)
+	if err != nil {
+		t.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
+	}
+	s := Wrap(r, ws)
+
+	h2 := sha256.New()
+	var decoder Decoder
+	if err = decoder.Init(h2, DConfig{WindowSize: windowSize}); err != nil {
+		t.Fatalf("decoder.Init() error %s", err)
+	}
+
+	var blk Block
+	for {
+		_, err = s.Sequence(&blk, blockSize, 0)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("s.Sequence error %s", err)
+		}
+		if len(blk.Sequences) == 0 {
+			t.Fatalf("s.Sequence doesn't compress")
+		}
+		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
+			t.Fatalf("decoder.WriteBlock error %s", err)
+		}
+	}
+	if err := decoder.Flush(); err != nil {
+		t.Fatalf("decoder.Flush error %s", err)
+	}
+
+	sum1 := h1.Sum(nil)
+	sum2 := h2.Sum(nil)
+
+	if !bytes.Equal(sum1, sum2) {
+		t.Fatalf("decoded hash sum: %x; want %x", sum2, sum1)
+	}
+}
+
+type loopReader struct {
+	r io.ReadSeeker
+}
+
+func (ir *loopReader) Read(p []byte) (n int, err error) {
+	n, err = ir.r.Read(p)
+	if err != io.EOF {
+		return n, err
+	}
+	if _, err = ir.r.Seek(0, io.SeekStart); err != nil {
+		return n, err
+	}
+	if n == len(p) {
+		return n, nil
+	}
+	var k int
+	k, err = ir.r.Read(p[n:])
+	n += k
+	return n, err
+
+}
+
+func newLoopReader(r io.ReadSeeker) *loopReader {
+	return &loopReader{r}
+}
+
+func TestLoopReader(t *testing.T) {
+	const str = "The brown fox jumps ove the lazy dog."
+
+	const size = 128
+	r := io.LimitReader(newLoopReader(strings.NewReader(str)), size)
+
+	var sb strings.Builder
+	n, err := io.Copy(&sb, r)
+	if err != nil {
+		t.Fatalf("io.Copy(&sb, r) error %s", err)
+	}
+	if n != size {
+		t.Fatalf("io.Copy(&sb. r) returne %d; want %d", n, size)
+	}
+	t.Logf("%q", sb.String())
+}
+
+var largeFlag = flag.Bool("large", false, "test large parameters")
+
+func TestLargeParameters(t *testing.T) {
+	if !*largeFlag {
+		t.Skipf("use -large flag to execute test")
+	}
+	if testing.Short() {
+		t.Skipf("test is slow")
+	}
+	const enwik7 = "testdata/enwik7"
+
+	var tests = []struct {
+		filename string
+		size     int64
+		cfg      HSConfig
+	}{
+		{enwik7, 9 << 30, HSConfig{
+			InputLen:   3,
+			WindowSize: 8 << 20,
+		}},
+	}
+
+	const blockSize = 129 << 10
+	for i, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
+			f, err := os.Open(tc.filename)
+			if err != nil {
+				t.Fatalf("os.Open(%q) error %s", tc.filename,
+					err)
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					t.Fatalf("f.Close() error %s", err)
+				}
+			}()
+			r := io.LimitReader(newLoopReader(f), tc.size)
+			ws, err := NewHashSequencer(tc.cfg)
+			if err != nil {
+				t.Fatalf("NewHashSequencer(%+v) error %s",
+					tc.cfg, err)
+			}
+			h1, h2 := sha256.New(), sha256.New()
+			s := Wrap(io.TeeReader(r, h1), ws)
+
+			var d Decoder
+			d.Init(h2, DConfig{WindowSize: tc.cfg.WindowSize})
+
+			var blk Block
+			var n int64
+			for {
+				k, err := s.Sequence(&blk, blockSize, 0)
+				n += int64(k)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("s.Sequence(&blk, 0) error %s",
+						err)
+				}
+
+				if len(blk.Sequences) == 0 {
+					t.Fatalf("no compression")
+				}
+
+				_, _, _, err = d.WriteBlock(blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock(blk) error %s",
+						err)
+				}
+
+			}
+
+			if err = d.Flush(); err != nil {
+				t.Fatalf("d.Flush() error %s", err)
+			}
+
+			s1, s2 := h1.Sum(nil), h2.Sum(nil)
+			if !bytes.Equal(s1, s2) {
+				t.Fatalf("decompressed hash %x; want %x",
+					s1, s2)
+			}
+		})
+	}
 }

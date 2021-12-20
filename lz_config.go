@@ -75,7 +75,7 @@ var memoryBudgetTable = []int{
 }
 
 // computeConfig computes the configuration extremely fast.
-func computeConfig(cfg Config) (c OldConfigurator, err error) {
+func computeConfig(cfg Config) (c Configurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -87,42 +87,27 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 	case 1, 2:
 		hsParams := findHSParams(hsParameters, cfg.MemoryBudget,
 			memSizeHS)
-		hscfg := OHSConfig{
-			BlockSize: cfg.BlockSize,
-			InputLen:  hsParams.inputLen,
-			HashBits:  hsParams.bits,
+		hscfg := HSConfig{
+			InputLen: hsParams.inputLen,
+			HashBits: hsParams.bits,
 		}
 		hscfg.WindowSize = cfg.MemoryBudget - (1<<hscfg.HashBits)*8 -
 			161 + hscfg.InputLen
-		hscfg.MaxSize = hscfg.WindowSize
-		if hscfg.WindowSize < 64*kb {
-			hscfg.ShrinkSize = hscfg.WindowSize / 2
-		} else {
-			hscfg.ShrinkSize = 32 * kb
-		}
 		return &hscfg, nil
 	case 3, 4:
 		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget,
 			memSizeHS)
-		bhscfg := OBHSConfig{
-			BlockSize: cfg.BlockSize,
-			InputLen:  hsParams.inputLen,
-			HashBits:  hsParams.bits,
+		bhscfg := BHSConfig{
+			InputLen: hsParams.inputLen,
+			HashBits: hsParams.bits,
 		}
 		bhscfg.WindowSize = cfg.MemoryBudget - (1<<bhscfg.HashBits)*8 -
 			161 + bhscfg.InputLen
-		bhscfg.MaxSize = bhscfg.WindowSize
-		if bhscfg.WindowSize < 64*kb {
-			bhscfg.ShrinkSize = bhscfg.WindowSize / 2
-		} else {
-			bhscfg.ShrinkSize = 32 * kb
-		}
 		return &bhscfg, nil
 	case 5, 6, 7:
 		dhsParams := findDHSParams(dhsParameters, cfg.MemoryBudget,
 			memSizeDHS)
-		dhscfg := ODHSConfig{
-			BlockSize: cfg.BlockSize,
+		dhscfg := DHSConfig{
 			InputLen1: dhsParams.inputLen1,
 			HashBits1: dhsParams.bits1,
 			InputLen2: dhsParams.inputLen2,
@@ -131,18 +116,11 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 		dhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<dhscfg.HashBits1)*8 -
 			(1<<dhscfg.HashBits2)*8
-		dhscfg.MaxSize = dhscfg.WindowSize
-		if dhscfg.WindowSize < 64*kb {
-			dhscfg.ShrinkSize = dhscfg.WindowSize / 2
-		} else {
-			dhscfg.ShrinkSize = 32 * kb
-		}
 		return &dhscfg, nil
 	case 8, 9:
 		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget,
 			memSizeDHS)
-		bdhscfg := OBDHSConfig{
-			BlockSize: cfg.BlockSize,
+		bdhscfg := BDHSConfig{
 			InputLen1: bdhsParams.inputLen1,
 			HashBits1: bdhsParams.bits1,
 			InputLen2: bdhsParams.inputLen2,
@@ -151,12 +129,6 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 		bdhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<bdhscfg.HashBits1)*8 -
 			(1<<bdhscfg.HashBits2)*8
-		bdhscfg.MaxSize = bdhscfg.WindowSize
-		if bdhscfg.WindowSize < 64*kb {
-			bdhscfg.ShrinkSize = bdhscfg.WindowSize / 2
-		} else {
-			bdhscfg.ShrinkSize = 32 * kb
-		}
 		return &bdhscfg, nil
 	default:
 		panic("unreachable")
@@ -164,7 +136,7 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 }
 
 // computeConfigWindow computes the configuration for a given window size.
-func computeConfigWindow(cfg Config) (c OldConfigurator, err error) {
+func computeConfigWindow(cfg Config) (c Configurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -181,77 +153,49 @@ func computeConfigWindow(cfg Config) (c OldConfigurator, err error) {
 	case 1, 2:
 		p := windowHS(hsWinParameters, cfg.WindowSize)
 		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
-		hscfg := OHSConfig{
-			BlockSize: cfg.BlockSize,
-			InputLen:  hsParams.inputLen,
-			HashBits:  hsParams.bits,
+		hscfg := HSConfig{
+			InputLen: hsParams.inputLen,
+			HashBits: hsParams.bits,
 		}
 		hscfg.WindowSize = cfg.WindowSize
-		hscfg.MaxSize = hscfg.WindowSize
-		if hscfg.WindowSize < 64*kb {
-			hscfg.ShrinkSize = hscfg.WindowSize / 2
-		} else {
-			hscfg.ShrinkSize = 32 * kb
-		}
 		return &hscfg, nil
 	case 3, 4:
 		p := windowHS(bhsWinParameters, cfg.WindowSize)
 		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
-		bhscfg := OBHSConfig{
-			BlockSize: cfg.BlockSize,
-			InputLen:  hsParams.inputLen,
-			HashBits:  hsParams.bits,
+		bhscfg := BHSConfig{
+			InputLen: hsParams.inputLen,
+			HashBits: hsParams.bits,
 		}
 		bhscfg.WindowSize = cfg.WindowSize
-		bhscfg.MaxSize = bhscfg.WindowSize
-		if bhscfg.WindowSize < 64*kb {
-			bhscfg.ShrinkSize = bhscfg.WindowSize / 2
-		} else {
-			bhscfg.ShrinkSize = 32 * kb
-		}
 		return &bhscfg, nil
 	case 5, 6, 7:
 		p := windowDHS(dhsWinParameters, cfg.WindowSize)
 		dhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
-		dhscfg := ODHSConfig{
-			BlockSize: cfg.BlockSize,
+		dhscfg := DHSConfig{
 			InputLen1: dhsParams.inputLen1,
 			HashBits1: dhsParams.bits1,
 			InputLen2: dhsParams.inputLen2,
 			HashBits2: dhsParams.bits2,
 		}
 		dhscfg.WindowSize = cfg.WindowSize
-		dhscfg.MaxSize = dhscfg.WindowSize
-		if dhscfg.WindowSize < 64*kb {
-			dhscfg.ShrinkSize = dhscfg.WindowSize / 2
-		} else {
-			dhscfg.ShrinkSize = 32 * kb
-		}
 		return &dhscfg, nil
 	case 8, 9:
 		p := windowDHS(bdhsWinParameters, cfg.WindowSize)
 		bdhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
-		bdhscfg := OBDHSConfig{
-			BlockSize: cfg.BlockSize,
+		bdhscfg := BDHSConfig{
 			InputLen1: bdhsParams.inputLen1,
 			HashBits1: bdhsParams.bits1,
 			InputLen2: bdhsParams.inputLen2,
 			HashBits2: bdhsParams.bits2,
 		}
 		bdhscfg.WindowSize = cfg.WindowSize
-		bdhscfg.MaxSize = bdhscfg.WindowSize
-		if bdhscfg.WindowSize < 64*kb {
-			bdhscfg.ShrinkSize = bdhscfg.WindowSize / 2
-		} else {
-			bdhscfg.ShrinkSize = 32 * kb
-		}
 		return &bdhscfg, nil
 	default:
 		panic("unreachable")
 	}
 }
 
-func (cfg Config) computeConfig() (c OldConfigurator, err error) {
+func (cfg Config) computeConfig() (c Configurator, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -263,15 +207,15 @@ func (cfg Config) computeConfig() (c OldConfigurator, err error) {
 
 }
 
-// NewInputSequencer creates a new sequencer according to the parameters
+// NewSequencer creates a new sequencer according to the parameters
 // provided. The function will only return an error the parameters are negative
 // but otherwise always try to satisfy the requirements.
-func (cfg *Config) NewInputSequencer() (s InputSequencer, err error) {
+func (cfg *Config) NewSequencer() (s Sequencer, err error) {
 	c, err := cfg.computeConfig()
 	if err != nil {
 		return nil, err
 	}
-	return c.NewInputSequencer()
+	return c.NewSequencer()
 }
 
 const (

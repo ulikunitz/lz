@@ -33,15 +33,16 @@ func TestWindowHS(t *testing.T) {
 	}
 }
 
-func memSize(c OldConfigurator) int {
+// TODO: check the offsets
+func memSize(c Configurator) int {
 	switch p := c.(type) {
-	case *ODHSConfig:
+	case *DHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
-	case *OBDHSConfig:
+	case *BDHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
-	case *OHSConfig:
+	case *HSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
-	case *OBHSConfig:
+	case *BHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
 	default:
 		panic("unexpected type")
@@ -53,11 +54,11 @@ func TestComputeConfig(t *testing.T) {
 		cfg     Config
 		seqType string
 	}{
-		{Config{}, "ODHSConfig"},
-		{Config{Effort: 1}, "OHSConfig"},
-		{Config{Effort: 9}, "OBDHSConfig"},
-		{Config{Effort: 1, MemoryBudget: 100 * kb}, "OHSConfig"},
-		{Config{Effort: 5, WindowSize: 64 * kb}, "ODHSConfig"},
+		{Config{}, "DHSConfig"},
+		{Config{Effort: 1}, "HSConfig"},
+		{Config{Effort: 9}, "BDHSConfig"},
+		{Config{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
+		{Config{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
 	}
 	for _, tc := range tests {
 		c, err := tc.cfg.computeConfig()

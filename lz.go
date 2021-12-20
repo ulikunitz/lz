@@ -18,8 +18,6 @@
 // window plus 1. The Decoder is significantly faster.
 package lz
 
-import "io"
-
 // Seq represents a single Lempel-Ziv 77 Sequence describing a match,
 // consisting of the offset, the length of the match and the number of
 // literals preceding the match. The Aux field can be used on upper
@@ -61,51 +59,6 @@ const (
 	NoTrailingLiterals = 1 << iota
 )
 
-// OldSequencer transforms byte streams into a block of sequences. The target block
-// size under control of the sequencer. The method returns the actual number of
-// bytes sequences have been generated for. The block can be reused and will be
-// overwritten. If the block is nil k bytes will be skipped and no sequences
-// generated.
-//
-// OldSequencer manages an internal buffer that provides a window on the data to be
-// compressed.
-type OldSequencer interface {
-	Sequence(blk *Block, flags int) (n int, err error)
-}
-
-// InputSequencer buffers the data to generate LZ77 sequences for. It has
-// additional methods required to work with a WrappedSequencer. RequestBuffer
-// provides the number of bytes that can be written to the InputSequencer.
-// ByteAt returns the byte at absolute position pos and returns an error if pos
-// refers to a position outside of the current buffer. Pos returns the absolute
-// position of the window head.
-//
-// The Sequence method will return ErrEmptyBuffer if no data is avaialble in the
-// sequencer buffer.
-type InputSequencer interface {
-	OldSequencer
-	io.Writer
-	io.ReaderFrom
-	WindowSize() int
-	RequestBuffer() int
-	Reset()
-	Pos() int64
-	ByteAt(pos int64) (c byte, err error)
-}
-
-// OldConfigurator defines a general interface for sequencer
-// configurations. The different Sequencers have all different configuration
-// parameters and require their own configuration. All configuration types must
-// support the NewInputSequencer method.
-//
-// Using pattern language that is obviously a factory, but we support multiple
-// factories. A configuration structure like HashSequencerConfig creates only
-// HashSequencers but the general SequencerConfig structure can build different
-// InputSequencer.
-type OldConfigurator interface {
-	NewInputSequencer() (s InputSequencer, err error)
-}
-
 // Sequencer transforms byte streams into Lempel-Ziv sequences, that allow the
 // reconstruction of the input data.
 type Sequencer interface {
@@ -116,6 +69,8 @@ type Sequencer interface {
 	Shrink(newWindowLen int) int
 	// WindowPtr returns a pointer to the Window structure.
 	WindowPtr() *Window
+	// Reset allows the reuse of the Sequencer
+	Reset()
 }
 
 // Configurator generates  new sequencer instances.

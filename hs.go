@@ -86,11 +86,11 @@ func (cfg *HSConfig) Verify() error {
 
 // NewSequencer creates a new hash sequencer.
 func (cfg HSConfig) NewSequencer() (s Sequencer, err error) {
-	return NewWHashSequencer(cfg)
+	return NewHashSequencer(cfg)
 }
 
-// NewWHashSequencer creates a new hash sequencer.
-func NewWHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
+// NewHashSequencer creates a new hash sequencer.
+func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 	s = new(HashSequencer)
 	if err := s.Init(cfg); err != nil {
 		return nil, err

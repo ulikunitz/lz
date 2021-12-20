@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-func newTestSequencer(tb testing.TB, cfg OldConfigurator) InputSequencer {
-	s, err := cfg.NewInputSequencer()
+func newTestSequencer(tb testing.TB, cfg Configurator) Sequencer {
+	s, err := cfg.NewSequencer()
 	if err != nil {
 		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
 			cfg, err)
@@ -23,13 +23,12 @@ func TestReset(t *testing.T) {
 	const (
 		str        = "The quick brown fox jumps over the lazy dogdog."
 		windowSize = 20
+		blockSize  = 512
 	)
 
-	hs := newTestSequencer(t, OHSConfig{
+	hs := newTestSequencer(t, HSConfig{
 		InputLen:   3,
 		WindowSize: windowSize,
-		ShrinkSize: windowSize / 4,
-		MaxSize:    windowSize,
 	})
 
 	r := Wrap(strings.NewReader(str), hs)
@@ -43,7 +42,7 @@ func TestReset(t *testing.T) {
 
 		var blk Block
 		for {
-			_, err := r.Sequence(&blk, 0)
+			_, err := r.Sequence(&blk, blockSize, 0)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -81,64 +80,44 @@ func TestSequencers(t *testing.T) {
 	const enwik7 = "testdata/enwik7"
 	tests := []struct {
 		name string
-		cfg  OldConfigurator
+		cfg  Configurator
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: OHSConfig{
+			cfg: HSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: OBHSConfig{
+			cfg: BHSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "DoubleHashSequencer-3,8",
-			cfg: ODHSConfig{
+			cfg: DHSConfig{
 				InputLen1:  3,
 				InputLen2:  8,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "BDHSequencer-3,8",
-			cfg: OBDHSConfig{
+			cfg: BDHSConfig{
 				InputLen1:  3,
 				InputLen2:  8,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "GSASequencer",
-			cfg: OGSASConfig{
+			cfg: GSASConfig{
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
-		/*
-			{
-				name: "OSASequencer",
-				cfg: OSASConfig{
-					WindowSize: 8 << 20,
-					ShrinkSize: 32 << 10,
-					MaxSize:    8 << 20,
-				},
-			},
-		*/
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -147,15 +126,15 @@ func TestSequencers(t *testing.T) {
 	hd := sha256.New()
 	hd.Write(data)
 	sumData := hd.Sum(nil)
+	const blockSize = 128 << 10
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			hOrig := sha256.New()
 			h := sha256.New()
-			winSize := ws.WindowSize()
-			d, err := NewDecoder(h, DConfig{
-				WindowSize: winSize,
-				MaxSize:    2 * winSize})
+			w := ws.WindowPtr()
+			winSize := w.size
+			d, err := NewDecoder(h, DConfig{WindowSize: winSize})
 			if err != nil {
 				t.Fatalf("NewDecoder error %s", err)
 			}
@@ -166,7 +145,7 @@ func TestSequencers(t *testing.T) {
 			var blk Block
 			for {
 
-				k, err := s.Sequence(&blk, 0)
+				k, err := s.Sequence(&blk, blockSize, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -213,52 +192,42 @@ func TestSequencersSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender======"
 	tests := []struct {
 		name string
-		cfg  OldConfigurator
+		cfg  Configurator
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: OHSConfig{
+			cfg: HSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: OHSConfig{
+			cfg: HSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "DoubleHashSequencer-3,6",
-			cfg: ODHSConfig{
+			cfg: DHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "BDHSequencer-3,6",
-			cfg: ODHSConfig{
+			cfg: DHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 		{
 			name: "GSASequencer",
-			cfg: OGSASConfig{
+			cfg: GSASConfig{
 				WindowSize: 8 << 20,
-				ShrinkSize: 32 << 10,
-				MaxSize:    8 << 20,
 			},
 		},
 	}
@@ -266,11 +235,13 @@ func TestSequencersSimple(t *testing.T) {
 	hd := sha256.New()
 	hd.Write(data)
 	sumData := hd.Sum(nil)
+	const blockSize = 128 << 10
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			h := sha256.New()
-			winSize := ws.WindowSize()
+			w := ws.WindowPtr()
+			winSize := w.size
 			d, err := NewDecoder(h, DConfig{
 				WindowSize: winSize,
 				MaxSize:    2 * winSize})
@@ -283,7 +254,7 @@ func TestSequencersSimple(t *testing.T) {
 
 			var blk Block
 			for {
-				_, err := s.Sequence(&blk, 0)
+				_, err := s.Sequence(&blk, blockSize, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -320,106 +291,81 @@ func BenchmarkSequencers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
 		name string
-		cfg  OldConfigurator
+		cfg  Configurator
 	}{
-		{"HashSequencer-3", OHSConfig{
+		{"HashSequencer-3", HSConfig{
 			InputLen:   3,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-4", OHSConfig{
+		{"HashSequencer-4", HSConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-5", OHSConfig{
+		{"HashSequencer-5", HSConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-8", OHSConfig{
+		{"HashSequencer-8", HSConfig{
 			InputLen:   8,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-3", OHSConfig{
+		{"BackwardHashSequencer-3", HSConfig{
 			InputLen:   3,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-4", OHSConfig{
+		{"BackwardHashSequencer-4", HSConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-5", OHSConfig{
+		{"BackwardHashSequencer-5", HSConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-8", OHSConfig{
+		{"BackwardHashSequencer-8", HSConfig{
 			InputLen:   8,
 			HashBits:   15,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"DoubleHashSequencer-3,6", ODHSConfig{
+		{"DoubleHashSequencer-3,6", DHSConfig{
 			InputLen1:  3,
 			InputLen2:  6,
 			HashBits1:  15,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"DoubleHashSequencer-4,6", ODHSConfig{
+		{"DoubleHashSequencer-4,6", DHSConfig{
 			InputLen1:  4,
 			InputLen2:  6,
 			HashBits1:  15,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BDHSequencer-3,6", ODHSConfig{
+		{"BDHSequencer-3,6", DHSConfig{
 			InputLen1:  3,
 			InputLen2:  6,
 			HashBits1:  15,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"BDHSequencer-4,6", ODHSConfig{
+		{"BDHSequencer-4,6", DHSConfig{
 			InputLen1:  4,
 			InputLen2:  6,
 			HashBits1:  15,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
-		{"GSASequencer", OGSASConfig{
+		{"GSASequencer", GSASConfig{
 			WindowSize: 8 << 20,
-			ShrinkSize: 32 << 10,
-			MaxSize:    8 << 20,
 		}},
 	}
 
+	const blockSize = 128 << 10
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			ws := newTestSequencer(b, bm.cfg)
@@ -436,7 +382,7 @@ func BenchmarkSequencers(b *testing.B) {
 				var blk Block
 			loop:
 				for {
-					_, err := r.Sequence(&blk, 0)
+					_, err := r.Sequence(&blk, blockSize, 0)
 					b.StopTimer()
 					cost += blockCost(&blk)
 					b.StartTimer()
@@ -466,6 +412,7 @@ func BenchmarkSequencers(b *testing.B) {
 
 func BenchmarkDecoders(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
+	const blockSize = 128 << 10
 	benchmarks := []struct {
 		name    string
 		winSize int
@@ -485,11 +432,9 @@ func BenchmarkDecoders(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
-			hs, err := NewOldHashSequencer(OHSConfig{
+			hs, err := NewHashSequencer(HSConfig{
 				InputLen:   3,
 				WindowSize: bm.winSize,
-				MaxSize:    bm.maxSize,
-				ShrinkSize: bm.winSize,
 			})
 			if err != nil {
 				b.Fatalf("NewHashSequencer error %s", err)
@@ -497,7 +442,7 @@ func BenchmarkDecoders(b *testing.B) {
 			s := Wrap(bytes.NewReader(data), hs)
 			for {
 				var blk Block
-				_, err = s.Sequence(&blk, 0)
+				_, err = s.Sequence(&blk, blockSize, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -559,13 +504,11 @@ func BenchmarkDecoders(b *testing.B) {
 
 func TestGSASSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
+	const blockSize = 512
 
-	var s OldGreedySuffixArraySequencer
-	if err := s.Init(OGSASConfig{
+	var s GreedySuffixArraySequencer
+	if err := s.Init(GSASConfig{
 		WindowSize: 1024,
-		ShrinkSize: 1024,
-		BlockSize:  512,
-		MaxSize:    2 * 1024,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
@@ -578,7 +521,7 @@ func TestGSASSimple(t *testing.T) {
 	}
 
 	var blk Block
-	n, err = s.Sequence(&blk, 0)
+	n, err = s.Sequence(&blk, blockSize, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}

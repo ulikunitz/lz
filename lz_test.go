@@ -103,7 +103,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "DoubleHashSequencer-3,8",
-			cfg: DHSConfig{
+			cfg: ODHSConfig{
 				InputLen1:  3,
 				InputLen2:  8,
 				WindowSize: 8 << 20,
@@ -235,7 +235,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "DoubleHashSequencer-3,6",
-			cfg: DHSConfig{
+			cfg: ODHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
 				WindowSize: 8 << 20,
@@ -245,7 +245,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "BDHSequencer-3,6",
-			cfg: DHSConfig{
+			cfg: ODHSConfig{
 				InputLen1:  3,
 				InputLen2:  6,
 				WindowSize: 8 << 20,
@@ -385,7 +385,7 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"DoubleHashSequencer-3,6", DHSConfig{
+		{"DoubleHashSequencer-3,6", ODHSConfig{
 			InputLen1:  3,
 			InputLen2:  6,
 			HashBits1:  15,
@@ -394,7 +394,7 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"DoubleHashSequencer-4,6", DHSConfig{
+		{"DoubleHashSequencer-4,6", ODHSConfig{
 			InputLen1:  4,
 			InputLen2:  6,
 			HashBits1:  15,
@@ -403,7 +403,7 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BDHSequencer-3,6", DHSConfig{
+		{"BDHSequencer-3,6", ODHSConfig{
 			InputLen1:  3,
 			InputLen2:  6,
 			HashBits1:  15,
@@ -412,7 +412,7 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BDHSequencer-4,6", DHSConfig{
+		{"BDHSequencer-4,6", ODHSConfig{
 			InputLen1:  4,
 			InputLen2:  6,
 			HashBits1:  15,

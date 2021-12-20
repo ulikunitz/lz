@@ -93,8 +93,8 @@ func NewBackwardHashSequencer(cfg BHSConfig) (s *BackwardHashSequencer, err erro
 	return &t, nil
 }
 
-// Init initialzes the backward hash sequencer. It returns an error if there is an issue
-// with the configuration parameters.
+// Init initializes the backward hash sequencer. It returns an error if there is
+// an issue with the configuration parameters.
 func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error

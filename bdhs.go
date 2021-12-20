@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-// BDHSConfig provides the confifuration parameters for the DoubleHashSequencer.
+// BDHSConfig provides the confifuration parameters for the BackwardDoubleHashSequencer.
 type BDHSConfig struct {
 	// maximal window size
 	WindowSize int
@@ -88,7 +88,7 @@ func (cfg *BDHSConfig) ApplyDefaults() {
 	}
 }
 
-// NewSequencer creates a new DoubleHashSequencer.
+// NewSequencer creates a new BackwardDoubleHashSequencer.
 func (cfg BDHSConfig) NewSequencer() (s Sequencer, err error) {
 	return NewBackwardDoubleHashSequencer(cfg)
 }

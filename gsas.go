@@ -51,6 +51,8 @@ func (cfg *GSASConfig) ApplyDefaults() {
 	}
 }
 
+// NewSequencer generates a new sequencer using the configuration parameters in
+// the structure.
 func (cfg GSASConfig) NewSequencer() (s Sequencer, err error) {
 	return NewGreedySuffixArraySequencer(cfg)
 }
@@ -99,7 +101,7 @@ func NewGreedySuffixArraySequencer(cfg GSASConfig) (s *GreedySuffixArraySequence
 	return s, nil
 }
 
-// Init initializes the seequencer. If the configuration has inconsistencies or
+// Init initializes the sequencer. If the configuration has inconsistencies or
 // invalid values the method returns an error.
 func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	cfg.ApplyDefaults()

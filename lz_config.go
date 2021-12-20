@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// TODO: Only calculate window size and hash sizes for the configurator.
+
 // Config provides a general method to create sequencers.
 type Config struct {
 	// MemoryBudget specifies the memory budget in bytes for the sequencer. The

@@ -15,6 +15,7 @@ type HashSequencer struct {
 	hash
 }
 
+// WindowPtr returns the pointer to the window structure.
 func (s *HashSequencer) WindowPtr() *Window { return &s.Window }
 
 // MemSize returns the the memory that the HashSequencer occupies.
@@ -124,6 +125,8 @@ func (s *HashSequencer) Reset() {
 	s.hash.reset()
 }
 
+// Shrink shortens the window size to make more space available for Write and
+// ReadFrom.
 func (s *HashSequencer) Shrink(newWindowLen int) int {
 	oldWindowLen := s.Window.w
 	n := s.Window.shrink(newWindowLen)
@@ -141,11 +144,7 @@ func (s *HashSequencer) hashSegment(a, b int) {
 	}
 
 	// Ensure that we can use _getLE64 all the time.
-	k := b + 7
-	if k > cap(s.data) {
-		panic("window doesn't have the cap gap")
-	}
-	_p := s.data[:k]
+	_p := s.data[:b+7]
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
@@ -171,10 +170,10 @@ func (s *HashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, e
 		return 0, errors.New("lz: blockSize must be non-negative")
 	}
 	n = s.Buffered()
-
 	if n > blockSize {
 		n = blockSize
 	}
+
 	if blk == nil {
 		if n == 0 {
 			return 0, ErrEmptyBuffer
@@ -201,11 +200,7 @@ func (s *HashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, e
 	litIndex := i
 
 	// Ensure that we can use _getLE64 all the time.
-	k := inputEnd + 7
-	if k > cap(s.data) {
-		panic("no cap gap (7)")
-	}
-	_p := s.data[:k]
+	_p := s.data[:inputEnd+7]
 
 	for ; i < inputEnd; i++ {
 		y := _getLE64(_p[i:])

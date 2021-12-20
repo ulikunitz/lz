@@ -39,7 +39,7 @@ func memSize(c OldConfigurator) int {
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
 	case *BDHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
-	case *HSConfig:
+	case *OHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
 	case *BHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
@@ -54,9 +54,9 @@ func TestComputeConfig(t *testing.T) {
 		seqType string
 	}{
 		{Config{}, "DHSConfig"},
-		{Config{Effort: 1}, "HSConfig"},
+		{Config{Effort: 1}, "OHSConfig"},
 		{Config{Effort: 9}, "BDHSConfig"},
-		{Config{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
+		{Config{Effort: 1, MemoryBudget: 100 * kb}, "OHSConfig"},
 		{Config{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
 	}
 	for _, tc := range tests {

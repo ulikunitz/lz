@@ -25,7 +25,7 @@ func TestReset(t *testing.T) {
 		windowSize = 20
 	)
 
-	hs := newTestSequencer(t, HSConfig{
+	hs := newTestSequencer(t, OHSConfig{
 		InputLen:   3,
 		WindowSize: windowSize,
 		ShrinkSize: windowSize / 4,
@@ -85,7 +85,7 @@ func TestSequencers(t *testing.T) {
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: HSConfig{
+			cfg: OHSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
@@ -217,7 +217,7 @@ func TestSequencersSimple(t *testing.T) {
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: HSConfig{
+			cfg: OHSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
@@ -226,7 +226,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: HSConfig{
+			cfg: OHSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
@@ -330,55 +330,55 @@ func BenchmarkSequencers(b *testing.B) {
 		name string
 		cfg  OldConfigurator
 	}{
-		{"HashSequencer-3", HSConfig{
+		{"HashSequencer-3", OHSConfig{
 			InputLen:   3,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-4", HSConfig{
+		{"HashSequencer-4", OHSConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-5", HSConfig{
+		{"HashSequencer-5", OHSConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"HashSequencer-8", HSConfig{
+		{"HashSequencer-8", OHSConfig{
 			InputLen:   8,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-3", HSConfig{
+		{"BackwardHashSequencer-3", OHSConfig{
 			InputLen:   3,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-4", HSConfig{
+		{"BackwardHashSequencer-4", OHSConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-5", HSConfig{
+		{"BackwardHashSequencer-5", OHSConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"BackwardHashSequencer-8", HSConfig{
+		{"BackwardHashSequencer-8", OHSConfig{
 			InputLen:   8,
 			HashBits:   15,
 			WindowSize: 8 << 20,
@@ -493,7 +493,7 @@ func BenchmarkDecoders(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
-			hs, err := NewHashSequencer(HSConfig{
+			hs, err := NewOldHashSequencer(OHSConfig{
 				InputLen:   3,
 				WindowSize: bm.winSize,
 				MaxSize:    bm.maxSize,

@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -14,12 +13,26 @@ import (
 type GSASConfig struct {
 	// maximal window size
 	WindowSize int
+	ShrinkSize int
+	BlockSize  int
 	// minimum match len
 	MinMatchLen int
 }
 
+func (cfg *GSASConfig) windowConfig() WindowConfig {
+	return WindowConfig{
+		WindowSize: cfg.WindowSize,
+		ShrinkSize: cfg.ShrinkSize,
+		BlockSize:  cfg.BlockSize,
+	}
+}
+
 // Verify checks the configuration for inconsistencies.
 func (cfg *GSASConfig) Verify() error {
+	wcfg := cfg.windowConfig()
+	if err := wcfg.Verify(); err != nil {
+		return err
+	}
 	if !(2 <= cfg.MinMatchLen) {
 		return fmt.Errorf(
 			"lz: MinMatchLen is %d; want >= 2",
@@ -43,6 +56,11 @@ func (cfg *GSASConfig) Verify() error {
 // ApplyDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
 func (cfg *GSASConfig) ApplyDefaults() {
+	wcfg := cfg.windowConfig()
+	wcfg.ApplyDefaults()
+	cfg.WindowSize = wcfg.WindowSize
+	cfg.ShrinkSize = wcfg.ShrinkSize
+	cfg.BlockSize = wcfg.BlockSize
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * 1024 * 1024
 	}
@@ -109,7 +127,7 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.Window.Init(cfg.WindowSize)
+	err = s.Window.Init(cfg.windowConfig())
 	if err != nil {
 		return err
 	}
@@ -162,13 +180,10 @@ func (s *GreedySuffixArraySequencer) sort() {
 // ErrEmptyBuffer will be returned.
 //
 // The method might compute the suffix array anew using the sort method.
-func (s *GreedySuffixArraySequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
-	if blockSize < 1 {
-		return 0, errors.New("lz: blockSize must be >= 1")
-	}
+func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
-	if n > blockSize {
-		n = blockSize
+	if n > s.BlockSize {
+		n = s.BlockSize
 	}
 
 	if blk == nil {
@@ -238,9 +253,9 @@ func (s *GreedySuffixArraySequencer) Sequence(blk *Block, blockSize int, flags i
 }
 
 // Shrink reduces the window length to provide more space for writing.
-func (s *GreedySuffixArraySequencer) Shrink(newWindowLen int) int {
+func (s *GreedySuffixArraySequencer) Shrink() int {
 	oldWindowLen := s.w
-	n := s.Window.shrink(newWindowLen)
+	n := s.Window.shrink()
 	if oldWindowLen == n {
 		return n
 	}

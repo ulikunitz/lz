@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
 	"math/bits"
 	"reflect"
@@ -11,10 +10,23 @@ import (
 type BHSConfig struct {
 	// maximal window size
 	WindowSize int
+	// ShrinkSize is the size the window is shrunk too if more buffer is
+	// required
+	ShrinkSize int
+	// BlockSize is the maximum size of a block in bytes
+	BlockSize int
 	// number of bits of the hash index
 	HashBits int
 	// length of the input used; range [2,8]
 	InputLen int
+}
+
+func (cfg *BHSConfig) windowConfig() WindowConfig {
+	return WindowConfig{
+		WindowSize: cfg.WindowSize,
+		ShrinkSize: cfg.ShrinkSize,
+		BlockSize:  cfg.BlockSize,
+	}
 }
 
 // NewSequencer create a new backward hash sequencer.
@@ -24,10 +36,11 @@ func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *BHSConfig) ApplyDefaults() {
-
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 * 1024 * 1024
-	}
+	wcfg := cfg.windowConfig()
+	wcfg.ApplyDefaults()
+	cfg.WindowSize = wcfg.WindowSize
+	cfg.ShrinkSize = wcfg.ShrinkSize
+	cfg.BlockSize = wcfg.BlockSize
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -38,6 +51,10 @@ func (cfg *BHSConfig) ApplyDefaults() {
 
 // Verify checks the config for correctness.
 func (cfg *BHSConfig) Verify() error {
+	wcfg := cfg.windowConfig()
+	if err := wcfg.Verify(); err != nil {
+		return err
+	}
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
@@ -101,7 +118,7 @@ func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.Window.Init(cfg.WindowSize)
+	err = s.Window.Init(cfg.windowConfig())
 	if err != nil {
 		return err
 	}
@@ -121,9 +138,9 @@ func (s *BackwardHashSequencer) Reset() {
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *BackwardHashSequencer) Shrink(newWindowLen int) int {
+func (s *BackwardHashSequencer) Shrink() int {
 	oldWindowLen := s.Window.w
-	n := s.Window.shrink(newWindowLen)
+	n := s.Window.shrink()
 	s.hash.adapt(uint32(oldWindowLen - n))
 	return n
 }
@@ -156,13 +173,10 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *BackwardHashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
-	if blockSize < 1 {
-		return 0, errors.New("lz: blockSize must be >= 1")
-	}
+func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
-	if n > blockSize {
-		n = blockSize
+	if n > s.BlockSize {
+		n = s.BlockSize
 	}
 
 	if blk == nil {

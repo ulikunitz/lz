@@ -14,7 +14,10 @@ func TestWindow_Write(t *testing.T) {
 	}
 	var w Window
 	const winSize = 1024
-	if err = w.Init(winSize); err != nil {
+	cfg := WindowConfig{
+		WindowSize: winSize,
+	}
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	n, err := w.Write(data)
@@ -46,7 +49,10 @@ func TestWindow_ReadFrom(t *testing.T) {
 	defer f.Close()
 	var w Window
 	const winSize = 1024
-	if err = w.Init(winSize); err != nil {
+	cfg := WindowConfig{
+		WindowSize: winSize,
+	}
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	n, err := w.ReadFrom(f)
@@ -82,7 +88,12 @@ func TestWindow_shrink(t *testing.T) {
 	}
 	var w Window
 	const winSize = 1024
-	if err = w.Init(winSize); err != nil {
+	const shrinkSize = 256
+	cfg := WindowConfig{
+		WindowSize: winSize,
+		ShrinkSize: shrinkSize,
+	}
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	_, err = w.Write(data)
@@ -93,8 +104,7 @@ func TestWindow_shrink(t *testing.T) {
 
 	w.w = winSize
 
-	const shrinkSize = 256
-	n := w.shrink(shrinkSize)
+	n := w.shrink()
 	if n != shrinkSize {
 		t.Fatalf("w.shrink(%d) returned %d; want %d",
 			shrinkSize, n, shrinkSize)

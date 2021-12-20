@@ -13,7 +13,7 @@ import (
 func newTestSequencer(tb testing.TB, cfg Configurator) Sequencer {
 	s, err := cfg.NewSequencer()
 	if err != nil {
-		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
+		tb.Fatalf("%+v.NewSequencer() error %s",
 			cfg, err)
 	}
 	return s
@@ -29,6 +29,7 @@ func TestReset(t *testing.T) {
 	hs := newTestSequencer(t, HSConfig{
 		InputLen:   3,
 		WindowSize: windowSize,
+		BlockSize:  blockSize,
 	})
 
 	r := Wrap(strings.NewReader(str), hs)
@@ -42,7 +43,7 @@ func TestReset(t *testing.T) {
 
 		var blk Block
 		for {
-			_, err := r.Sequence(&blk, blockSize, 0)
+			_, err := r.Sequence(&blk, 0)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -126,14 +127,13 @@ func TestSequencers(t *testing.T) {
 	hd := sha256.New()
 	hd.Write(data)
 	sumData := hd.Sum(nil)
-	const blockSize = 128 << 10
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			hOrig := sha256.New()
 			h := sha256.New()
 			w := ws.WindowPtr()
-			winSize := w.size
+			winSize := w.WindowSize
 			d, err := NewDecoder(h, DConfig{WindowSize: winSize})
 			if err != nil {
 				t.Fatalf("NewDecoder error %s", err)
@@ -145,7 +145,7 @@ func TestSequencers(t *testing.T) {
 			var blk Block
 			for {
 
-				k, err := s.Sequence(&blk, blockSize, 0)
+				k, err := s.Sequence(&blk, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -235,13 +235,12 @@ func TestSequencersSimple(t *testing.T) {
 	hd := sha256.New()
 	hd.Write(data)
 	sumData := hd.Sum(nil)
-	const blockSize = 128 << 10
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			h := sha256.New()
 			w := ws.WindowPtr()
-			winSize := w.size
+			winSize := w.WindowSize
 			d, err := NewDecoder(h, DConfig{
 				WindowSize: winSize,
 				MaxSize:    2 * winSize})
@@ -254,7 +253,7 @@ func TestSequencersSimple(t *testing.T) {
 
 			var blk Block
 			for {
-				_, err := s.Sequence(&blk, blockSize, 0)
+				_, err := s.Sequence(&blk, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -365,7 +364,6 @@ func BenchmarkSequencers(b *testing.B) {
 		}},
 	}
 
-	const blockSize = 128 << 10
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			ws := newTestSequencer(b, bm.cfg)
@@ -382,7 +380,7 @@ func BenchmarkSequencers(b *testing.B) {
 				var blk Block
 			loop:
 				for {
-					_, err := r.Sequence(&blk, blockSize, 0)
+					_, err := r.Sequence(&blk, 0)
 					b.StopTimer()
 					cost += blockCost(&blk)
 					b.StartTimer()
@@ -412,7 +410,6 @@ func BenchmarkSequencers(b *testing.B) {
 
 func BenchmarkDecoders(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
-	const blockSize = 128 << 10
 	benchmarks := []struct {
 		name    string
 		winSize int
@@ -442,7 +439,7 @@ func BenchmarkDecoders(b *testing.B) {
 			s := Wrap(bytes.NewReader(data), hs)
 			for {
 				var blk Block
-				_, err = s.Sequence(&blk, blockSize, 0)
+				_, err = s.Sequence(&blk, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -509,6 +506,7 @@ func TestGSASSimple(t *testing.T) {
 	var s GreedySuffixArraySequencer
 	if err := s.Init(GSASConfig{
 		WindowSize: 1024,
+		BlockSize:  blockSize,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
@@ -521,7 +519,7 @@ func TestGSASSimple(t *testing.T) {
 	}
 
 	var blk Block
-	n, err = s.Sequence(&blk, blockSize, 0)
+	n, err = s.Sequence(&blk, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}

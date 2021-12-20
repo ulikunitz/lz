@@ -18,18 +18,63 @@ type Window struct {
 	start int64
 	// w is the position of the window head in data
 	w int
-	// size is the window size
-	size int
+	WindowConfig
+}
+
+// WindowConfig stores the parameter for the Window.
+type WindowConfig struct {
+	// WindowSize is the maximum window size in bytes
+	WindowSize int
+	// ShrinkSize provides the size the window is shrinked to make space for
+	// the buffer available
+	ShrinkSize int
+	// BlockSize provides the block size.
+	BlockSize int
+}
+
+func (cfg *WindowConfig) ApplyDefaults() {
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * mb
+	}
+	if cfg.ShrinkSize == 0 {
+		const defaultShrinkSize = 32 * kb
+		if cfg.WindowSize < 2*defaultShrinkSize {
+			cfg.ShrinkSize = cfg.WindowSize / 2
+		} else {
+			cfg.ShrinkSize = defaultShrinkSize
+		}
+	}
+	if cfg.BlockSize == 0 {
+		cfg.BlockSize = 128 * kb
+	}
+}
+
+func (cfg *WindowConfig) Verify() error {
+	if cfg.WindowSize <= 0 {
+		return errors.New("lz: window size must be greater than 0")
+	}
+	if cfg.ShrinkSize < 0 {
+		return errors.New("lz: shrink size must be greater or equal 0")
+	}
+	if cfg.ShrinkSize >= cfg.WindowSize {
+		return errors.New(
+			"lz: srhink size must be less than the window size")
+	}
+	if cfg.BlockSize <= 0 {
+		return errors.New("lz: block size must be greater than 0")
+	}
+	return nil
 }
 
 // Init initializes the window. The parameter size must be positive.
-func (w *Window) Init(size int) error {
-	if size <= 0 {
-		return errors.New("lz: window size must be positive")
+func (w *Window) Init(cfg WindowConfig) error {
+	cfg.ApplyDefaults()
+	if err := cfg.Verify(); err != nil {
+		return err
 	}
 	*w = Window{
-		data: w.data[:0],
-		size: size,
+		data:         w.data[:0],
+		WindowConfig: cfg,
 	}
 	if cap(w.data) < 7 {
 		w.data = make([]byte, 0, 1024)
@@ -40,8 +85,8 @@ func (w *Window) Init(size int) error {
 // Reset cleans the window structure for reuse.
 func (w *Window) Reset() {
 	*w = Window{
-		data: w.data[:0],
-		size: w.size,
+		data:         w.data[:0],
+		WindowConfig: w.WindowConfig,
 	}
 	if cap(w.data) < 7 {
 		panic("unexpected capacity after Init")
@@ -50,7 +95,7 @@ func (w *Window) Reset() {
 
 // Available returns the number of bytes are available for writing into the
 // buffer.
-func (w *Window) Available() int { return w.size - len(w.data) }
+func (w *Window) Available() int { return w.WindowSize - len(w.data) }
 
 // Buffered returns the number of bytes buffered but are not yet part of the
 // window. They have to be sequenced first.
@@ -59,23 +104,13 @@ func (w *Window) Buffered() int { return len(w.data) - w.w }
 // Len returns the actual length of the current window
 func (w *Window) Len() int { return w.w }
 
-// Size returns the maximum size of the window
-func (w *Window) Size() int { return w.size }
-
 // Pos returns the absolute position of the window head
 func (w *Window) Pos() int64 { return w.start + int64(w.w) }
 
 // shrink reduces the current window length to n if possible. The method returns
 // the actual window length after shrinking.
-func (w *Window) shrink(n int) int {
-	if n < 0 {
-		n = 0
-	}
-	if n > w.size {
-		n = w.size
-	}
-
-	r := w.w - n
+func (w *Window) shrink() int {
+	r := w.w - w.ShrinkSize
 	if r <= 0 {
 		return w.w
 	}
@@ -83,8 +118,8 @@ func (w *Window) shrink(n int) int {
 	k := copy(w.data, w.data[r:])
 	w.data = w.data[:k]
 	w.start += int64(r)
-	w.w = n
-	return w.w
+	w.w = w.ShrinkSize
+	return w.ShrinkSize
 }
 
 // ErrFullBuffer indicates that the buffer is full and no further data can be
@@ -104,8 +139,8 @@ func (w *Window) Write(p []byte) (n int, err error) {
 		if k < 1024 {
 			k = 1024
 		}
-		if k > w.size {
-			k = w.size + 7
+		if k > w.WindowSize {
+			k = w.WindowSize + 7
 		}
 		if n+7 > k {
 			k = n + 7
@@ -123,13 +158,13 @@ func (w *Window) Write(p []byte) (n int, err error) {
 
 // ReadFrom transfers data from the reader into the buffer.
 func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
-	if len(w.data) == w.size {
+	if len(w.data) == w.WindowSize {
 		return 0, ErrFullBuffer
 	}
 	for {
 		var p []byte
-		if w.size <= cap(w.data)-7 {
-			p = w.data[len(w.data):w.size]
+		if w.WindowSize <= cap(w.data)-7 {
+			p = w.data[len(w.data):w.WindowSize]
 		} else {
 			p = w.data[len(w.data) : cap(w.data)-7]
 		}
@@ -145,15 +180,15 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 			}
 			p = p[k:]
 		}
-		if len(w.data) == w.size {
+		if len(w.data) == w.WindowSize {
 			return n, ErrFullBuffer
 		}
 		k := 2 * cap(w.data)
 		if k < 1024 {
 			k = 1024
 		}
-		if k > w.size {
-			k = w.size + 7
+		if k > w.WindowSize {
+			k = w.WindowSize + 7
 		}
 		t := make([]byte, len(w.data), k)
 		copy(t, w.data)

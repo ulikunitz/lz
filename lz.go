@@ -63,10 +63,10 @@ const (
 // reconstruction of the input data.
 type Sequencer interface {
 	// Sequence finds Lempel-Ziv sequences.
-	Sequence(blk *Block, blockSize int, flags int) (n int, err error)
+	Sequence(blk *Block, flags int) (n int, err error)
 	// Shrink reduces the actual window length to make more buffer space
 	// available.
-	Shrink(newWindowLen int) int
+	Shrink() int
 	// WindowPtr returns a pointer to the Window structure.
 	WindowPtr() *Window
 	// Reset allows the reuse of the Sequencer

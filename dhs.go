@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
 	"math/bits"
 	"reflect"
@@ -11,6 +10,8 @@ import (
 type DHSConfig struct {
 	// maximal window size
 	WindowSize int
+	ShrinkSize int
+	BlockSize  int
 	// smaller hash input length; range 2 to 8
 	InputLen1 int
 	// hash bits for the smaller hash input length
@@ -21,8 +22,20 @@ type DHSConfig struct {
 	HashBits2 int
 }
 
+func (cfg *DHSConfig) windowConfig() WindowConfig {
+	return WindowConfig{
+		WindowSize: cfg.WindowSize,
+		ShrinkSize: cfg.ShrinkSize,
+		BlockSize:  cfg.BlockSize,
+	}
+}
+
 // Verify checks the configuration for errors.
 func (cfg *DHSConfig) Verify() error {
+	wcfg := cfg.windowConfig()
+	if err := wcfg.Verify(); err != nil {
+		return err
+	}
 	if !(2 <= cfg.InputLen1 && cfg.InputLen1 <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]",
@@ -71,9 +84,12 @@ func (cfg *DHSConfig) Verify() error {
 // ApplyDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *DHSConfig) ApplyDefaults() {
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 * 1024 * 1024
-	}
+	wcfg := cfg.windowConfig()
+	wcfg.ApplyDefaults()
+	cfg.WindowSize = wcfg.WindowSize
+	cfg.ShrinkSize = wcfg.ShrinkSize
+	cfg.BlockSize = wcfg.BlockSize
+
 	if cfg.InputLen1 == 0 {
 		cfg.InputLen1 = 3
 	}
@@ -136,7 +152,7 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 		return err
 	}
 
-	err = s.Window.Init(cfg.WindowSize)
+	err = s.Window.Init(cfg.windowConfig())
 	if err != nil {
 		return err
 	}
@@ -203,13 +219,10 @@ func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 // Sequence generates the LZ77 sequences. It returns the number of bytes covered
 // by the new sequences. The block will be overwritten but the memory for the
 // slices will be reused.
-func (s *DoubleHashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
-	if blockSize < 1 {
-		return 0, errors.New("lz: blockSize must be >= 1")
-	}
+func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
-	if blockSize < n {
-		n = blockSize
+	if s.BlockSize < n {
+		n = s.BlockSize
 	}
 	if blk == nil {
 		if n == 0 {
@@ -417,9 +430,9 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, blockSize int, flags int) (n 
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *DoubleHashSequencer) Shrink(newWindowLen int) int {
+func (s *DoubleHashSequencer) Shrink() int {
 	oldWindowLen := s.Window.w
-	n := s.Window.shrink(newWindowLen)
+	n := s.Window.shrink()
 	s.h1.adapt(uint32(oldWindowLen - n))
 	s.h2.adapt(uint32(oldWindowLen - n))
 	return n

@@ -13,11 +13,11 @@ import (
 
 func TestHashSequencerSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
-	const blockSize = 512
 
 	var s HashSequencer
 	if err := s.Init(HSConfig{
 		WindowSize: 1024,
+		BlockSize:  512,
 		InputLen:   3,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
@@ -31,7 +31,7 @@ func TestHashSequencerSimple(t *testing.T) {
 	}
 
 	var blk Block
-	n, err = s.Sequence(&blk, blockSize, 0)
+	n, err = s.Sequence(&blk, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}
@@ -91,6 +91,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 
 	ws, err := NewHashSequencer(HSConfig{
 		WindowSize: windowSize,
+		BlockSize:  blockSize,
 		InputLen:   3,
 	})
 	if err != nil {
@@ -104,7 +105,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 
 	var blk Block
 	for {
-		if _, err := s.Sequence(&blk, blockSize, 0); err != nil {
+		if _, err := s.Sequence(&blk, 0); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -144,6 +145,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 
 	cfg := HSConfig{
 		WindowSize: windowSize,
+		BlockSize:  blockSize,
 		InputLen:   3,
 	}
 	ws, err := NewHashSequencer(cfg)
@@ -160,7 +162,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 
 	var blk Block
 	for {
-		_, err = s.Sequence(&blk, blockSize, 0)
+		_, err = s.Sequence(&blk, 0)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -248,10 +250,10 @@ func TestLargeParameters(t *testing.T) {
 		{enwik7, 9 << 30, HSConfig{
 			InputLen:   3,
 			WindowSize: 8 << 20,
+			BlockSize:  128 * kb,
 		}},
 	}
 
-	const blockSize = 129 << 10
 	for i, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
@@ -280,7 +282,7 @@ func TestLargeParameters(t *testing.T) {
 			var blk Block
 			var n int64
 			for {
-				k, err := s.Sequence(&blk, blockSize, 0)
+				k, err := s.Sequence(&blk, 0)
 				n += int64(k)
 				if err != nil {
 					if err == io.EOF {

@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
 	"math/bits"
 	"reflect"
@@ -203,6 +204,9 @@ func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 // by the new sequences. The block will be overwritten but the memory for the
 // slices will be reused.
 func (s *DoubleHashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
+	if blockSize < 1 {
+		return 0, errors.New("lz: blockSize must be >= 1")
+	}
 	n = s.Buffered()
 	if blockSize < n {
 		n = blockSize

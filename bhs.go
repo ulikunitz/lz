@@ -157,8 +157,8 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
 func (s *BackwardHashSequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
-	if blockSize < 0 {
-		return 0, errors.New("lz: blockSize must be non-negative")
+	if blockSize < 1 {
+		return 0, errors.New("lz: blockSize must be >= 1")
 	}
 	n = s.Buffered()
 	if n > blockSize {

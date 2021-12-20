@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -160,6 +161,9 @@ func (s *GreedySuffixArraySequencer) sort() {
 //
 // The method might compute the suffix array anew using the sort method.
 func (s *GreedySuffixArraySequencer) Sequence(blk *Block, blockSize int, flags int) (n int, err error) {
+	if blockSize < 1 {
+		return 0, errors.New("lz: blockSize must be >= 1")
+	}
 	n = s.Buffered()
 	if n > blockSize {
 		n = blockSize

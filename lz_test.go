@@ -113,7 +113,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "BDHSequencer-3,8",
-			cfg: BDHSConfig{
+			cfg: OBDHSConfig{
 				InputLen1:  3,
 				InputLen2:  8,
 				WindowSize: 8 << 20,

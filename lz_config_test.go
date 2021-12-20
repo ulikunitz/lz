@@ -37,7 +37,7 @@ func memSize(c OldConfigurator) int {
 	switch p := c.(type) {
 	case *ODHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
-	case *BDHSConfig:
+	case *OBDHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
 	case *OHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
@@ -55,7 +55,7 @@ func TestComputeConfig(t *testing.T) {
 	}{
 		{Config{}, "ODHSConfig"},
 		{Config{Effort: 1}, "OHSConfig"},
-		{Config{Effort: 9}, "BDHSConfig"},
+		{Config{Effort: 9}, "OBDHSConfig"},
 		{Config{Effort: 1, MemoryBudget: 100 * kb}, "OHSConfig"},
 		{Config{Effort: 5, WindowSize: 64 * kb}, "ODHSConfig"},
 	}

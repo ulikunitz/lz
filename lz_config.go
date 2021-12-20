@@ -141,7 +141,7 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 	case 8, 9:
 		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget,
 			memSizeDHS)
-		bdhscfg := BDHSConfig{
+		bdhscfg := OBDHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen1: bdhsParams.inputLen1,
 			HashBits1: bdhsParams.bits1,
@@ -231,7 +231,7 @@ func computeConfigWindow(cfg Config) (c OldConfigurator, err error) {
 	case 8, 9:
 		p := windowDHS(bdhsWinParameters, cfg.WindowSize)
 		bdhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
-		bdhscfg := BDHSConfig{
+		bdhscfg := OBDHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen1: bdhsParams.inputLen1,
 			HashBits1: bdhsParams.bits1,

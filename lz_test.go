@@ -123,7 +123,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "GSASequencer",
-			cfg: GSASConfig{
+			cfg: OGSASConfig{
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
@@ -255,7 +255,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "GSASequencer",
-			cfg: GSASConfig{
+			cfg: OGSASConfig{
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,
 				MaxSize:    8 << 20,
@@ -421,7 +421,7 @@ func BenchmarkSequencers(b *testing.B) {
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
 		}},
-		{"GSASequencer", GSASConfig{
+		{"GSASequencer", OGSASConfig{
 			WindowSize: 8 << 20,
 			ShrinkSize: 32 << 10,
 			MaxSize:    8 << 20,
@@ -568,8 +568,8 @@ func BenchmarkDecoders(b *testing.B) {
 func TestGSASSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	var s GreedySuffixArraySequencer
-	if err := s.Init(GSASConfig{
+	var s OldGreedySuffixArraySequencer
+	if err := s.Init(OGSASConfig{
 		WindowSize: 1024,
 		ShrinkSize: 1024,
 		BlockSize:  512,

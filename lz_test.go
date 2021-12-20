@@ -94,7 +94,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: BHSConfig{
+			cfg: OBHSConfig{
 				InputLen:   3,
 				WindowSize: 8 << 20,
 				ShrinkSize: 32 << 10,

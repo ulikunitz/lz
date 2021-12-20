@@ -104,7 +104,7 @@ func computeConfig(cfg Config) (c OldConfigurator, err error) {
 	case 3, 4:
 		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget,
 			memSizeHS)
-		bhscfg := BHSConfig{
+		bhscfg := OBHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen:  hsParams.inputLen,
 			HashBits:  hsParams.bits,
@@ -197,7 +197,7 @@ func computeConfigWindow(cfg Config) (c OldConfigurator, err error) {
 	case 3, 4:
 		p := windowHS(bhsWinParameters, cfg.WindowSize)
 		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
-		bhscfg := BHSConfig{
+		bhscfg := OBHSConfig{
 			BlockSize: cfg.BlockSize,
 			InputLen:  hsParams.inputLen,
 			HashBits:  hsParams.bits,

@@ -41,7 +41,7 @@ func memSize(c OldConfigurator) int {
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207
 	case *OHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
-	case *BHSConfig:
+	case *OBHSConfig:
 		return p.WindowSize + (1<<p.HashBits)*8 + 161 - p.InputLen
 	default:
 		panic("unexpected type")

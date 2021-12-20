@@ -5,12 +5,13 @@ import (
 	"io"
 )
 
-// Window stores the data in the Window for encoding. New data is written into
-// the window and requires a sequencer to be converted in Lempel-Ziv 77
-// sequences. The literals for a particular sequences can be extracted using the
-// Literals method.
+// Window acts as a buffer and stores the window. Data is written into the
+// buffer, the sequencer creates Lempel-Ziv sequences and advances the window
+// head. Since all positions behind the window head are in the window we even
+// save one check in the sequencer loop.
 //
-// All data is available for matches to simplify routines.
+// The window ensures that len(w.data)+7 < cap(w.data), which allows 64-bit
+// reads on all byte position of the window.
 type Window struct {
 	data []byte
 	// start stores the absolute position of the window
@@ -30,13 +31,29 @@ func (w *Window) Init(size int) error {
 		data: w.data[:0],
 		size: size,
 	}
+	if cap(w.data) < 7 {
+		w.data = make([]byte, 0, 1024)
+	}
 	return nil
+}
+
+// Reset cleans the window structure for reuse.
+func (w *Window) Reset() {
+	*w = Window{
+		data: w.data[:0],
+		size: w.size,
+	}
+	if cap(w.data) < 7 {
+		panic("unexpected capacity after Init")
+	}
 }
 
 // Available returns the number of bytes are available for writing into the
 // buffer.
 func (w *Window) Available() int { return w.size - len(w.data) }
 
+// Buffered returns the number of bytes buffered but are not yet part of the
+// window. They have to be sequenced first.
 func (w *Window) Buffered() int { return len(w.data) - w.w }
 
 // Len returns the actual length of the current window
@@ -82,17 +99,18 @@ func (w *Window) Write(p []byte) (n int, err error) {
 		err = ErrFullBuffer
 	}
 	n = len(w.data) + len(p)
-	if n > cap(w.data) {
+	if n+7 > cap(w.data) {
 		k := 2 * cap(w.data)
 		if k < 1024 {
 			k = 1024
 		}
 		if k > w.size {
-			k = w.size
+			k = w.size + 7
 		}
-		if n > k {
-			k = n
+		if n+7 > k {
+			k = n + 7
 		}
+
 		t := make([]byte, n, k)
 		copy(t, w.data)
 		copy(t[len(w.data):], p)
@@ -110,10 +128,10 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	for {
 		var p []byte
-		if w.size <= cap(w.data) {
+		if w.size <= cap(w.data)-7 {
 			p = w.data[len(w.data):w.size]
 		} else {
-			p = w.data[len(w.data):cap(w.data)]
+			p = w.data[len(w.data) : cap(w.data)-7]
 		}
 		for len(p) > 0 {
 			k, err := r.Read(p)
@@ -135,7 +153,7 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 			k = 1024
 		}
 		if k > w.size {
-			k = w.size
+			k = w.size + 7
 		}
 		t := make([]byte, len(w.data), k)
 		copy(t, w.data)
@@ -153,24 +171,6 @@ func (w *Window) ByteAt(pos int64) (c byte, err error) {
 	return w.data[pos], nil
 }
 
-// Literals extracts the byte slice of all literals defines by sequence. This
-// command has been introduced to support zstd-like compression.
-func (w *Window) Literals(in []byte, pos int64, seq []Seq) (literals []byte, err error) {
-	i := pos - w.start
-	if !(0 <= i && i < int64(len(w.data))) {
-		return in, errors.New("lz: pos out ouf bounds")
-
-	}
-
-	literals = in
-	for _, s := range seq {
-		j := i + int64(s.LitLen)
-		if j > int64(len(w.data)) {
-			return in, errors.New("lz: sequences exceed window buffer")
-		}
-		literals = append(literals, w.data[i:j]...)
-		i = j + int64(s.MatchLen)
-	}
-
-	return literals, nil
+func (w *Window) additionalMemSize() uintptr {
+	return uintptr(cap(w.data))
 }

@@ -75,7 +75,7 @@ var memoryBudgetTable = []int{
 }
 
 // computeConfig computes the configuration extremely fast.
-func computeConfig(cfg Config) (c Configurator, err error) {
+func computeConfig(cfg Config) (c OldConfigurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -164,7 +164,7 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 }
 
 // computeConfigWindow computes the configuration for a given window size.
-func computeConfigWindow(cfg Config) (c Configurator, err error) {
+func computeConfigWindow(cfg Config) (c OldConfigurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -251,7 +251,7 @@ func computeConfigWindow(cfg Config) (c Configurator, err error) {
 	}
 }
 
-func (cfg Config) computeConfig() (c Configurator, err error) {
+func (cfg Config) computeConfig() (c OldConfigurator, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err

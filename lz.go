@@ -93,7 +93,7 @@ type InputSequencer interface {
 	ByteAt(pos int64) (c byte, err error)
 }
 
-// Configurator defines a general interface for sequencer
+// OldConfigurator defines a general interface for sequencer
 // configurations. The different Sequencers have all different configuration
 // parameters and require their own configuration. All configuration types must
 // support the NewInputSequencer method.
@@ -102,6 +102,23 @@ type InputSequencer interface {
 // factories. A configuration structure like HashSequencerConfig creates only
 // HashSequencers but the general SequencerConfig structure can build different
 // InputSequencer.
-type Configurator interface {
+type OldConfigurator interface {
 	NewInputSequencer() (s InputSequencer, err error)
+}
+
+// Sequencer transforms byte streams into Lempel-Ziv sequences, that allow the
+// reconstruction of the input data.
+type Sequencer interface {
+	// Sequence finds Lempel-Ziv sequences.
+	Sequence(blk *Block, blockSize int, flags int) (n int, err error)
+	// Shrink reduces the actual window length to make more buffer space
+	// available.
+	Shrink(newWindowLen int) int
+	// WindowPtr returns a pointer to the Window structure.
+	WindowPtr() *Window
+}
+
+// Configurator generates  new sequencer instances.
+type Configurator interface {
+	NewSequencer() (s Sequencer, err error)
 }

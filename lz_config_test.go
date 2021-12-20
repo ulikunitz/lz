@@ -33,7 +33,7 @@ func TestWindowHS(t *testing.T) {
 	}
 }
 
-func memSize(c Configurator) int {
+func memSize(c OldConfigurator) int {
 	switch p := c.(type) {
 	case *DHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207

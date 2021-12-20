@@ -29,8 +29,8 @@ func TestWindow_Write(t *testing.T) {
 	if len(w.data) != winSize {
 		t.Fatalf("len(w.data) is %d; want %d", len(w.data), winSize)
 	}
-	if cap(w.data) != winSize {
-		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize)
+	if cap(w.data) != winSize+7 {
+		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize+7)
 	}
 	if !bytes.Equal(w.data, data[:winSize]) {
 		t.Fatalf("w.data doesn't equal data[:winSize]")
@@ -61,8 +61,8 @@ func TestWindow_ReadFrom(t *testing.T) {
 	if len(w.data) != winSize {
 		t.Fatalf("len(w.data) is %d; want %d", len(w.data), winSize)
 	}
-	if cap(w.data) != winSize {
-		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize)
+	if cap(w.data) != winSize+7 {
+		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize+7)
 	}
 	f.Close()
 	data, err := os.ReadFile(file)

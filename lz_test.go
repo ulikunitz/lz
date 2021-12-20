@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func newTestSequencer(tb testing.TB, cfg Configurator) InputSequencer {
+func newTestSequencer(tb testing.TB, cfg OldConfigurator) InputSequencer {
 	s, err := cfg.NewInputSequencer()
 	if err != nil {
 		tb.Fatalf("NewOptimalSuffixArraySequencer(%+v) error %s",
@@ -81,7 +81,7 @@ func TestSequencers(t *testing.T) {
 	const enwik7 = "testdata/enwik7"
 	tests := []struct {
 		name string
-		cfg  Configurator
+		cfg  OldConfigurator
 	}{
 		{
 			name: "HashSequencer-3",
@@ -213,7 +213,7 @@ func TestSequencersSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender======"
 	tests := []struct {
 		name string
-		cfg  Configurator
+		cfg  OldConfigurator
 	}{
 		{
 			name: "HashSequencer-3",
@@ -328,7 +328,7 @@ func BenchmarkSequencers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
 		name string
-		cfg  Configurator
+		cfg  OldConfigurator
 	}{
 		{"HashSequencer-3", HSConfig{
 			InputLen:   3,

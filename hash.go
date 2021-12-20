@@ -60,6 +60,9 @@ func (h *hash) reset() {
 }
 
 func (h *hash) adapt(delta uint32) {
+	if delta == 0 {
+		return
+	}
 	for i, e := range h.table {
 		if e.pos < delta {
 			h.table[i] = hashEntry{}

@@ -196,8 +196,8 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 }
 
-// ByteAt returns the byte at pos unless pos is outside of the data stored in
-// window.
+// ByteAt returns the byte at the absolute position pos unless pos is outside of
+// the data stored in window.
 func (w *Window) ByteAt(pos int64) (c byte, err error) {
 	pos -= w.start
 	if !(0 <= pos && pos < int64(len(w.data))) {

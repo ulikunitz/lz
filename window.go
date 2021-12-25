@@ -208,6 +208,16 @@ func (w *Window) ByteAt(pos int64) (c byte, err error) {
 	return w.data[pos], nil
 }
 
+// ReadAt allows to read data from the window directly.
+func (w *Window) ReadAt(p []byte, pos int64) (n int, err error) {
+	pos -= w.start
+	if !(0 <= pos && pos < int64(len(w.data))) {
+		return 0, errOutsideWindow
+	}
+	n = copy(p, w.data[pos:])
+	return n, nil
+}
+
 func (w *Window) additionalMemSize() uintptr {
 	return uintptr(cap(w.data))
 }

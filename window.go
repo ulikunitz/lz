@@ -198,9 +198,9 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 
 var errOutsideWindow = errors.New("lz: pos outside of window buffer")
 
-// ByteAt returns the byte at the absolute position pos unless pos is outside of
+// ReadByteAt returns the byte at the absolute position pos unless pos is outside of
 // the data stored in window.
-func (w *Window) ByteAt(pos int64) (c byte, err error) {
+func (w *Window) ReadByteAt(pos int64) (c byte, err error) {
 	pos -= w.start
 	if !(0 <= pos && pos < int64(len(w.data))) {
 		return 0, errOutsideWindow

@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
@@ -20,6 +21,7 @@ type RingBuffer struct {
 	// fullWindow marks the situation where sw.w doesn't contain the window
 	// size
 	fullWindow bool
+	eof        bool
 }
 
 // Init initializes the ring buffer. The existing data slice in the ring buffer
@@ -41,6 +43,12 @@ func (buf *RingBuffer) Reset() {
 	*buf = RingBuffer{data: buf.data}
 }
 
+// Close closes the ring buffer.
+func (buf *RingBuffer) Close() error {
+	buf.eof = true
+	return nil
+}
+
 // Read reads data from the writer. It will always try to return as much data as
 // possible.
 func (buf *RingBuffer) Read(p []byte) (n int, err error) {
@@ -56,7 +64,10 @@ func (buf *RingBuffer) Read(p []byte) (n int, err error) {
 	k := copy(p, buf.data[buf.r:buf.w])
 	n += k
 	buf.r += k
-	return n, nil
+	if buf.r == buf.w && buf.eof && !buf.fullWindow {
+		err = io.EOF
+	}
+	return n, err
 }
 
 // WriteTo writes data into the writer as much as it is possible.
@@ -83,6 +94,9 @@ func (buf *RingBuffer) WriteTo(w io.Writer) (n int64, err error) {
 // available returns the number of bytes available for writing data to the ring
 // buffer.
 func (buf *RingBuffer) available() int {
+	if buf.eof {
+		return 0
+	}
 	n := buf.r - buf.w - 1
 	if n < 0 {
 		n += len(buf.data)
@@ -110,9 +124,14 @@ func (buf *RingBuffer) copySlice(p []byte) {
 	buf.w = copy(buf.data, p[k:])
 }
 
+var errClosed = errors.New("lz: writer closed")
+
 // Write writes data into the sequencer. If the Write cannot be completed no
 // bytes will be written.
 func (buf *RingBuffer) Write(p []byte) (n int, err error) {
+	if buf.eof {
+		return 0, errClosed
+	}
 	n = buf.available()
 	if len(p) > n {
 		return 0, ErrFullBuffer
@@ -148,6 +167,9 @@ func (buf *RingBuffer) copyMatch(n int, off int) {
 
 // WriteMatch writes a match completely or not completely.
 func (buf *RingBuffer) WriteMatch(n int, offset int) error {
+	if buf.eof {
+		return errClosed
+	}
 	if n > buf.available() {
 		return ErrFullBuffer
 	}
@@ -169,6 +191,9 @@ func (buf *RingBuffer) WriteMatch(n int, offset int) error {
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
 func (buf *RingBuffer) WriteBlock(blk Block) (k, l, n int, err error) {
+	if buf.eof {
+		return 0, 0, 0, errClosed
+	}
 	a := len(buf.data)
 	ll := len(blk.Literals)
 	var s Seq

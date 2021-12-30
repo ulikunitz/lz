@@ -89,7 +89,7 @@ func (buf *Buffer) winLen() int {
 func (buf *Buffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
-	return n, err
+	return n, nil
 }
 
 // WriteTo writes all data to read into the writer.

@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
 	"io"
 )
@@ -110,8 +109,6 @@ func (buf *RingBuffer) copySlice(p []byte) {
 	buf.fullWindow = true
 	buf.w = copy(buf.data, p[k:])
 }
-
-var errClosed = errors.New("lz: writer closed")
 
 // Write writes data into the sequencer. If the Write cannot be completed no
 // bytes will be written.

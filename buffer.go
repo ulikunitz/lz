@@ -93,18 +93,15 @@ func (buf *Buffer) winLen() int {
 func (buf *Buffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
-	if n == 0 {
-		return 0, ErrEmptyBuffer
+	if buf.r == len(buf.data) {
+		err = ErrEmptyBuffer
 	}
-	return n, nil
+	return n, err
 }
 
 // WriteTo writes all data to read into the writer.
 func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 	p := buf.data[buf.r:]
-	if len(p) == 0 {
-		return 0, ErrEmptyBuffer
-	}
 	k, err := w.Write(p)
 	buf.r += k
 	return int64(k), err

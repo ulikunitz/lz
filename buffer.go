@@ -12,8 +12,7 @@ type Buffer struct {
 
 	start int64
 
-	r   int
-	eof bool
+	r int
 
 	windowSize int
 	max        int
@@ -57,21 +56,9 @@ func (buf *Buffer) Reset() {
 	buf.start = 0
 	buf.data = buf.data[:0]
 	buf.r = 0
-	buf.eof = false
 }
 
-func (buf *Buffer) Close() error {
-	buf.eof = true
-	return nil
-
-}
-
-func (buf *Buffer) available() int {
-	if buf.eof {
-		return 0
-	}
-	return buf.max - len(buf.data)
-}
+func (buf *Buffer) available() int { return buf.max - len(buf.data) }
 
 func (buf *Buffer) shrinkable() int {
 	r := len(buf.data) - buf.windowSize
@@ -85,17 +72,10 @@ func (buf *Buffer) shrinkable() int {
 }
 
 // Available provides the amount of data that can be written into the buffer.
-func (buf *Buffer) Available() int {
-	if buf.eof {
-		return 0
-	}
-	return buf.shrinkable() + buf.available()
-}
+func (buf *Buffer) Available() int { return buf.shrinkable() + buf.available() }
 
 // Len returns the number of bytes in the unread portion of the buffer.
-func (buf *Buffer) Len() int {
-	return len(buf.data) - buf.r
-}
+func (buf *Buffer) Len() int { return len(buf.data) - buf.r }
 
 func (buf *Buffer) winLen() int {
 	n := len(buf.data)
@@ -109,9 +89,6 @@ func (buf *Buffer) winLen() int {
 func (buf *Buffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
-	if buf.r == len(buf.data) && buf.eof {
-		err = io.EOF
-	}
 	return n, err
 }
 
@@ -143,18 +120,10 @@ func (buf *Buffer) shrink(n int64) error {
 // Write writes the provided byte slice into the buffer and extends the window
 // accordingly.
 func (buf *Buffer) Write(p []byte) (n int, err error) {
-	if buf.eof {
-		return 0, errClosed
-	}
 	if buf.available() < len(p) {
 		if err = buf.shrink(int64(len(p))); err != nil {
 			return 0, err
 		}
-	}
-	n = buf.available()
-	if len(p) > n {
-		p = p[:n]
-		err = ErrFullBuffer
 	}
 	buf.data = append(buf.data, p...)
 	return len(p), err
@@ -166,9 +135,6 @@ func (buf *Buffer) WriteByte(c byte) error {
 		if err := buf.shrink(int64(1)); err != nil {
 			return err
 		}
-	}
-	if buf.available() < 1 {
-		return ErrFullBuffer
 	}
 	buf.data = append(buf.data, c)
 	return nil
@@ -192,19 +158,16 @@ func (buf *Buffer) copyMatch(n, off int) {
 // WriteMatch writes a match into the buffer and extends the window by the
 // match.
 func (buf *Buffer) WriteMatch(n, offset int) error {
-	if buf.eof {
-		return errClosed
+	if offset <= 0 {
+		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
+	}
+	if n < 0 {
+		return fmt.Errorf("lz: n=%d; must be > 0", n)
 	}
 	if n > buf.available() {
 		if err := buf.shrink(int64(n)); err != nil {
 			return err
 		}
-	}
-	if offset <= 0 {
-		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
-	}
-	if n < 0 {
-		return fmt.Errorf("lz: n=%d; must be >= 0", n)
 	}
 	if k := buf.winLen(); offset > k {
 		return fmt.Errorf("lz: offset=%d; should be <= window (%d)",
@@ -218,9 +181,6 @@ func (buf *Buffer) WriteMatch(n, offset int) error {
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
 func (buf *Buffer) WriteBlock(blk Block) (k, l, n int, err error) {
-	if buf.eof {
-		return 0, 0, 0, errClosed
-	}
 	a := len(buf.data)
 	ll := len(blk.Literals)
 	var s Seq

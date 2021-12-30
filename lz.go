@@ -69,8 +69,8 @@ type Sequencer interface {
 	Shrink() int
 	// WindowPtr returns a pointer to the Window structure.
 	WindowPtr() *Window
-	// Reset allows the reuse of the Sequencer
-	Reset()
+	// Reset allows the reuse of the Sequencer.
+	Reset(data []byte) error
 }
 
 // Configurator generates  new sequencer instances.

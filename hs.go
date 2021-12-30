@@ -140,9 +140,12 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 
 // Reset resets the hash sequencer. The sequencer will be in the same state as
 // after Init.
-func (s *HashSequencer) Reset() {
-	s.Window.Reset()
+func (s *HashSequencer) Reset(data []byte) error {
+	if err := s.Window.Reset(data); err != nil {
+		return err
+	}
 	s.hash.reset()
+	return nil
 }
 
 // Shrink shortens the window size to make more space available for Write and

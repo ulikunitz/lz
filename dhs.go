@@ -166,10 +166,13 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 }
 
 // Reset puts the DoubleHashSequencer in its initial state.
-func (s *DoubleHashSequencer) Reset() {
-	s.Window.Reset()
+func (s *DoubleHashSequencer) Reset(data []byte) error {
+	if err := s.Window.Reset(data); err != nil {
+		return err
+	}
 	s.h1.reset()
 	s.h2.reset()
+	return nil
 }
 
 // hashSegment1 hases the provided segment of data for the first hash table.

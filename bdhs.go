@@ -164,10 +164,13 @@ func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 
 // Reset puts the sequencer into the state after initialization. The allocated
 // memory in the buffer will be maintained.
-func (s *BackwardDoubleHashSequencer) Reset() {
-	s.Window.Reset()
+func (s *BackwardDoubleHashSequencer) Reset(data []byte) error {
+	if err := s.Window.Reset(data); err != nil {
+		return err
+	}
 	s.h1.reset()
 	s.h2.reset()
+	return nil
 }
 
 func (s *BackwardDoubleHashSequencer) hashSegment1(a, b int) {

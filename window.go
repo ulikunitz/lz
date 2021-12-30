@@ -83,14 +83,30 @@ func (w *Window) Init(cfg WindowConfig) error {
 }
 
 // Reset cleans the window structure for reuse.
-func (w *Window) Reset() {
+func (w *Window) Reset(data []byte) error {
+	if data == nil {
+		data = w.data[:0]
+	}
+	if len(data) > w.WindowSize {
+		return errors.New("lz: len(data) exceeds window size")
+	}
+	if len(data)+7 > cap(data) {
+		if len(data)+7 <= cap(w.data) {
+			w.data = w.data[:len(data)]
+		} else {
+			w.data = make([]byte, len(w.data), len(w.data)+7)
+		}
+		copy(w.data, data)
+		data = w.data
+	}
 	*w = Window{
-		data:         w.data[:0],
+		data:         data,
 		WindowConfig: w.WindowConfig,
 	}
-	if cap(w.data) < 7 {
+	if len(w.data)+7 > cap(w.data) {
 		panic("unexpected capacity after Init")
 	}
+	return nil
 }
 
 // Available returns the number of bytes are available for writing into the

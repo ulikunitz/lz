@@ -70,6 +70,8 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 // Reset puts the WrappedSequencer in its initial state and changes the wrapped
 // reader to another reader.
 func (s *WrappedSequencer) Reset(r io.Reader) {
-	s.s.Reset()
+	if err := s.s.Reset(nil); err != nil {
+		panic(err)
+	}
 	s.r = r
 }

@@ -139,11 +139,14 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 }
 
 // Reset puts the sequencer in the initial state.
-func (s *GreedySuffixArraySequencer) Reset() {
-	s.Window.Reset()
+func (s *GreedySuffixArraySequencer) Reset(data []byte) error {
+	if err := s.Window.Reset(data); err != nil {
+		return err
+	}
 	s.sa = s.sa[:0]
 	s.isa = s.isa[:0]
 	s.bits.clear()
+	return nil
 }
 
 // sort computes the suffix array and its inverse 2gqqfor the window and all

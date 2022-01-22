@@ -85,14 +85,15 @@ func (buf *Buffer) winLen() int {
 	return n
 }
 
-// Read reads data from the buffer.
+// Read reads data from the buffer. The function never returns an error.
 func (buf *Buffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
 	return n, nil
 }
 
-// WriteTo writes all data to read into the writer.
+// WriteTo writes all data to read into the writer. It only returns an error if
+// the Write fails.
 func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 	p := buf.data[buf.r:]
 	k, err := w.Write(p)

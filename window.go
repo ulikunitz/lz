@@ -82,7 +82,9 @@ func (w *Window) Init(cfg WindowConfig) error {
 	return nil
 }
 
-// Reset cleans the window structure for reuse.
+// Reset cleans the window structure for reuse. Itg will use the data structue
+// for the data. Note that the condition cap(data) > len(data) + 7 must be met
+// to avoid copying.
 func (w *Window) Reset(data []byte) error {
 	if data == nil {
 		data = w.data[:0]
@@ -104,7 +106,7 @@ func (w *Window) Reset(data []byte) error {
 		WindowConfig: w.WindowConfig,
 	}
 	if len(w.data)+7 > cap(w.data) {
-		panic("unexpected capacity after Init")
+		panic("unexpected capacity")
 	}
 	return nil
 }

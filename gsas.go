@@ -229,12 +229,17 @@ func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 			i++
 			continue
 		}
+		o := i - f
+		if !(0 < o && o < s.WindowSize) {
+			i++
+			continue
+		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{
 				MatchLen: uint32(m),
 				LitLen:   uint32(len(q)),
-				Offset:   uint32(i - f),
+				Offset:   uint32(o),
 			})
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + m

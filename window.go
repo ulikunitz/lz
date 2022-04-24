@@ -89,9 +89,6 @@ func (w *Window) Reset(data []byte) error {
 	if data == nil {
 		data = w.data[:0]
 	}
-	if len(data) > w.WindowSize {
-		return errors.New("lz: len(data) exceeds window size")
-	}
 	if len(data)+7 > cap(data) {
 		if len(data)+7 <= cap(w.data) {
 			w.data = w.data[:len(data)]
@@ -113,20 +110,31 @@ func (w *Window) Reset(data []byte) error {
 
 // Available returns the number of bytes are available for writing into the
 // buffer.
-func (w *Window) Available() int { return w.WindowSize - len(w.data) }
+func (w *Window) Available() int {
+	n := w.WindowSize - len(w.data)
+	if n < 0 {
+		return 0
+	}
+	return n
+}
 
 // Buffered returns the number of bytes buffered but are not yet part of the
 // window. They have to be sequenced first.
 func (w *Window) Buffered() int { return len(w.data) - w.w }
 
 // Len returns the actual length of the current window
-func (w *Window) Len() int { return w.w }
+func (w *Window) Len() int {
+	if w.w > w.WindowSize {
+		return w.WindowSize
+	}
+	return w.w
+}
 
 // Pos returns the absolute position of the window head
 func (w *Window) Pos() int64 { return w.start + int64(w.w) }
 
-// shrink reduces the current window length to n if possible. The method returns
-// the actual window length after shrinking.
+// shrink reduces the current window lengtb. The method returns the actual
+// window length after shrinking.
 func (w *Window) shrink() int {
 	r := w.w - w.ShrinkSize
 	if r <= 0 {
@@ -176,7 +184,7 @@ func (w *Window) Write(p []byte) (n int, err error) {
 
 // ReadFrom transfers data from the reader into the buffer.
 func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
-	if len(w.data) == w.WindowSize {
+	if len(w.data) >= w.WindowSize {
 		return 0, ErrFullBuffer
 	}
 	for {

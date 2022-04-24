@@ -276,7 +276,7 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		// potential match
 		j := int(entry.pos)
 		o := i - j
-		if o <= 0 {
+		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
@@ -370,7 +370,7 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		j := int(entry.pos)
 		// j must not be less than window start
 		o := i - j
-		if o <= 0 {
+		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3

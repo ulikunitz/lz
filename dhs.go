@@ -281,7 +281,7 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		// potential match
 		j := int(entry.pos)
 		o := i - j
-		if o <= 0 {
+		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
@@ -366,7 +366,7 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		// potential match
 		j := int(entry.pos)
 		o := i - j
-		if o <= 0 {
+		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3

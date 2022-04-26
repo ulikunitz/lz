@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-// DHSConfig provides the confifuration parameters for the DoubleHashSequencer.
+// DHSConfig provides the configuration parameters for the DoubleHashSequencer.
 type DHSConfig struct {
 	// maximal window size
 	WindowSize int

@@ -27,9 +27,11 @@ func TestReset(t *testing.T) {
 	)
 
 	hs := newTestSequencer(t, HSConfig{
-		InputLen:   3,
-		WindowSize: windowSize,
-		BlockSize:  blockSize,
+		InputLen: 3,
+		SBConfig: SBConfig{
+			WindowSize: windowSize,
+			BlockSize:  blockSize,
+		},
 	})
 
 	r := Wrap(strings.NewReader(str), hs)
@@ -86,37 +88,47 @@ func TestSequencers(t *testing.T) {
 		{
 			name: "HashSequencer-3",
 			cfg: HSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
+				InputLen: 3,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "BackwardHashSequencer-3",
 			cfg: BHSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
+				InputLen: 3,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "DoubleHashSequencer-3,8",
 			cfg: DHSConfig{
-				InputLen1:  3,
-				InputLen2:  8,
-				WindowSize: 8 << 20,
+				InputLen1: 3,
+				InputLen2: 8,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "BDHSequencer-3,8",
 			cfg: BDHSConfig{
-				InputLen1:  3,
-				InputLen2:  8,
-				WindowSize: 8 << 20,
+				InputLen1: 3,
+				InputLen2: 8,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "GSASequencer",
 			cfg: GSASConfig{
-				WindowSize: 8 << 20,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 	}
@@ -132,8 +144,8 @@ func TestSequencers(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			hOrig := sha256.New()
 			h := sha256.New()
-			w := ws.WindowPtr()
-			winSize := w.WindowSize
+			b := ws.Buffer()
+			winSize := b.WindowSize
 			d, err := NewDecoder(h, DConfig{WindowSize: winSize})
 			if err != nil {
 				t.Fatalf("NewDecoder error %s", err)
@@ -197,37 +209,47 @@ func TestSequencersSimple(t *testing.T) {
 		{
 			name: "HashSequencer-3",
 			cfg: HSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
+				InputLen: 3,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "BackwardHashSequencer-3",
 			cfg: HSConfig{
-				InputLen:   3,
-				WindowSize: 8 << 20,
+				InputLen: 3,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "DoubleHashSequencer-3,6",
 			cfg: DHSConfig{
-				InputLen1:  3,
-				InputLen2:  6,
-				WindowSize: 8 << 20,
+				InputLen1: 3,
+				InputLen2: 6,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "BDHSequencer-3,6",
 			cfg: DHSConfig{
-				InputLen1:  3,
-				InputLen2:  6,
-				WindowSize: 8 << 20,
+				InputLen1: 3,
+				InputLen2: 6,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 		{
 			name: "GSASequencer",
 			cfg: GSASConfig{
-				WindowSize: 8 << 20,
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
 			},
 		},
 	}
@@ -239,8 +261,8 @@ func TestSequencersSimple(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := newTestSequencer(t, tc.cfg)
 			h := sha256.New()
-			w := ws.WindowPtr()
-			winSize := w.WindowSize
+			b := ws.Buffer()
+			winSize := b.WindowSize
 			d, err := NewDecoder(h, DConfig{
 				WindowSize: winSize,
 				MaxSize:    2 * winSize})
@@ -293,74 +315,100 @@ func BenchmarkSequencers(b *testing.B) {
 		cfg  Configurator
 	}{
 		{"HashSequencer-3", HSConfig{
-			InputLen:   3,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 3,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"HashSequencer-4", HSConfig{
-			InputLen:   4,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 4,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"HashSequencer-5", HSConfig{
-			InputLen:   5,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 5,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"HashSequencer-8", HSConfig{
-			InputLen:   8,
-			WindowSize: 8 << 20,
+			InputLen: 8,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BackwardHashSequencer-3", HSConfig{
-			InputLen:   3,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 3,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BackwardHashSequencer-4", HSConfig{
-			InputLen:   4,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 4,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BackwardHashSequencer-5", HSConfig{
-			InputLen:   5,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 5,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BackwardHashSequencer-8", HSConfig{
-			InputLen:   8,
-			HashBits:   15,
-			WindowSize: 8 << 20,
+			InputLen: 8,
+			HashBits: 15,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"DoubleHashSequencer-3,6", DHSConfig{
-			InputLen1:  3,
-			InputLen2:  6,
-			HashBits1:  15,
-			HashBits2:  18,
-			WindowSize: 8 << 20,
+			InputLen1: 3,
+			InputLen2: 6,
+			HashBits1: 15,
+			HashBits2: 18,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"DoubleHashSequencer-4,6", DHSConfig{
-			InputLen1:  4,
-			InputLen2:  6,
-			HashBits1:  15,
-			HashBits2:  18,
-			WindowSize: 8 << 20,
+			InputLen1: 4,
+			InputLen2: 6,
+			HashBits1: 15,
+			HashBits2: 18,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BDHSequencer-3,6", DHSConfig{
-			InputLen1:  3,
-			InputLen2:  6,
-			HashBits1:  15,
-			HashBits2:  18,
-			WindowSize: 8 << 20,
+			InputLen1: 3,
+			InputLen2: 6,
+			HashBits1: 15,
+			HashBits2: 18,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"BDHSequencer-4,6", DHSConfig{
-			InputLen1:  4,
-			InputLen2:  6,
-			HashBits1:  15,
-			HashBits2:  18,
-			WindowSize: 8 << 20,
+			InputLen1: 4,
+			InputLen2: 6,
+			HashBits1: 15,
+			HashBits2: 18,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 		{"GSASequencer", GSASConfig{
-			WindowSize: 8 << 20,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
 		}},
 	}
 
@@ -414,10 +462,8 @@ func BenchmarkDecoders(b *testing.B) {
 		name    string
 		winSize int
 		maxSize int
-		ring    bool
 	}{
 		{name: "Decoder", winSize: 1024 * 1024},
-		{name: "RingDecoder", winSize: 1024 * 1024, ring: true},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -430,8 +476,10 @@ func BenchmarkDecoders(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
 			hs, err := NewHashSequencer(HSConfig{
-				InputLen:   3,
-				WindowSize: bm.winSize,
+				InputLen: 3,
+				SBConfig: SBConfig{
+					WindowSize: bm.winSize,
+				},
 			})
 			if err != nil {
 				b.Fatalf("NewHashSequencer error %s", err)
@@ -456,20 +504,13 @@ func BenchmarkDecoders(b *testing.B) {
 				Reset(w io.Writer)
 			}
 			hw := sha256.New()
-			if bm.ring {
-				d, err = NewRingDecoder(hw, bm.winSize)
-				if err != nil {
-					b.Fatalf("NewRingDecoder error %s", err)
-				}
-			} else {
 
-				d, err = NewDecoder(hw, DConfig{
-					WindowSize: bm.winSize,
-					MaxSize:    bm.maxSize,
-				})
-				if err != nil {
-					b.Fatalf("NewDecoder error %s", err)
-				}
+			d, err = NewDecoder(hw, DConfig{
+				WindowSize: bm.winSize,
+				MaxSize:    bm.maxSize,
+			})
+			if err != nil {
+				b.Fatalf("NewDecoder error %s", err)
 			}
 			b.ResetTimer()
 			b.StopTimer()
@@ -505,8 +546,10 @@ func TestGSASSimple(t *testing.T) {
 
 	var s GreedySuffixArraySequencer
 	if err := s.Init(GSASConfig{
-		WindowSize: 1024,
-		BlockSize:  blockSize,
+		SBConfig: SBConfig{
+			WindowSize: 1024,
+			BlockSize:  blockSize,
+		},
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}

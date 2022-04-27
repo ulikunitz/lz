@@ -8,10 +8,8 @@ import (
 
 // BDHSConfig provides the confifuration parameters for the BackwardDoubleHashSequencer.
 type BDHSConfig struct {
-	// maximal window size
-	WindowSize int
-	ShrinkSize int
-	BlockSize  int
+	SBConfig
+
 	// smaller hash input length; range 2 to 8
 	InputLen1 int
 	// hash bits for the smaller hash input length
@@ -24,8 +22,7 @@ type BDHSConfig struct {
 
 // Verify checks the configuration for errors.
 func (cfg *BDHSConfig) Verify() error {
-	wcfg := cfg.windowConfig()
-	if err := wcfg.Verify(); err != nil {
+	if err := cfg.SBConfig.Verify(); err != nil {
 		return err
 	}
 	if !(2 <= cfg.InputLen1 && cfg.InputLen1 <= 8) {
@@ -76,11 +73,7 @@ func (cfg *BDHSConfig) Verify() error {
 // ApplyDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *BDHSConfig) ApplyDefaults() {
-	wcfg := cfg.windowConfig()
-	wcfg.ApplyDefaults()
-	cfg.WindowSize = wcfg.WindowSize
-	cfg.ShrinkSize = wcfg.ShrinkSize
-	cfg.BlockSize = wcfg.BlockSize
+	cfg.SBConfig.ApplyDefaults()
 	if cfg.InputLen1 == 0 {
 		cfg.InputLen1 = 3
 	}
@@ -95,14 +88,6 @@ func (cfg *BDHSConfig) ApplyDefaults() {
 	}
 }
 
-func (cfg *BDHSConfig) windowConfig() WindowConfig {
-	return WindowConfig{
-		WindowSize: cfg.WindowSize,
-		ShrinkSize: cfg.ShrinkSize,
-		BlockSize:  cfg.BlockSize,
-	}
-}
-
 // NewSequencer creates a new BackwardDoubleHashSequencer.
 func (cfg BDHSConfig) NewSequencer() (s Sequencer, err error) {
 	return NewBackwardDoubleHashSequencer(cfg)
@@ -111,19 +96,16 @@ func (cfg BDHSConfig) NewSequencer() (s Sequencer, err error) {
 // BackwardDoubleHashSequencer uses two hashes and tries to extend matches
 // backward.
 type BackwardDoubleHashSequencer struct {
-	Window
+	SeqBuffer
 
 	h1 hash
 	h2 hash
 }
 
-// WindowPtr returns the pointer to the Window in BackwardDoubleHashSequencer.
-func (s *BackwardDoubleHashSequencer) WindowPtr() *Window { return &s.Window }
-
 // MemSize returns the consumed memory size by the sequencer.
 func (s *BackwardDoubleHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
-	n += s.Window.additionalMemSize()
+	n += s.SeqBuffer.additionalMemSize()
 	n += s.h1.additionalMemSize()
 	n += s.h2.additionalMemSize()
 	return n
@@ -149,7 +131,7 @@ func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 		return err
 	}
 
-	err = s.Window.Init(cfg.windowConfig())
+	err = s.SeqBuffer.Init(cfg.SBConfig)
 	if err != nil {
 		return err
 	}
@@ -165,7 +147,7 @@ func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 // Reset puts the sequencer into the state after initialization. The allocated
 // memory in the buffer will be maintained.
 func (s *BackwardDoubleHashSequencer) Reset(data []byte) error {
-	if err := s.Window.Reset(data); err != nil {
+	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
 	s.h1.reset()
@@ -446,9 +428,10 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
 func (s *BackwardDoubleHashSequencer) Shrink() int {
-	oldWindowLen := s.Window.w
-	n := s.Window.shrink()
-	s.h1.adapt(uint32(oldWindowLen - n))
-	s.h2.adapt(uint32(oldWindowLen - n))
+	w := s.SeqBuffer.w
+	n := s.SeqBuffer.shrink()
+	delta := uint32(w - n)
+	s.h1.adapt(delta)
+	s.h2.adapt(delta)
 	return n
 }

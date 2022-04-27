@@ -5,9 +5,9 @@ import (
 	"io"
 )
 
-// Buffer provides a simple buffer to decode sequences. The max field gives a
+// DecBuffer provides a simple buffer to decode sequences. The max field gives a
 // target that can be exceeded once.
-type Buffer struct {
+type DecBuffer struct {
 	data []byte
 
 	start int64
@@ -20,7 +20,7 @@ type Buffer struct {
 
 // Init initialized the buffer. The window size must be larger than 1 and max
 // must be larger then the windowSize.
-func (buf *Buffer) Init(windowSize, max int) error {
+func (buf *DecBuffer) Init(windowSize, max int) error {
 	if windowSize < 1 {
 		return fmt.Errorf("lz: windowSize must be >1")
 	}
@@ -28,7 +28,7 @@ func (buf *Buffer) Init(windowSize, max int) error {
 		return fmt.Errorf("lz: max must be > windowSize")
 	}
 
-	*buf = Buffer{
+	*buf = DecBuffer{
 		data:       buf.data[:0],
 		windowSize: windowSize,
 		max:        max,
@@ -38,13 +38,13 @@ func (buf *Buffer) Init(windowSize, max int) error {
 }
 
 // Pos returns the file position of the window head.
-func (buf *Buffer) Pos() int64 {
+func (buf *DecBuffer) Pos() int64 {
 	return buf.start + int64(len(buf.data))
 }
 
 // ByteAtEnd reads the byte with offset i from the end. If it it points outside
 // the window the value returned is 0.
-func (buf *Buffer) ByteAtEnd(i int) byte {
+func (buf *DecBuffer) ByteAtEnd(i int) byte {
 	if !(0 < i && i <= buf.winLen()) {
 		return 0
 	}
@@ -52,15 +52,15 @@ func (buf *Buffer) ByteAtEnd(i int) byte {
 }
 
 // Reset puts the buffer into its initial state.
-func (buf *Buffer) Reset() {
+func (buf *DecBuffer) Reset() {
 	buf.start = 0
 	buf.data = buf.data[:0]
 	buf.r = 0
 }
 
-func (buf *Buffer) available() int { return buf.max - len(buf.data) }
+func (buf *DecBuffer) available() int { return buf.max - len(buf.data) }
 
-func (buf *Buffer) shrinkable() int {
+func (buf *DecBuffer) shrinkable() int {
 	r := len(buf.data) - buf.windowSize
 	if buf.r < r {
 		r = buf.r
@@ -72,12 +72,12 @@ func (buf *Buffer) shrinkable() int {
 }
 
 // Available provides the amount of data that can be written into the buffer.
-func (buf *Buffer) Available() int { return buf.shrinkable() + buf.available() }
+func (buf *DecBuffer) Available() int { return buf.shrinkable() + buf.available() }
 
 // Len returns the number of bytes in the unread portion of the buffer.
-func (buf *Buffer) Len() int { return len(buf.data) - buf.r }
+func (buf *DecBuffer) Len() int { return len(buf.data) - buf.r }
 
-func (buf *Buffer) winLen() int {
+func (buf *DecBuffer) winLen() int {
 	n := len(buf.data)
 	if n > buf.windowSize {
 		n = buf.windowSize
@@ -86,7 +86,7 @@ func (buf *Buffer) winLen() int {
 }
 
 // Read reads data from the buffer. The function never returns an error.
-func (buf *Buffer) Read(p []byte) (n int, err error) {
+func (buf *DecBuffer) Read(p []byte) (n int, err error) {
 	n = copy(p, buf.data[buf.r:])
 	buf.r += n
 	return n, nil
@@ -94,7 +94,7 @@ func (buf *Buffer) Read(p []byte) (n int, err error) {
 
 // WriteTo writes all data to read into the writer. It only returns an error if
 // the Write fails.
-func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
+func (buf *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
 	p := buf.data[buf.r:]
 	k, err := w.Write(p)
 	buf.r += k
@@ -103,7 +103,7 @@ func (buf *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 
 // shrink moves the window to the front of the buffer if n bytes will be made
 // available. Otherwise ErrFullBuffer will be returned.
-func (buf *Buffer) shrink(n int64) error {
+func (buf *DecBuffer) shrink(n int64) error {
 	r := buf.shrinkable()
 	if int64(buf.available())+int64(r) < n {
 		return ErrFullBuffer
@@ -120,7 +120,7 @@ func (buf *Buffer) shrink(n int64) error {
 
 // Write writes the provided byte slice into the buffer and extends the window
 // accordingly.
-func (buf *Buffer) Write(p []byte) (n int, err error) {
+func (buf *DecBuffer) Write(p []byte) (n int, err error) {
 	if buf.available() < len(p) {
 		if err = buf.shrink(int64(len(p))); err != nil {
 			return 0, err
@@ -131,7 +131,7 @@ func (buf *Buffer) Write(p []byte) (n int, err error) {
 }
 
 // WriteByte writes a single byte to the buffer and extends the window.
-func (buf *Buffer) WriteByte(c byte) error {
+func (buf *DecBuffer) WriteByte(c byte) error {
 	if buf.available() < 1 {
 		if err := buf.shrink(int64(1)); err != nil {
 			return err
@@ -141,7 +141,7 @@ func (buf *Buffer) WriteByte(c byte) error {
 	return nil
 }
 
-func (buf *Buffer) copyMatch(n, off int) {
+func (buf *DecBuffer) copyMatch(n, off int) {
 	for n > off {
 		buf.data = append(buf.data,
 			buf.data[len(buf.data)-off:]...)
@@ -158,7 +158,7 @@ func (buf *Buffer) copyMatch(n, off int) {
 
 // WriteMatch writes a match into the buffer and extends the window by the
 // match.
-func (buf *Buffer) WriteMatch(n, offset int) error {
+func (buf *DecBuffer) WriteMatch(n, offset int) error {
 	if offset <= 0 {
 		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
 	}
@@ -181,7 +181,7 @@ func (buf *Buffer) WriteMatch(n, offset int) error {
 // WriteBlock writes a whole list of sequences, each sequence will be written
 // atomically. The functions returns the number of sequences k written, the
 // number of literals l consumed and the number of bytes n generated.
-func (buf *Buffer) WriteBlock(blk Block) (k, l, n int, err error) {
+func (buf *DecBuffer) WriteBlock(blk Block) (k, l, n int, err error) {
 	a := len(buf.data)
 	ll := len(blk.Literals)
 	var s Seq
@@ -276,7 +276,7 @@ func (cfg *DConfig) ApplyDefaults() {
 
 // A Decoder decodes sequences and writes data into the writer.
 type Decoder struct {
-	buf Buffer
+	buf DecBuffer
 	w   io.Writer
 }
 

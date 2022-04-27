@@ -6,8 +6,8 @@ import (
 
 // TODO: Only calculate window size and hash sizes for the configurator.
 
-// Config provides a general method to create sequencers.
-type Config struct {
+// Parameters provides a general method to create sequencers.
+type Parameters struct {
 	// MemoryBudget specifies the memory budget in bytes for the sequencer. The
 	// budget controls how much memory the sequencer has for the window size and the
 	// match search data structures. It doesn't control temporary memory
@@ -32,32 +32,32 @@ type Config struct {
 // ApplyDefaults applies the defaults to the Config structure. The memory budget
 // is set to 2 MB, the effort to 5 and the block size to 128 kByte unless no
 // other non-zero values have been set.
-func (cfg *Config) ApplyDefaults() {
-	if cfg.Effort == 0 {
-		cfg.Effort = 5
+func (p *Parameters) ApplyDefaults() {
+	if p.Effort == 0 {
+		p.Effort = 5
 	}
-	if cfg.BlockSize == 0 {
-		cfg.BlockSize = 128 * 1024
+	if p.BlockSize == 0 {
+		p.BlockSize = 128 * 1024
 	}
 	// WindowSize and MemoryBudget stays 0 if none is given
 }
 
 // Verify checks the configuration for errors. Use ApplyDefaults before this
 // function because it doesn't support zero values in all cases.
-func (cfg *Config) Verify() error {
-	if cfg.MemoryBudget < 0 {
+func (p *Parameters) Verify() error {
+	if p.MemoryBudget < 0 {
 		return fmt.Errorf("lz: cfg.MemoryBudget must be positive")
 	}
-	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
+	if !(1 <= p.Effort && p.Effort <= 9) {
 		return fmt.Errorf("lz: cfg.Effort must be in range 1-9")
 	}
-	if cfg.BlockSize <= 0 {
+	if p.BlockSize <= 0 {
 		return fmt.Errorf("lz: BlockSize must be positive")
 	}
-	if cfg.WindowSize < 0 {
+	if p.WindowSize < 0 {
 		return fmt.Errorf("lz: cfg.WindowSize must be non-negative")
 	}
-	if cfg.MemoryBudget > 0 && cfg.WindowSize > cfg.MemoryBudget {
+	if p.MemoryBudget > 0 && p.WindowSize > p.MemoryBudget {
 		return fmt.Errorf("lz: memory budget must be larger" +
 			" or equal window size")
 	}
@@ -77,7 +77,7 @@ var memoryBudgetTable = []int{
 }
 
 // computeConfig computes the configuration extremely fast.
-func computeConfig(cfg Config) (c Configurator, err error) {
+func computeConfig(cfg Parameters) (c Configurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -138,92 +138,79 @@ func computeConfig(cfg Config) (c Configurator, err error) {
 }
 
 // computeConfigWindow computes the configuration for a given window size.
-func computeConfigWindow(cfg Config) (c Configurator, err error) {
-	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
+func computeConfigWindow(params Parameters) (c Configurator, err error) {
+	if !(1 <= params.Effort && params.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
-			cfg.Effort)
+			params.Effort)
 	}
-	if cfg.MemoryBudget == 0 {
-		cfg.MemoryBudget = cfg.WindowSize +
-			memoryBudgetTable[cfg.Effort]
+	if params.MemoryBudget == 0 {
+		params.MemoryBudget = params.WindowSize +
+			memoryBudgetTable[params.Effort]
 	}
-	b := cfg.WindowSize + 1024
-	if b > cfg.MemoryBudget {
-		cfg.MemoryBudget = b
+	b := params.WindowSize + 1024
+	if b > params.MemoryBudget {
+		params.MemoryBudget = b
 	}
-	switch cfg.Effort {
+	switch params.Effort {
 	case 1, 2:
-		p := windowHS(hsWinParameters, cfg.WindowSize)
-		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
+		p := windowHS(hsWinParameters, params.WindowSize)
+		hsParams := findHSParams(p, params.MemoryBudget, memSizeHSWin)
 		hscfg := HSConfig{
 			InputLen: hsParams.inputLen,
 			HashBits: hsParams.bits,
 		}
-		hscfg.WindowSize = cfg.WindowSize
+		hscfg.WindowSize = params.WindowSize
 		return &hscfg, nil
 	case 3, 4:
-		p := windowHS(bhsWinParameters, cfg.WindowSize)
-		hsParams := findHSParams(p, cfg.MemoryBudget, memSizeHSWin)
+		p := windowHS(bhsWinParameters, params.WindowSize)
+		hsParams := findHSParams(p, params.MemoryBudget, memSizeHSWin)
 		bhscfg := BHSConfig{
 			InputLen: hsParams.inputLen,
 			HashBits: hsParams.bits,
 		}
-		bhscfg.WindowSize = cfg.WindowSize
+		bhscfg.WindowSize = params.WindowSize
 		return &bhscfg, nil
 	case 5, 6, 7:
-		p := windowDHS(dhsWinParameters, cfg.WindowSize)
-		dhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
+		p := windowDHS(dhsWinParameters, params.WindowSize)
+		dhsParams := findDHSParams(p, params.MemoryBudget,
+			memSizeDHSWin)
 		dhscfg := DHSConfig{
 			InputLen1: dhsParams.inputLen1,
 			HashBits1: dhsParams.bits1,
 			InputLen2: dhsParams.inputLen2,
 			HashBits2: dhsParams.bits2,
 		}
-		dhscfg.WindowSize = cfg.WindowSize
+		dhscfg.WindowSize = params.WindowSize
 		return &dhscfg, nil
 	case 8, 9:
-		p := windowDHS(bdhsWinParameters, cfg.WindowSize)
-		bdhsParams := findDHSParams(p, cfg.MemoryBudget, memSizeDHSWin)
+		p := windowDHS(bdhsWinParameters, params.WindowSize)
+		bdhsParams := findDHSParams(p, params.MemoryBudget,
+			memSizeDHSWin)
 		bdhscfg := BDHSConfig{
 			InputLen1: bdhsParams.inputLen1,
 			HashBits1: bdhsParams.bits1,
 			InputLen2: bdhsParams.inputLen2,
 			HashBits2: bdhsParams.bits2,
 		}
-		bdhscfg.WindowSize = cfg.WindowSize
+		bdhscfg.WindowSize = params.WindowSize
 		return &bdhscfg, nil
 	default:
 		panic("unreachable")
 	}
 }
 
-func (cfg Config) computeConfig() (c Configurator, err error) {
-	cfg.ApplyDefaults()
-	if err = cfg.Verify(); err != nil {
+// Config converts the parameters into an actual configuration.
+func Config(p Parameters) (c Configurator, err error) {
+	p.ApplyDefaults()
+	if err = p.Verify(); err != nil {
 		return nil, err
 	}
-	if cfg.WindowSize == 0 {
-		return computeConfig(cfg)
+	if p.WindowSize == 0 {
+		return computeConfig(p)
 	}
-	return computeConfigWindow(cfg)
+	return computeConfigWindow(p)
 
 }
-
-// NewSequencer creates a new sequencer according to the parameters
-// provided. The function will only return an error the parameters are negative
-// but otherwise always try to satisfy the requirements.
-func (cfg *Config) NewSequencer() (s Sequencer, err error) {
-	c, err := cfg.computeConfig()
-	if err != nil {
-		return nil, err
-	}
-	return c.NewSequencer()
-}
-
-const (
-	kb = 1024
-	mb = 1024 * 1024
-)
 
 type hsParams struct {
 	size     int

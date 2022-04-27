@@ -12,7 +12,7 @@ import (
 // Wrap chooses the minimum of 32 kbyte or half of the window size as shrink
 // size.
 func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
-	return &WrappedSequencer{r: r, s: seq, w: seq.WindowPtr()}
+	return &WrappedSequencer{r: r, s: seq, b: seq.Buffer()}
 }
 
 // WrappedSequencer is returned by the Wrap function. It provides the Sequence
@@ -20,7 +20,7 @@ func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
 type WrappedSequencer struct {
 	r io.Reader
 	s Sequencer
-	w *Window
+	b *SeqBuffer
 }
 
 type memSizer interface {
@@ -35,14 +35,14 @@ func (s *WrappedSequencer) MemSize() uintptr {
 }
 
 func (s *WrappedSequencer) requestBuffer() int {
-	r := s.w.BlockSize - s.w.Buffered()
+	r := s.b.BlockSize - s.b.Buffered()
 	if r <= 0 {
 		return 0
 	}
-	if s.w.Available() < r {
+	if s.b.Available() < r {
 		s.s.Shrink()
 	}
-	return s.w.Available()
+	return s.b.Available()
 }
 
 // Sequence creates a block of sequences but reads the required data from the
@@ -50,7 +50,7 @@ func (s *WrappedSequencer) requestBuffer() int {
 // available.
 func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	if r := s.requestBuffer(); r > 0 {
-		_, err = s.w.ReadFrom(s.r)
+		_, err = s.b.ReadFrom(s.r)
 	}
 	var serr error
 	n, serr = s.s.Sequence(blk, flags)

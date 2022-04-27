@@ -11,26 +11,14 @@ import (
 // GSASConfig defines the configuration parameter for the greedy suffix array
 // seqeuncer.
 type GSASConfig struct {
-	// maximal window size
-	WindowSize int
-	ShrinkSize int
-	BlockSize  int
+	SBConfig
 	// minimum match len
 	MinMatchLen int
 }
 
-func (cfg *GSASConfig) windowConfig() WindowConfig {
-	return WindowConfig{
-		WindowSize: cfg.WindowSize,
-		ShrinkSize: cfg.ShrinkSize,
-		BlockSize:  cfg.BlockSize,
-	}
-}
-
 // Verify checks the configuration for inconsistencies.
 func (cfg *GSASConfig) Verify() error {
-	wcfg := cfg.windowConfig()
-	if err := wcfg.Verify(); err != nil {
+	if err := cfg.SBConfig.Verify(); err != nil {
 		return err
 	}
 	if !(2 <= cfg.MinMatchLen) {
@@ -56,14 +44,7 @@ func (cfg *GSASConfig) Verify() error {
 // ApplyDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
 func (cfg *GSASConfig) ApplyDefaults() {
-	wcfg := cfg.windowConfig()
-	wcfg.ApplyDefaults()
-	cfg.WindowSize = wcfg.WindowSize
-	cfg.ShrinkSize = wcfg.ShrinkSize
-	cfg.BlockSize = wcfg.BlockSize
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 * 1024 * 1024
-	}
+	cfg.SBConfig.ApplyDefaults()
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
 	}
@@ -83,7 +64,7 @@ func (cfg GSASConfig) NewSequencer() (s Sequencer, err error) {
 // Double Hash Sequencers are achieving almost the same compression rate with
 // much less CPU consumption.
 type GreedySuffixArraySequencer struct {
-	Window
+	SeqBuffer
 
 	// suffix array
 	sa []int32
@@ -96,12 +77,10 @@ type GreedySuffixArraySequencer struct {
 	minMatchLen int
 }
 
-// WindowPtr returns the pointer to the window.
-func (s *GreedySuffixArraySequencer) WindowPtr() *Window { return &s.Window }
-
 // MemSize returns the consumed memory size by the
 func (s *GreedySuffixArraySequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
+	n += s.SeqBuffer.additionalMemSize()
 	n += uintptr(cap(s.sa)) * reflect.TypeOf(int32(0)).Size()
 	n += uintptr(cap(s.isa)) * reflect.TypeOf(int32(0)).Size()
 	return n
@@ -127,7 +106,7 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	err = s.Window.Init(cfg.windowConfig())
+	err = s.SeqBuffer.Init(cfg.SBConfig)
 	if err != nil {
 		return err
 	}
@@ -140,7 +119,7 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 
 // Reset puts the sequencer in the initial state.
 func (s *GreedySuffixArraySequencer) Reset(data []byte) error {
-	if err := s.Window.Reset(data); err != nil {
+	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
 	s.sa = s.sa[:0]
@@ -263,7 +242,7 @@ func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 // Shrink reduces the window length to provide more space for writing.
 func (s *GreedySuffixArraySequencer) Shrink() int {
 	oldWindowLen := s.w
-	n := s.Window.shrink()
+	n := s.SeqBuffer.shrink()
 	if oldWindowLen == n {
 		return n
 	}

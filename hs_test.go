@@ -16,9 +16,11 @@ func TestHashSequencerSimple(t *testing.T) {
 
 	var s HashSequencer
 	if err := s.Init(HSConfig{
-		WindowSize: 1024,
-		BlockSize:  512,
-		InputLen:   3,
+		SBConfig: SBConfig{
+			WindowSize: 1024,
+			BlockSize:  512,
+		},
+		InputLen: 3,
 	}); err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
@@ -90,9 +92,11 @@ func TestWrapOldHashSequencer(t *testing.T) {
 	)
 
 	ws, err := NewHashSequencer(HSConfig{
-		WindowSize: windowSize,
-		BlockSize:  blockSize,
-		InputLen:   3,
+		SBConfig: SBConfig{
+			WindowSize: windowSize,
+			BlockSize:  blockSize,
+		},
+		InputLen: 3,
 	})
 	if err != nil {
 		t.Fatalf("NewHashSequencer error %s", err)
@@ -144,9 +148,11 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	r := io.TeeReader(f, h1)
 
 	cfg := HSConfig{
-		WindowSize: windowSize,
-		BlockSize:  blockSize,
-		InputLen:   3,
+		SBConfig: SBConfig{
+			WindowSize: windowSize,
+			BlockSize:  blockSize,
+		},
+		InputLen: 3,
 	}
 	ws, err := NewHashSequencer(cfg)
 	if err != nil {
@@ -248,9 +254,11 @@ func TestLargeParameters(t *testing.T) {
 		cfg      HSConfig
 	}{
 		{enwik7, 9 << 30, HSConfig{
-			InputLen:   3,
-			WindowSize: 8 << 20,
-			BlockSize:  128 * kb,
+			InputLen: 3,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+				BlockSize:  128 * kb,
+			},
 		}},
 	}
 

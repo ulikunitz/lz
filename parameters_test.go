@@ -51,39 +51,39 @@ func memSize(c Configurator) int {
 
 func TestComputeConfig(t *testing.T) {
 	tests := []struct {
-		cfg     Config
+		p       Parameters
 		seqType string
 	}{
-		{Config{}, "DHSConfig"},
-		{Config{Effort: 1}, "HSConfig"},
-		{Config{Effort: 9}, "BDHSConfig"},
-		{Config{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
-		{Config{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
+		{Parameters{}, "DHSConfig"},
+		{Parameters{Effort: 1}, "HSConfig"},
+		{Parameters{Effort: 9}, "BDHSConfig"},
+		{Parameters{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
+		{Parameters{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
 	}
 	for _, tc := range tests {
-		c, err := tc.cfg.computeConfig()
+		c, err := Config(tc.p)
 		if err != nil {
-			t.Fatalf("%+v.computeConfig() error %s", tc.cfg, err)
+			t.Fatalf("%+v.computeConfig() error %s", tc.p, err)
 		}
 		s := reflect.Indirect(reflect.ValueOf(c)).Type().Name()
 		if s != tc.seqType {
-			t.Fatalf("%+v: got type %s; want %s", tc.cfg, s,
+			t.Fatalf("%+v: got type %s; want %s", tc.p, s,
 				tc.seqType)
 		}
 		ms := memSize(c)
 		var budget int
-		if tc.cfg.MemoryBudget == 0 {
-			i := tc.cfg.Effort
+		if tc.p.MemoryBudget == 0 {
+			i := tc.p.Effort
 			if i == 0 {
 				i = 5
 			}
 			budget = memoryBudgetTable[i]
 		} else {
-			budget = tc.cfg.MemoryBudget
+			budget = tc.p.MemoryBudget
 		}
 		if ms > budget {
 			t.Fatalf("memSize: got %d; must be <= %d",
-				ms, tc.cfg.MemoryBudget)
+				ms, tc.p.MemoryBudget)
 		}
 	}
 }

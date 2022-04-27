@@ -5,51 +5,68 @@ import (
 	"io"
 )
 
-// Window acts as a buffer and stores the window. Data is written into the
+// Constants for kilobytes and megabytes.
+const (
+	kb = 1 << 10
+	mb = 1 << 20
+)
+
+// SeqBuffer acts as a buffer for the sequencers. The buffer contains the window
+// from which matches can't be copied in a sequence. Data is written into the
 // buffer, the sequencer creates Lempel-Ziv sequences and advances the window
 // head. Since all positions behind the window head are in the window we even
 // save one check in the sequencer loop.
 //
-// The window ensures that len(w.data)+7 < cap(w.data), which allows 64-bit
+// The Sequencer  ensures that len(w.data)+7 < cap(w.data), which allows 64-bit
 // reads on all byte position of the window.
-type Window struct {
+type SeqBuffer struct {
 	data []byte
-	// start stores the absolute position of the window
+	// start stores the absolute position of the start of the data slice.
 	start int64
-	// w is the position of the window head in data
+	// w is the position of the window head in data slice.
 	w int
-	WindowConfig
+	// SBConfig stores the configuration parameters
+	SBConfig
 }
 
-// WindowConfig stores the parameter for the Window.
-type WindowConfig struct {
+// SBConfig stores the parameter for the Window.
+type SBConfig struct {
 	// WindowSize is the maximum window size in bytes
 	WindowSize int
 	// ShrinkSize provides the size the window is shrinked to make space for
 	// the buffer available
 	ShrinkSize int
+	// BufferSize defines the maximum size of the buffer.
+	BufferSize int
+
 	// BlockSize provides the block size.
 	BlockSize int
 }
 
-func (cfg *WindowConfig) ApplyDefaults() {
+// ApplyDefaults sets the defaults for the sequencer buffer configuration.
+func (cfg *SBConfig) ApplyDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * mb
 	}
 	if cfg.ShrinkSize == 0 {
 		const defaultShrinkSize = 32 * kb
-		if cfg.WindowSize < 2*defaultShrinkSize {
+		if 2*defaultShrinkSize > cfg.WindowSize {
 			cfg.ShrinkSize = cfg.WindowSize / 2
 		} else {
 			cfg.ShrinkSize = defaultShrinkSize
 		}
+	}
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = cfg.WindowSize
 	}
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * kb
 	}
 }
 
-func (cfg *WindowConfig) Verify() error {
+// Verify checks the sequencer buffer configuration for issues and returns the
+// first issue found as error.
+func (cfg *SBConfig) Verify() error {
 	if cfg.WindowSize <= 0 {
 		return errors.New("lz: window size must be greater than 0")
 	}
@@ -60,6 +77,15 @@ func (cfg *WindowConfig) Verify() error {
 		return errors.New(
 			"lz: srhink size must be less than the window size")
 	}
+	if cfg.BufferSize < cfg.WindowSize {
+		return errors.New(
+			"lz: buffer size must greater or equal window size")
+	}
+	if cfg.ShrinkSize >= cfg.BufferSize {
+		return errors.New(
+			"lz: shrink size must be less than buffer size")
+	}
+
 	if cfg.BlockSize <= 0 {
 		return errors.New("lz: block size must be greater than 0")
 	}
@@ -67,14 +93,14 @@ func (cfg *WindowConfig) Verify() error {
 }
 
 // Init initializes the window. The parameter size must be positive.
-func (w *Window) Init(cfg WindowConfig) error {
+func (w *SeqBuffer) Init(cfg SBConfig) error {
 	cfg.ApplyDefaults()
 	if err := cfg.Verify(); err != nil {
 		return err
 	}
-	*w = Window{
-		data:         w.data[:0],
-		WindowConfig: cfg,
+	*w = SeqBuffer{
+		data:     w.data[:0],
+		SBConfig: cfg,
 	}
 	if cap(w.data) < 7 {
 		w.data = make([]byte, 0, 1024)
@@ -84,10 +110,15 @@ func (w *Window) Init(cfg WindowConfig) error {
 
 // Reset cleans the window structure for reuse. It will use the data structue
 // for the data. Note that the condition cap(data) > len(data) + 7 must be met
-// to avoid copying. The data length must not exceed the window size.
-func (w *Window) Reset(data []byte) error {
+// to avoid copying. The data length must not exceed the buffer size.
+func (w *SeqBuffer) Reset(data []byte) error {
 	if data == nil {
 		data = w.data[:0]
+	}
+	if len(data) > w.BufferSize {
+		return errors.New(
+			"lz: length of the reset data block must not be larger" +
+				" than the buffer size")
 	}
 	if len(data)+7 > cap(data) {
 		if len(data)+7 <= cap(w.data) {
@@ -98,9 +129,9 @@ func (w *Window) Reset(data []byte) error {
 		copy(w.data, data)
 		data = w.data
 	}
-	*w = Window{
-		data:         data,
-		WindowConfig: w.WindowConfig,
+	*w = SeqBuffer{
+		data:     data,
+		SBConfig: w.SBConfig,
 	}
 	if len(w.data)+7 > cap(w.data) {
 		panic("unexpected capacity")
@@ -110,8 +141,8 @@ func (w *Window) Reset(data []byte) error {
 
 // Available returns the number of bytes are available for writing into the
 // buffer.
-func (w *Window) Available() int {
-	n := w.WindowSize - len(w.data)
+func (w *SeqBuffer) Available() int {
+	n := w.BufferSize - len(w.data)
 	if n < 0 {
 		return 0
 	}
@@ -120,10 +151,10 @@ func (w *Window) Available() int {
 
 // Buffered returns the number of bytes buffered but are not yet part of the
 // window. They have to be sequenced first.
-func (w *Window) Buffered() int { return len(w.data) - w.w }
+func (w *SeqBuffer) Buffered() int { return len(w.data) - w.w }
 
 // Len returns the actual length of the current window
-func (w *Window) Len() int {
+func (w *SeqBuffer) Len() int {
 	if w.w > w.WindowSize {
 		return w.WindowSize
 	}
@@ -131,11 +162,11 @@ func (w *Window) Len() int {
 }
 
 // Pos returns the absolute position of the window head
-func (w *Window) Pos() int64 { return w.start + int64(w.w) }
+func (w *SeqBuffer) Pos() int64 { return w.start + int64(w.w) }
 
 // shrink reduces the current window lengtb. The method returns the actual
 // window length after shrinking.
-func (w *Window) shrink() int {
+func (w *SeqBuffer) shrink() int {
 	r := w.w - w.ShrinkSize
 	if r <= 0 {
 		return w.w
@@ -153,7 +184,7 @@ func (w *Window) shrink() int {
 var ErrFullBuffer = errors.New("lz: full buffer")
 
 // Write puts data into the window. It will return ErrFullBuffer
-func (w *Window) Write(p []byte) (n int, err error) {
+func (w *SeqBuffer) Write(p []byte) (n int, err error) {
 	n = w.Available()
 	if n < len(p) {
 		p = p[:n]
@@ -183,7 +214,7 @@ func (w *Window) Write(p []byte) (n int, err error) {
 }
 
 // ReadFrom transfers data from the reader into the buffer.
-func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
+func (w *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	if len(w.data) >= w.WindowSize {
 		return 0, ErrFullBuffer
 	}
@@ -222,28 +253,36 @@ func (w *Window) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 }
 
-var errOutsideWindow = errors.New("lz: pos outside of window buffer")
+// errOutsideBuffer indicates that a position value points actually outside the
+// buffer.
+var errOutsideBuffer = errors.New("lz: pos outside of sequencer buffer")
 
 // ReadByteAt returns the byte at the absolute position pos unless pos is outside of
 // the data stored in window.
-func (w *Window) ReadByteAt(pos int64) (c byte, err error) {
+func (w *SeqBuffer) ReadByteAt(pos int64) (c byte, err error) {
 	pos -= w.start
 	if !(0 <= pos && pos < int64(len(w.data))) {
-		return 0, errOutsideWindow
+		return 0, errOutsideBuffer
 	}
 	return w.data[pos], nil
 }
 
 // ReadAt allows to read data from the window directly.
-func (w *Window) ReadAt(p []byte, pos int64) (n int, err error) {
+func (w *SeqBuffer) ReadAt(p []byte, pos int64) (n int, err error) {
 	pos -= w.start
 	if !(0 <= pos && pos < int64(len(w.data))) {
-		return 0, errOutsideWindow
+		return 0, errOutsideBuffer
 	}
 	n = copy(p, w.data[pos:])
 	return n, nil
 }
 
-func (w *Window) additionalMemSize() uintptr {
+// additionalMemSize returns the memory that is additionally used by this
+// structure.
+func (w *SeqBuffer) additionalMemSize() uintptr {
 	return uintptr(cap(w.data))
 }
+
+// Buffer returns a pointer to itself. It provides the function to the sequencer
+// structure who embed SeqBuffer.
+func (w *SeqBuffer) Buffer() *SeqBuffer { return w }

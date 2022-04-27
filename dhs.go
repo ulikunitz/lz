@@ -8,10 +8,7 @@ import (
 
 // DHSConfig provides the configuration parameters for the DoubleHashSequencer.
 type DHSConfig struct {
-	// maximal window size
-	WindowSize int
-	ShrinkSize int
-	BlockSize  int
+	SBConfig
 	// smaller hash input length; range 2 to 8
 	InputLen1 int
 	// hash bits for the smaller hash input length
@@ -22,18 +19,9 @@ type DHSConfig struct {
 	HashBits2 int
 }
 
-func (cfg *DHSConfig) windowConfig() WindowConfig {
-	return WindowConfig{
-		WindowSize: cfg.WindowSize,
-		ShrinkSize: cfg.ShrinkSize,
-		BlockSize:  cfg.BlockSize,
-	}
-}
-
 // Verify checks the configuration for errors.
 func (cfg *DHSConfig) Verify() error {
-	wcfg := cfg.windowConfig()
-	if err := wcfg.Verify(); err != nil {
+	if err := cfg.SBConfig.Verify(); err != nil {
 		return err
 	}
 	if !(2 <= cfg.InputLen1 && cfg.InputLen1 <= 8) {
@@ -84,11 +72,7 @@ func (cfg *DHSConfig) Verify() error {
 // ApplyDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *DHSConfig) ApplyDefaults() {
-	wcfg := cfg.windowConfig()
-	wcfg.ApplyDefaults()
-	cfg.WindowSize = wcfg.WindowSize
-	cfg.ShrinkSize = wcfg.ShrinkSize
-	cfg.BlockSize = wcfg.BlockSize
+	cfg.SBConfig.ApplyDefaults()
 
 	if cfg.InputLen1 == 0 {
 		cfg.InputLen1 = 3
@@ -114,19 +98,17 @@ func (cfg DHSConfig) NewSequencer() (s Sequencer, err error) {
 // sequencer is slower than sequencers using a single hash, but the compression
 // ratio is much better.
 type DoubleHashSequencer struct {
-	Window
+	SeqBuffer
 
 	h1 hash
 
 	h2 hash
 }
 
-func (s *DoubleHashSequencer) WindowPtr() *Window { return &s.Window }
-
 // MemSize returns the consumed memory size by the data structure.
 func (s *DoubleHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
-	n += s.Window.additionalMemSize()
+	n += s.SeqBuffer.additionalMemSize()
 	n += s.h1.additionalMemSize()
 	n += s.h2.additionalMemSize()
 	return n
@@ -152,7 +134,7 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 		return err
 	}
 
-	err = s.Window.Init(cfg.windowConfig())
+	err = s.SeqBuffer.Init(cfg.SBConfig)
 	if err != nil {
 		return err
 	}
@@ -167,7 +149,7 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 
 // Reset puts the DoubleHashSequencer in its initial state.
 func (s *DoubleHashSequencer) Reset(data []byte) error {
-	if err := s.Window.Reset(data); err != nil {
+	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
 	s.h1.reset()
@@ -434,9 +416,10 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
 func (s *DoubleHashSequencer) Shrink() int {
-	oldWindowLen := s.Window.w
-	n := s.Window.shrink()
-	s.h1.adapt(uint32(oldWindowLen - n))
-	s.h2.adapt(uint32(oldWindowLen - n))
+	w := s.SeqBuffer.w
+	n := s.SeqBuffer.shrink()
+	delta := uint32(w - n)
+	s.h1.adapt(delta)
+	s.h2.adapt(delta)
 	return n
 }

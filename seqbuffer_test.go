@@ -12,9 +12,9 @@ func TestWindow_Write(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)
 	}
-	var w Window
+	var w SeqBuffer
 	const winSize = 1024
-	cfg := WindowConfig{
+	cfg := SBConfig{
 		WindowSize: winSize,
 	}
 	if err = w.Init(cfg); err != nil {
@@ -47,9 +47,9 @@ func TestWindow_ReadFrom(t *testing.T) {
 		t.Fatalf("os.Open(%q) error %s", file, err)
 	}
 	defer f.Close()
-	var w Window
+	var w SeqBuffer
 	const winSize = 1024
-	cfg := WindowConfig{
+	cfg := SBConfig{
 		WindowSize: winSize,
 	}
 	if err = w.Init(cfg); err != nil {
@@ -86,10 +86,10 @@ func TestWindow_shrink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)
 	}
-	var w Window
+	var w SeqBuffer
 	const winSize = 1024
 	const shrinkSize = 256
-	cfg := WindowConfig{
+	cfg := SBConfig{
 		WindowSize: winSize,
 		ShrinkSize: shrinkSize,
 	}

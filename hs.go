@@ -10,58 +10,32 @@ import (
 // HashSequencer allows the creation of sequence blocks using a simple hash
 // table.
 type HashSequencer struct {
-	Window
+	SeqBuffer
 
 	hash
 }
 
-// WindowPtr returns the pointer to the window structure.
-func (s *HashSequencer) WindowPtr() *Window { return &s.Window }
-
 // MemSize returns the the memory that the HashSequencer occupies.
 func (s *HashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
-	n += s.Window.additionalMemSize()
+	n += s.SeqBuffer.additionalMemSize()
 	n += s.hash.additionalMemSize()
 	return n
 }
 
 // HSConfig provides the configuration parameters for the
 // HashSequencer.
-//
-// The pos-buffer contains the sliding window. If the window reaches the end of
-// the buffer parts of it needs to be moved to the front of the buffer. The
-// number of bytes to be moved are defined by the shrinkSize. A shrinkSize of 0
-// is supported.
 type HSConfig struct {
-	// maximal window size
-	WindowSize int
-	// ShrinkSize is the size the window is shrunk too if more buffer is
-	// required
-	ShrinkSize int
-	// BlockSize is the maximum size of a block in bytes
-	BlockSize int
+	SBConfig
 	// number of bits of the hash index
 	HashBits int
 	// length of the input used; range [2,8]
 	InputLen int
 }
 
-func (cfg *HSConfig) windowConfig() WindowConfig {
-	return WindowConfig{
-		WindowSize: cfg.WindowSize,
-		ShrinkSize: cfg.ShrinkSize,
-		BlockSize:  cfg.BlockSize,
-	}
-}
-
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) ApplyDefaults() {
-	wcfg := cfg.windowConfig()
-	wcfg.ApplyDefaults()
-	cfg.WindowSize = wcfg.WindowSize
-	cfg.ShrinkSize = wcfg.ShrinkSize
-	cfg.BlockSize = wcfg.BlockSize
+	cfg.SBConfig.ApplyDefaults()
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -72,8 +46,7 @@ func (cfg *HSConfig) ApplyDefaults() {
 
 // Verify checks the config for correctness.
 func (cfg *HSConfig) Verify() error {
-	wcfg := cfg.windowConfig()
-	if err := wcfg.Verify(); err != nil {
+	if err := cfg.SBConfig.Verify(); err != nil {
 		return err
 	}
 
@@ -118,7 +91,7 @@ func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 	return s, nil
 }
 
-// Init initialzes the hash sequencer. It returns an error if there is an issue
+// Init initializes the hash sequencer. It returns an error if there is an issue
 // with the configuration parameters.
 func (s *HashSequencer) Init(cfg HSConfig) error {
 	cfg.ApplyDefaults()
@@ -127,7 +100,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 		return err
 	}
 
-	err = s.Window.Init(cfg.windowConfig())
+	err = s.SeqBuffer.Init(cfg.SBConfig)
 	if err != nil {
 		return err
 	}
@@ -141,7 +114,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 // Reset resets the hash sequencer. The sequencer will be in the same state as
 // after Init.
 func (s *HashSequencer) Reset(data []byte) error {
-	if err := s.Window.Reset(data); err != nil {
+	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
 	s.hash.reset()
@@ -151,9 +124,9 @@ func (s *HashSequencer) Reset(data []byte) error {
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
 func (s *HashSequencer) Shrink() int {
-	oldWindowLen := s.Window.w
-	n := s.Window.shrink()
-	s.hash.adapt(uint32(oldWindowLen - n))
+	w := s.SeqBuffer.w
+	n := s.SeqBuffer.shrink()
+	s.hash.adapt(uint32(w - n))
 	return n
 }
 

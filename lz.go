@@ -67,8 +67,8 @@ type Sequencer interface {
 	// Shrink reduces the actual window length to make more buffer space
 	// available.
 	Shrink() int
-	// WindowPtr returns a pointer to the Window structure.
-	WindowPtr() *Window
+	// Buffer returns a pointer to the sequencer buffer.
+	Buffer() *SeqBuffer
 	// Reset allows the reuse of the Sequencer.
 	Reset(data []byte) error
 }

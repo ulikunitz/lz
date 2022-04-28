@@ -51,14 +51,14 @@ func memSize(c Configurator) int {
 
 func TestComputeConfig(t *testing.T) {
 	tests := []struct {
-		p       Parameters
+		p       Params
 		seqType string
 	}{
-		{Parameters{}, "DHSConfig"},
-		{Parameters{Effort: 1}, "HSConfig"},
-		{Parameters{Effort: 9}, "BDHSConfig"},
-		{Parameters{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
-		{Parameters{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
+		{Params{}, "DHSConfig"},
+		{Params{Effort: 1}, "HSConfig"},
+		{Params{Effort: 9}, "BDHSConfig"},
+		{Params{Effort: 1, MemoryBudget: 100 * kb}, "HSConfig"},
+		{Params{Effort: 5, WindowSize: 64 * kb}, "DHSConfig"},
 	}
 	for _, tc := range tests {
 		c, err := Config(tc.p)

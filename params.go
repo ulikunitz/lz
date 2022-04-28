@@ -6,8 +6,8 @@ import (
 
 // TODO: Only calculate window size and hash sizes for the configurator.
 
-// Parameters provides a general method to create sequencers.
-type Parameters struct {
+// Params provides a general method to create sequencers.
+type Params struct {
 	// MemoryBudget specifies the memory budget in bytes for the sequencer. The
 	// budget controls how much memory the sequencer has for the window size and the
 	// match search data structures. It doesn't control temporary memory
@@ -32,7 +32,7 @@ type Parameters struct {
 // ApplyDefaults applies the defaults to the Config structure. The memory budget
 // is set to 2 MB, the effort to 5 and the block size to 128 kByte unless no
 // other non-zero values have been set.
-func (p *Parameters) ApplyDefaults() {
+func (p *Params) ApplyDefaults() {
 	if p.Effort == 0 {
 		p.Effort = 5
 	}
@@ -44,7 +44,7 @@ func (p *Parameters) ApplyDefaults() {
 
 // Verify checks the configuration for errors. Use ApplyDefaults before this
 // function because it doesn't support zero values in all cases.
-func (p *Parameters) Verify() error {
+func (p *Params) Verify() error {
 	if p.MemoryBudget < 0 {
 		return fmt.Errorf("lz: cfg.MemoryBudget must be positive")
 	}
@@ -77,7 +77,7 @@ var memoryBudgetTable = []int{
 }
 
 // computeConfig computes the configuration extremely fast.
-func computeConfig(cfg Parameters) (c Configurator, err error) {
+func computeConfig(cfg Params) (c Configurator, err error) {
 	if !(1 <= cfg.Effort && cfg.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			cfg.Effort)
@@ -138,7 +138,7 @@ func computeConfig(cfg Parameters) (c Configurator, err error) {
 }
 
 // computeConfigWindow computes the configuration for a given window size.
-func computeConfigWindow(params Parameters) (c Configurator, err error) {
+func computeConfigWindow(params Params) (c Configurator, err error) {
 	if !(1 <= params.Effort && params.Effort <= 9) {
 		return nil, fmt.Errorf("lz: effort %d not supported",
 			params.Effort)
@@ -200,7 +200,7 @@ func computeConfigWindow(params Parameters) (c Configurator, err error) {
 }
 
 // Config converts the parameters into an actual configuration.
-func Config(p Parameters) (c Configurator, err error) {
+func Config(p Params) (c Configurator, err error) {
 	p.ApplyDefaults()
 	if err = p.Verify(); err != nil {
 		return nil, err

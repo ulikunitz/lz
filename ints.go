@@ -13,9 +13,11 @@ func iverson(f bool) int {
 	return 0
 }
 
+/*
 func max(x, y int) int {
 	return y + doz(x, y)
 }
+*/
 
 func doz(x, y int) int {
 	return (x - y) & (-iverson(x >= y))

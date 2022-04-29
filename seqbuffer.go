@@ -202,8 +202,8 @@ func (w *SeqBuffer) Write(p []byte) (n int, err error) {
 		if k < 1024 {
 			k = 1024
 		}
-		if k > w.WindowSize {
-			k = w.WindowSize + 7
+		if k > w.BufferSize {
+			k = w.BufferSize + 7
 		}
 		if n+7 > k {
 			k = n + 7
@@ -221,13 +221,13 @@ func (w *SeqBuffer) Write(p []byte) (n int, err error) {
 
 // ReadFrom transfers data from the reader into the buffer.
 func (w *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
-	if len(w.data) >= w.WindowSize {
+	if len(w.data) >= w.BufferSize {
 		return 0, ErrFullBuffer
 	}
 	for {
 		var p []byte
-		if w.WindowSize <= cap(w.data)-7 {
-			p = w.data[len(w.data):w.WindowSize]
+		if w.BufferSize <= cap(w.data)-7 {
+			p = w.data[len(w.data):w.BufferSize]
 		} else {
 			p = w.data[len(w.data) : cap(w.data)-7]
 		}
@@ -243,15 +243,15 @@ func (w *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 			}
 			p = p[k:]
 		}
-		if len(w.data) == w.WindowSize {
+		if len(w.data) == w.BufferSize {
 			return n, ErrFullBuffer
 		}
 		k := 2 * cap(w.data)
 		if k < 1024 {
 			k = 1024
 		}
-		if k > w.WindowSize {
-			k = w.WindowSize + 7
+		if k > w.BufferSize {
+			k = w.BufferSize + 7
 		}
 		t := make([]byte, len(w.data), k)
 		copy(t, w.data)

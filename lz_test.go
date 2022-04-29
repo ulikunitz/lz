@@ -26,7 +26,7 @@ func TestReset(t *testing.T) {
 		blockSize  = 512
 	)
 
-	hs := newTestSequencer(t, HSConfig{
+	hs := newTestSequencer(t, &HSConfig{
 		InputLen: 3,
 		SBConfig: SBConfig{
 			WindowSize: windowSize,
@@ -87,7 +87,7 @@ func TestSequencers(t *testing.T) {
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: HSConfig{
+			cfg: &HSConfig{
 				InputLen: 3,
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
@@ -96,7 +96,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: BHSConfig{
+			cfg: &BHSConfig{
 				InputLen: 3,
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
@@ -105,7 +105,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "DoubleHashSequencer-3,8",
-			cfg: DHSConfig{
+			cfg: &DHSConfig{
 				InputLen1: 3,
 				InputLen2: 8,
 				SBConfig: SBConfig{
@@ -115,7 +115,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "BDHSequencer-3,8",
-			cfg: BDHSConfig{
+			cfg: &BDHSConfig{
 				InputLen1: 3,
 				InputLen2: 8,
 				SBConfig: SBConfig{
@@ -125,7 +125,7 @@ func TestSequencers(t *testing.T) {
 		},
 		{
 			name: "GSASequencer",
-			cfg: GSASConfig{
+			cfg: &GSASConfig{
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
 				},
@@ -208,7 +208,7 @@ func TestSequencersSimple(t *testing.T) {
 	}{
 		{
 			name: "HashSequencer-3",
-			cfg: HSConfig{
+			cfg: &HSConfig{
 				InputLen: 3,
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
@@ -217,7 +217,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "BackwardHashSequencer-3",
-			cfg: HSConfig{
+			cfg: &HSConfig{
 				InputLen: 3,
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
@@ -226,7 +226,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "DoubleHashSequencer-3,6",
-			cfg: DHSConfig{
+			cfg: &DHSConfig{
 				InputLen1: 3,
 				InputLen2: 6,
 				SBConfig: SBConfig{
@@ -236,7 +236,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "BDHSequencer-3,6",
-			cfg: DHSConfig{
+			cfg: &DHSConfig{
 				InputLen1: 3,
 				InputLen2: 6,
 				SBConfig: SBConfig{
@@ -246,7 +246,7 @@ func TestSequencersSimple(t *testing.T) {
 		},
 		{
 			name: "GSASequencer",
-			cfg: GSASConfig{
+			cfg: &GSASConfig{
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
 				},
@@ -314,62 +314,62 @@ func BenchmarkSequencers(b *testing.B) {
 		name string
 		cfg  Configurator
 	}{
-		{"HashSequencer-3", HSConfig{
+		{"HashSequencer-3", &HSConfig{
 			InputLen: 3,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"HashSequencer-4", HSConfig{
+		{"HashSequencer-4", &HSConfig{
 			InputLen: 4,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"HashSequencer-5", HSConfig{
+		{"HashSequencer-5", &HSConfig{
 			InputLen: 5,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"HashSequencer-8", HSConfig{
+		{"HashSequencer-8", &HSConfig{
 			InputLen: 8,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BackwardHashSequencer-3", HSConfig{
+		{"BackwardHashSequencer-3", &HSConfig{
 			InputLen: 3,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BackwardHashSequencer-4", HSConfig{
+		{"BackwardHashSequencer-4", &HSConfig{
 			InputLen: 4,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BackwardHashSequencer-5", HSConfig{
+		{"BackwardHashSequencer-5", &HSConfig{
 			InputLen: 5,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BackwardHashSequencer-8", HSConfig{
+		{"BackwardHashSequencer-8", &HSConfig{
 			InputLen: 8,
 			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"DoubleHashSequencer-3,6", DHSConfig{
+		{"DoubleHashSequencer-3,6", &DHSConfig{
 			InputLen1: 3,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -378,7 +378,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"DoubleHashSequencer-4,6", DHSConfig{
+		{"DoubleHashSequencer-4,6", &DHSConfig{
 			InputLen1: 4,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -387,7 +387,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BDHSequencer-3,6", DHSConfig{
+		{"BDHSequencer-3,6", &DHSConfig{
 			InputLen1: 3,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -396,7 +396,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BDHSequencer-4,6", DHSConfig{
+		{"BDHSequencer-4,6", &DHSConfig{
 			InputLen1: 4,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -405,7 +405,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"GSASequencer", GSASConfig{
+		{"GSASequencer", &GSASConfig{
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},

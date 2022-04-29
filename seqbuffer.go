@@ -2,6 +2,7 @@ package lz
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -42,6 +43,10 @@ type SBConfig struct {
 	// BlockSize provides the block size.
 	BlockSize int
 }
+
+// BufferConfig returns the a pointer to the sequencer buffer configuration,
+// SBConfig.
+func (cfg *SBConfig) BufferConfig() *SBConfig { return cfg }
 
 // ApplyDefaults sets the defaults for the sequencer buffer configuration.
 func (cfg *SBConfig) ApplyDefaults() {
@@ -116,9 +121,10 @@ func (w *SeqBuffer) Reset(data []byte) error {
 		data = w.data[:0]
 	}
 	if len(data) > w.BufferSize {
-		return errors.New(
-			"lz: length of the reset data block must not be larger" +
-				" than the buffer size")
+		return fmt.Errorf(
+			"lz: length of the reset data block (%d)"+
+				" must not be larger than the buffer size (%d)",
+			len(data), w.BufferSize)
 	}
 	if len(data)+7 > cap(data) {
 		if len(data)+7 <= cap(w.data) {

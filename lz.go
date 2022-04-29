@@ -76,4 +76,5 @@ type Sequencer interface {
 // Configurator generates  new sequencer instances.
 type Configurator interface {
 	NewSequencer() (s Sequencer, err error)
+	BufferConfig() *SBConfig
 }

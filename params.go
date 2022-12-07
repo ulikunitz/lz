@@ -20,7 +20,7 @@ type Params struct {
 	// ratio. Effort 10 will provide the best compression ratio but will
 	// require a higher compression ratio but will be very slow.
 	Effort int
-	// MaxBlockSize defines a maximum block size. Note that the configurator
+	// BlockSize defines a maximum block size. Note that the configurator
 	// might create a smaller block size to fit the match search data
 	// structures into the memory budget. The main consumer is ZStandard
 	// which has a maximum block size of 128 kByte.

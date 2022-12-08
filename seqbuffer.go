@@ -130,7 +130,7 @@ func (w *SeqBuffer) Reset(data []byte) error {
 		if len(data)+7 <= cap(w.data) {
 			w.data = w.data[:len(data)]
 		} else {
-			w.data = make([]byte, len(w.data), len(w.data)+7)
+			w.data = make([]byte, len(data), len(data)+7)
 		}
 		copy(w.data, data)
 		data = w.data

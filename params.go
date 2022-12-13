@@ -95,6 +95,7 @@ func computeConfig(cfg Params) (c Configurator, err error) {
 		}
 		hscfg.WindowSize = cfg.MemoryBudget - (1<<hscfg.HashBits)*8 -
 			161 + hscfg.InputLen
+		hscfg.ApplyDefaults()
 		return &hscfg, nil
 	case 3, 4:
 		hsParams := findHSParams(bhsParameters, cfg.MemoryBudget,
@@ -105,6 +106,7 @@ func computeConfig(cfg Params) (c Configurator, err error) {
 		}
 		bhscfg.WindowSize = cfg.MemoryBudget - (1<<bhscfg.HashBits)*8 -
 			161 + bhscfg.InputLen
+		bhscfg.ApplyDefaults()
 		return &bhscfg, nil
 	case 5, 6, 7:
 		dhsParams := findDHSParams(dhsParameters, cfg.MemoryBudget,
@@ -118,6 +120,7 @@ func computeConfig(cfg Params) (c Configurator, err error) {
 		dhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<dhscfg.HashBits1)*8 -
 			(1<<dhscfg.HashBits2)*8
+		dhscfg.ApplyDefaults()
 		return &dhscfg, nil
 	case 8, 9:
 		bdhsParams := findDHSParams(bdhsParameters, cfg.MemoryBudget,
@@ -131,6 +134,7 @@ func computeConfig(cfg Params) (c Configurator, err error) {
 		bdhscfg.WindowSize = cfg.MemoryBudget - 207 -
 			(1<<bdhscfg.HashBits1)*8 -
 			(1<<bdhscfg.HashBits2)*8
+		bdhscfg.ApplyDefaults()
 		return &bdhscfg, nil
 	default:
 		panic("unreachable")
@@ -160,6 +164,7 @@ func computeConfigWindow(params Params) (c Configurator, err error) {
 			HashBits: hsParams.bits,
 		}
 		hscfg.WindowSize = params.WindowSize
+		hscfg.ApplyDefaults()
 		return &hscfg, nil
 	case 3, 4:
 		p := windowHS(bhsWinParameters, params.WindowSize)
@@ -169,6 +174,7 @@ func computeConfigWindow(params Params) (c Configurator, err error) {
 			HashBits: hsParams.bits,
 		}
 		bhscfg.WindowSize = params.WindowSize
+		bhscfg.ApplyDefaults()
 		return &bhscfg, nil
 	case 5, 6, 7:
 		p := windowDHS(dhsWinParameters, params.WindowSize)
@@ -181,6 +187,7 @@ func computeConfigWindow(params Params) (c Configurator, err error) {
 			HashBits2: dhsParams.bits2,
 		}
 		dhscfg.WindowSize = params.WindowSize
+		dhscfg.ApplyDefaults()
 		return &dhscfg, nil
 	case 8, 9:
 		p := windowDHS(bdhsWinParameters, params.WindowSize)
@@ -193,6 +200,7 @@ func computeConfigWindow(params Params) (c Configurator, err error) {
 			HashBits2: bdhsParams.bits2,
 		}
 		bdhscfg.WindowSize = params.WindowSize
+		bdhscfg.ApplyDefaults()
 		return &bdhscfg, nil
 	default:
 		panic("unreachable")

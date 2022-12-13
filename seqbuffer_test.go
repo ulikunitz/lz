@@ -121,3 +121,18 @@ func TestWindow_shrink(t *testing.T) {
 		t.Fatalf("w.start is %d; want %d", w.start, wantStart)
 	}
 }
+
+func TestSetWindowSize(t *testing.T) {
+	params := Params{WindowSize: 8 << 20}
+	params.ApplyDefaults()
+	c, err := Config(params)
+	if err != nil {
+		t.Fatalf("Config(%+v) error %s", params, err)
+	}
+	sbCfg := c.BufferConfig()
+	sbCfg.SetWindowSize(4096)
+	t.Logf("sbCfg: %+v", sbCfg)
+	if err := sbCfg.Verify(); err != nil {
+		t.Fatalf("sbCfg.Verify error %s", err)
+	}
+}

@@ -48,13 +48,14 @@ type SBConfig struct {
 // SBConfig.
 func (cfg *SBConfig) BufferConfig() *SBConfig { return cfg }
 
+const defaultShrinkSize = 32 * kb
+
 // ApplyDefaults sets the defaults for the sequencer buffer configuration.
 func (cfg *SBConfig) ApplyDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * mb
 	}
 	if cfg.ShrinkSize == 0 {
-		const defaultShrinkSize = 32 * kb
 		if 2*defaultShrinkSize > cfg.WindowSize {
 			cfg.ShrinkSize = cfg.WindowSize / 2
 		} else {
@@ -67,6 +68,22 @@ func (cfg *SBConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * kb
 	}
+}
+
+// SetWindowSize sets the window size. BufferSize and ShrinkSize will be
+// adapted.
+func (cfg *SBConfig) SetWindowSize(s int) error {
+	if !(0 < s) {
+		return fmt.Errorf("lz: window size %d is larger zero", s)
+	}
+	cfg.WindowSize = s
+	cfg.BufferSize = cfg.WindowSize
+	if 2*defaultShrinkSize > cfg.WindowSize {
+		cfg.ShrinkSize = cfg.WindowSize / 2
+	} else {
+		cfg.ShrinkSize = defaultShrinkSize
+	}
+	return nil
 }
 
 // Verify checks the sequencer buffer configuration for issues and returns the

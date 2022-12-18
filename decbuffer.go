@@ -28,6 +28,9 @@ func (buf *DecBuffer) Init(windowSize, max int) error {
 		return fmt.Errorf("lz: max must be > windowSize")
 	}
 
+	if cap(buf.data) < max {
+		buf.data = make([]byte, 0, max)
+	}
 	*buf = DecBuffer{
 		data:       buf.data[:0],
 		windowSize: windowSize,

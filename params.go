@@ -17,8 +17,8 @@ type Params struct {
 	// sequencer with an effort of 1 might be extremely fast but will have a
 	// worse compression ratio. The default effort is 6 and will provide a
 	// reasonable compromise between compression speed and compression
-	// ratio. Effort 10 will provide the best compression ratio but will
-	// require a higher compression ratio but will be very slow.
+	// ratio. Effort 10 will provide the best compression ratio but will be
+	// very slow.
 	Effort int
 	// BlockSize defines a maximum block size. Note that the configurator
 	// might create a smaller block size to fit the match search data

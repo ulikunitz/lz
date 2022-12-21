@@ -187,7 +187,7 @@ func (w *SeqBuffer) Len() int {
 // Pos returns the absolute position of the window head
 func (w *SeqBuffer) Pos() int64 { return w.start + int64(w.w) }
 
-// shrink reduces the current window lengtb. The method returns the actual
+// shrink reduces the current window length. The method returns the actual
 // window length after shrinking.
 func (w *SeqBuffer) shrink() int {
 	r := w.w - w.ShrinkSize

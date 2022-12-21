@@ -65,11 +65,14 @@ type Sequencer interface {
 	// Sequence finds Lempel-Ziv sequences.
 	Sequence(blk *Block, flags int) (n int, err error)
 	// Shrink reduces the actual window length to make more buffer space
-	// available.
+	// available. The number returned is the actual window length after
+	// shrinking the Window.
 	Shrink() int
 	// Buffer returns a pointer to the sequencer buffer.
 	Buffer() *SeqBuffer
-	// Reset allows the reuse of the Sequencer.
+	// Reset allows the reuse of the Sequencer. The data slice provides new
+	// data to sequence but Sequencers are usually also Writers for
+	// providing the data.
 	Reset(data []byte) error
 }
 

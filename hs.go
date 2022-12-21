@@ -155,9 +155,10 @@ func (s *HashSequencer) hashSegment(a, b int) {
 // read or processed. More data must be provided to the buffer.
 var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
-// Sequence converts the next block of k bytes to a sequences. The block will be
-// overwritten. The method returns the number of bytes sequenced and any error
-// encountered. It return ErrEmptyBuffer if there is no further data available.
+// Sequence converts the next block to sequences. The contents of the blk
+// variable will be overwritten. The method returns the number of bytes
+// sequenced and any error encountered. It return ErrEmptyBuffer if there is no
+// further data available.
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.

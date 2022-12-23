@@ -34,10 +34,12 @@ type SeqBuffer struct {
 type SBConfig struct {
 	// WindowSize is the maximum window size in bytes
 	WindowSize int
-	// ShrinkSize provides the size the window is shrinked to make space for
-	// the buffer available
+	// ShrinkSize provides the size the buffer is shrinked to if the buffer
+	// has been completely filled and encoded. It must be smaller than the
+	// BufferSize, and should be significantly so.
 	ShrinkSize int
-	// BufferSize defines the maximum size of the buffer.
+	// BufferSize defines the maximum size of the buffer. The BufferSize
+	// must be greater or equal the window size.
 	BufferSize int
 
 	// BlockSize provides the block size.
@@ -64,6 +66,12 @@ func (cfg *SBConfig) ApplyDefaults() {
 	}
 	if cfg.BufferSize == 0 {
 		cfg.BufferSize = cfg.WindowSize
+	}
+	if cfg.BufferSize < cfg.WindowSize || cfg.BufferSize <= cfg.ShrinkSize {
+		cfg.BufferSize = 2 * cfg.ShrinkSize
+		if cfg.BufferSize < cfg.WindowSize {
+			cfg.BufferSize = cfg.WindowSize
+		}
 	}
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * kb
@@ -94,10 +102,6 @@ func (cfg *SBConfig) Verify() error {
 	}
 	if cfg.ShrinkSize < 0 {
 		return errors.New("lz: shrink size must be greater or equal 0")
-	}
-	if cfg.ShrinkSize >= cfg.WindowSize {
-		return errors.New(
-			"lz: srhink size must be less than the window size")
 	}
 	if cfg.BufferSize < cfg.WindowSize {
 		return errors.New(

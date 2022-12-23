@@ -149,7 +149,9 @@ func TestHashSequencerEnwik7(t *testing.T) {
 
 	cfg := HSConfig{
 		SBConfig: SBConfig{
+			ShrinkSize: windowSize + 100,
 			WindowSize: windowSize,
+			BufferSize: 2 * windowSize,
 			BlockSize:  blockSize,
 		},
 		InputLen: 3,

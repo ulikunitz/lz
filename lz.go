@@ -80,4 +80,6 @@ type Sequencer interface {
 type SeqConfig interface {
 	NewSequencer() (s Sequencer, err error)
 	BufferConfig() *SBConfig
+	ApplyDefaults()
+	Verify() error
 }

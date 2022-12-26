@@ -194,6 +194,9 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		o, k := 0, 0
 		for _, e := range s.bucket(h) {
 			if v != e.val {
+				if e.val == 0 && e.pos == 0 {
+					break
+				}
 				continue
 			}
 			j := int(e.pos)
@@ -202,7 +205,7 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 				continue
 			}
 			// We are are not immediately computing the match length
-			// but check a single byte, whether there is a chance to
+			// but check a  byte, whether there is a chance to
 			// find a longer match than already found.
 			if k > 0 && p[j+k-1] != p[i+k-1] {
 				continue

@@ -403,7 +403,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BDHSequencer-3,6", &DHSConfig{
+		{"BDHSequencer-3,6", &BDHSConfig{
 			InputLen1: 3,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -412,7 +412,7 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BDHSequencer-4,6", &DHSConfig{
+		{"BDHSequencer-4,6", &BDHSConfig{
 			InputLen1: 4,
 			InputLen2: 6,
 			HashBits1: 15,
@@ -426,10 +426,18 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
-		{"BUHSequencer-3", &BUHSConfig{
-			InputLen: 3,
-			HashBits: 15,
-			BucketSize: 20,
+		{"BUHSequencer-3-12", &BUHSConfig{
+			InputLen:   3,
+			HashBits:   18,
+			BucketSize: 12,
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
+		}},
+		{"BUHSequencer-3-100", &BUHSConfig{
+			InputLen:   3,
+			HashBits:   18,
+			BucketSize: 100,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},

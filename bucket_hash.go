@@ -55,7 +55,7 @@ func (bh *bucketHash) init(inputLen, hashBits, bucketSize int) error {
 	*bh = bucketHash{
 		buckets:    make([]bucketEntry, n*bucketSize),
 		indexes:    make([]byte, n),
-		mask:       1 << (inputLen * 8)-1,
+		mask:       1<<(inputLen*8) - 1,
 		shift:      64 - uint(hashBits),
 		inputLen:   inputLen,
 		bucketSize: bucketSize,
@@ -76,12 +76,37 @@ func (bh *bucketHash) adapt(delta uint32) {
 	if delta == 0 {
 		return
 	}
-	for i, e := range bh.buckets {
-		if e.pos >= delta {
-			bh.buckets[i].pos = e.pos - delta
-		} else {
-			bh.buckets[i] = bucketEntry{}
+
+	tmp := make([]bucketEntry, bh.bucketSize)
+	for h, j := range bh.indexes {
+		b := bh.bucket(uint32(h))
+		i := 0
+		for _, e := range b[j:] {
+			if e.pos < delta {
+				continue
+			}
+			e.pos -= delta
+			tmp[i] = e
+			i++
 		}
+		for _, e := range b[:j] {
+			if e.pos < delta {
+				continue
+			}
+			e.pos -= delta
+			tmp[i] = e
+			i++
+		}
+		copy(b, tmp[:i])
+		if i >= bh.bucketSize {
+			i = 0
+		} else {
+			p := b[i:]
+			for k := range p {
+				p[k] = bucketEntry{}
+			}
+		}
+		bh.indexes[h] = byte(i)
 	}
 }
 

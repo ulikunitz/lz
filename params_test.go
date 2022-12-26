@@ -34,7 +34,7 @@ func TestWindowHS(t *testing.T) {
 }
 
 // TODO: check the offsets
-func memSize(c Configurator) int {
+func memSize(c SeqConfig) int {
 	switch p := c.(type) {
 	case *DHSConfig:
 		return p.WindowSize + (1<<p.HashBits1+1<<p.HashBits2)*8 + 207

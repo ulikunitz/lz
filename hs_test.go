@@ -14,7 +14,7 @@ import (
 func TestHashSequencerSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	var s HashSequencer
+	var s hashSequencer
 	if err := s.Init(HSConfig{
 		SBConfig: SBConfig{
 			WindowSize: 1024,
@@ -91,7 +91,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 		str        = "=====foofoobarfoobar bartender===="
 	)
 
-	ws, err := NewHashSequencer(HSConfig{
+	ws, err := newHashSequencer(HSConfig{
 		SBConfig: SBConfig{
 			WindowSize: windowSize,
 			BlockSize:  blockSize,
@@ -156,7 +156,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		},
 		InputLen: 3,
 	}
-	ws, err := NewHashSequencer(cfg)
+	ws, err := newHashSequencer(cfg)
 	if err != nil {
 		t.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
 	}
@@ -278,7 +278,7 @@ func TestLargeParameters(t *testing.T) {
 				}
 			}()
 			r := io.LimitReader(newLoopReader(f), tc.size)
-			ws, err := NewHashSequencer(tc.cfg)
+			ws, err := newHashSequencer(tc.cfg)
 			if err != nil {
 				t.Fatalf("NewHashSequencer(%+v) error %s",
 					tc.cfg, err)

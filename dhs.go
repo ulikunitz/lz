@@ -90,14 +90,14 @@ func (cfg *DHSConfig) ApplyDefaults() {
 
 // NewSequencer creates a new DoubleHashSequencer.
 func (cfg DHSConfig) NewSequencer() (s Sequencer, err error) {
-	return NewDoubleHashSequencer(cfg)
+	return newDoubleHashSequencer(cfg)
 }
 
-// DoubleHashSequencer generates LZ77 sequences by using two hash tables. The
+// doubleHashSequencer generates LZ77 sequences by using two hash tables. The
 // input length for the two hash tables will be different. The speed of the hash
 // sequencer is slower than sequencers using a single hash, but the compression
 // ratio is much better.
-type DoubleHashSequencer struct {
+type doubleHashSequencer struct {
 	SeqBuffer
 
 	h1 hash
@@ -106,7 +106,7 @@ type DoubleHashSequencer struct {
 }
 
 // MemSize returns the consumed memory size by the data structure.
-func (s *DoubleHashSequencer) MemSize() uintptr {
+func (s *doubleHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.SeqBuffer.additionalMemSize()
 	n += s.h1.additionalMemSize()
@@ -114,11 +114,11 @@ func (s *DoubleHashSequencer) MemSize() uintptr {
 	return n
 }
 
-// NewDoubleHashSequencer allocates a new DoubleHashSequencer value and
+// newDoubleHashSequencer allocates a new DoubleHashSequencer value and
 // initializes it. The function returns the first error found in the
 // configuration.
-func NewDoubleHashSequencer(cfg DHSConfig) (s *DoubleHashSequencer, err error) {
-	s = new(DoubleHashSequencer)
+func newDoubleHashSequencer(cfg DHSConfig) (s *doubleHashSequencer, err error) {
+	s = new(doubleHashSequencer)
 	if err = s.Init(cfg); err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func NewDoubleHashSequencer(cfg DHSConfig) (s *DoubleHashSequencer, err error) {
 
 // Init initializes the DoubleHashSequencer. The first error found in the
 // configuration will be returned.
-func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
+func (s *doubleHashSequencer) Init(cfg DHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -148,7 +148,7 @@ func (s *DoubleHashSequencer) Init(cfg DHSConfig) error {
 }
 
 // Reset puts the DoubleHashSequencer in its initial state.
-func (s *DoubleHashSequencer) Reset(data []byte) error {
+func (s *doubleHashSequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (s *DoubleHashSequencer) Reset(data []byte) error {
 }
 
 // hashSegment1 hases the provided segment of data for the first hash table.
-func (s *DoubleHashSequencer) hashSegment1(a, b int) {
+func (s *doubleHashSequencer) hashSegment1(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -180,7 +180,7 @@ func (s *DoubleHashSequencer) hashSegment1(a, b int) {
 }
 
 // hashSegment computes the hashes for the second hash table.
-func (s *DoubleHashSequencer) hashSegment2(a, b int) {
+func (s *doubleHashSequencer) hashSegment2(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -204,7 +204,7 @@ func (s *DoubleHashSequencer) hashSegment2(a, b int) {
 // Sequence generates the LZ77 sequences. It returns the number of bytes covered
 // by the new sequences. The block will be overwritten but the memory for the
 // slices will be reused.
-func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if s.BlockSize < n {
 		n = s.BlockSize
@@ -415,7 +415,7 @@ func (s *DoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *DoubleHashSequencer) Shrink() int {
+func (s *doubleHashSequencer) Shrink() int {
 	w := s.SeqBuffer.w
 	n := s.SeqBuffer.shrink()
 	delta := uint32(w - n)

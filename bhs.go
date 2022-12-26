@@ -17,7 +17,7 @@ type BHSConfig struct {
 
 // NewSequencer create a new backward hash sequencer.
 func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
-	return NewBackwardHashSequencer(cfg)
+	return newBackwardHashSequencer(cfg)
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
@@ -63,25 +63,25 @@ func (cfg *BHSConfig) Verify() error {
 	return nil
 }
 
-// BackwardHashSequencer allows the creation of sequence blocks using a simple
+// backwardHashSequencer allows the creation of sequence blocks using a simple
 // hash table. It extends found matches by looking backward in the input stream.
-type BackwardHashSequencer struct {
+type backwardHashSequencer struct {
 	SeqBuffer
 
 	hash
 }
 
 // MemSize returns the consumed memory size by the sequencer.
-func (s *BackwardHashSequencer) MemSize() uintptr {
+func (s *backwardHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.SeqBuffer.additionalMemSize()
 	n += s.hash.additionalMemSize()
 	return n
 }
 
-// NewBackwardHashSequencer creates a new backward hash sequencer.
-func NewBackwardHashSequencer(cfg BHSConfig) (s *BackwardHashSequencer, err error) {
-	var t BackwardHashSequencer
+// newBackwardHashSequencer creates a new backward hash sequencer.
+func newBackwardHashSequencer(cfg BHSConfig) (s *backwardHashSequencer, err error) {
+	var t backwardHashSequencer
 	if err := t.Init(cfg); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func NewBackwardHashSequencer(cfg BHSConfig) (s *BackwardHashSequencer, err erro
 
 // Init initializes the backward hash sequencer. It returns an error if there is
 // an issue with the configuration parameters.
-func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {
+func (s *backwardHashSequencer) Init(cfg BHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -109,7 +109,7 @@ func (s *BackwardHashSequencer) Init(cfg BHSConfig) error {
 
 // Reset resets the backward hash sequencer to the initial state after Init has
 // returned.
-func (s *BackwardHashSequencer) Reset(data []byte) error {
+func (s *backwardHashSequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
@@ -119,14 +119,14 @@ func (s *BackwardHashSequencer) Reset(data []byte) error {
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *BackwardHashSequencer) Shrink() int {
+func (s *backwardHashSequencer) Shrink() int {
 	w := s.SeqBuffer.w
 	n := s.SeqBuffer.shrink()
 	s.hash.adapt(uint32(w - n))
 	return n
 }
 
-func (s *BackwardHashSequencer) hashSegment(a, b int) {
+func (s *backwardHashSequencer) hashSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -154,7 +154,7 @@ func (s *BackwardHashSequencer) hashSegment(a, b int) {
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *BackwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if n > s.BlockSize {
 		n = s.BlockSize

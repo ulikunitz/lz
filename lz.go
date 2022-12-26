@@ -76,8 +76,8 @@ type Sequencer interface {
 	Reset(data []byte) error
 }
 
-// Configurator generates  new sequencer instances.
-type Configurator interface {
+// SeqConfig generates  new sequencer instances.
+type SeqConfig interface {
 	NewSequencer() (s Sequencer, err error)
 	BufferConfig() *SBConfig
 }

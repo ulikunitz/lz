@@ -90,12 +90,12 @@ func (cfg *BDHSConfig) ApplyDefaults() {
 
 // NewSequencer creates a new BackwardDoubleHashSequencer.
 func (cfg BDHSConfig) NewSequencer() (s Sequencer, err error) {
-	return NewBackwardDoubleHashSequencer(cfg)
+	return newBackwardDoubleHashSequencer(cfg)
 }
 
-// BackwardDoubleHashSequencer uses two hashes and tries to extend matches
+// backwardDoubleHashSequencer uses two hashes and tries to extend matches
 // backward.
-type BackwardDoubleHashSequencer struct {
+type backwardDoubleHashSequencer struct {
 	SeqBuffer
 
 	h1 hash
@@ -103,7 +103,7 @@ type BackwardDoubleHashSequencer struct {
 }
 
 // MemSize returns the consumed memory size by the sequencer.
-func (s *BackwardDoubleHashSequencer) MemSize() uintptr {
+func (s *backwardDoubleHashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.SeqBuffer.additionalMemSize()
 	n += s.h1.additionalMemSize()
@@ -111,10 +111,10 @@ func (s *BackwardDoubleHashSequencer) MemSize() uintptr {
 	return n
 }
 
-// NewBackwardDoubleHashSequencer creates a new sequencer. If the configuration
+// newBackwardDoubleHashSequencer creates a new sequencer. If the configuration
 // is invalid an error will be returned.
-func NewBackwardDoubleHashSequencer(cfg BDHSConfig) (s *BackwardDoubleHashSequencer, err error) {
-	s = new(BackwardDoubleHashSequencer)
+func newBackwardDoubleHashSequencer(cfg BDHSConfig) (s *backwardDoubleHashSequencer, err error) {
+	s = new(backwardDoubleHashSequencer)
 	if err = s.Init(cfg); err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func NewBackwardDoubleHashSequencer(cfg BDHSConfig) (s *BackwardDoubleHashSequen
 // Init initializes the sequencer. The method returns an error if the
 // configuration contains inconsistencies and the sequencer remains
 // uninitialized.
-func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
+func (s *backwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -146,7 +146,7 @@ func (s *BackwardDoubleHashSequencer) Init(cfg BDHSConfig) error {
 
 // Reset puts the sequencer into the state after initialization. The allocated
 // memory in the buffer will be maintained.
-func (s *BackwardDoubleHashSequencer) Reset(data []byte) error {
+func (s *backwardDoubleHashSequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (s *BackwardDoubleHashSequencer) Reset(data []byte) error {
 	return nil
 }
 
-func (s *BackwardDoubleHashSequencer) hashSegment1(a, b int) {
+func (s *backwardDoubleHashSequencer) hashSegment1(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -176,7 +176,7 @@ func (s *BackwardDoubleHashSequencer) hashSegment1(a, b int) {
 	}
 }
 
-func (s *BackwardDoubleHashSequencer) hashSegment2(a, b int) {
+func (s *backwardDoubleHashSequencer) hashSegment2(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -200,7 +200,7 @@ func (s *BackwardDoubleHashSequencer) hashSegment2(a, b int) {
 // Sequence computes the LZ77 sequence for the next block. It returns the number
 // of bytes actually sequenced. ErrEmptyBuffer will be returned if there is no
 // data to sequence.
-func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if n > s.BlockSize {
 		n = s.BlockSize
@@ -427,7 +427,7 @@ func (s *BackwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *BackwardDoubleHashSequencer) Shrink() int {
+func (s *backwardDoubleHashSequencer) Shrink() int {
 	w := s.SeqBuffer.w
 	n := s.SeqBuffer.shrink()
 	delta := uint32(w - n)

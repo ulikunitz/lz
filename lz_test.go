@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func newTestSequencer(tb testing.TB, cfg Configurator) Sequencer {
+func newTestSequencer(tb testing.TB, cfg SeqConfig) Sequencer {
 	s, err := cfg.NewSequencer()
 	if err != nil {
 		tb.Fatalf("%+v.NewSequencer() error %s",
@@ -83,7 +83,7 @@ func TestSequencers(t *testing.T) {
 	const enwik7 = "testdata/enwik7"
 	tests := []struct {
 		name string
-		cfg  Configurator
+		cfg  SeqConfig
 	}{
 		{
 			name: "HashSequencer-3",
@@ -204,7 +204,7 @@ func TestSequencersSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender======"
 	tests := []struct {
 		name string
-		cfg  Configurator
+		cfg  SeqConfig
 	}{
 		{
 			name: "HashSequencer-3",
@@ -312,7 +312,7 @@ func BenchmarkSequencers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
 		name string
-		cfg  Configurator
+		cfg  SeqConfig
 	}{
 		{"HashSequencer-3", &HSConfig{
 			InputLen: 3,
@@ -475,7 +475,7 @@ func BenchmarkDecoders(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
-			hs, err := NewHashSequencer(HSConfig{
+			hs, err := newHashSequencer(HSConfig{
 				InputLen: 3,
 				SBConfig: SBConfig{
 					WindowSize: bm.winSize,
@@ -544,7 +544,7 @@ func TestGSASSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 	const blockSize = 512
 
-	var s GreedySuffixArraySequencer
+	var s greedySuffixArraySequencer
 	if err := s.Init(GSASConfig{
 		SBConfig: SBConfig{
 			WindowSize: 1024,

@@ -7,16 +7,16 @@ import (
 	"reflect"
 )
 
-// HashSequencer allows the creation of sequence blocks using a simple hash
+// hashSequencer allows the creation of sequence blocks using a simple hash
 // table.
-type HashSequencer struct {
+type hashSequencer struct {
 	SeqBuffer
 
 	hash
 }
 
 // MemSize returns the the memory that the HashSequencer occupies.
-func (s *HashSequencer) MemSize() uintptr {
+func (s *hashSequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.SeqBuffer.additionalMemSize()
 	n += s.hash.additionalMemSize()
@@ -79,12 +79,12 @@ func (cfg *HSConfig) Verify() error {
 
 // NewSequencer creates a new hash sequencer.
 func (cfg HSConfig) NewSequencer() (s Sequencer, err error) {
-	return NewHashSequencer(cfg)
+	return newHashSequencer(cfg)
 }
 
-// NewHashSequencer creates a new hash sequencer.
-func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
-	s = new(HashSequencer)
+// newHashSequencer creates a new hash sequencer.
+func newHashSequencer(cfg HSConfig) (s *hashSequencer, err error) {
+	s = new(hashSequencer)
 	if err := s.Init(cfg); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func NewHashSequencer(cfg HSConfig) (s *HashSequencer, err error) {
 
 // Init initializes the hash sequencer. It returns an error if there is an issue
 // with the configuration parameters.
-func (s *HashSequencer) Init(cfg HSConfig) error {
+func (s *hashSequencer) Init(cfg HSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -113,7 +113,7 @@ func (s *HashSequencer) Init(cfg HSConfig) error {
 
 // Reset resets the hash sequencer. The sequencer will be in the same state as
 // after Init.
-func (s *HashSequencer) Reset(data []byte) error {
+func (s *hashSequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
@@ -123,14 +123,14 @@ func (s *HashSequencer) Reset(data []byte) error {
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *HashSequencer) Shrink() int {
+func (s *hashSequencer) Shrink() int {
 	w := s.SeqBuffer.w
 	n := s.SeqBuffer.shrink()
 	s.hash.adapt(uint32(w - n))
 	return n
 }
 
-func (s *HashSequencer) hashSegment(a, b int) {
+func (s *hashSequencer) hashSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -162,7 +162,7 @@ var ErrEmptyBuffer = errors.New("lz: empty buffer")
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *HashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if n > s.BlockSize {
 		n = s.BlockSize

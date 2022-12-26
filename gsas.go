@@ -53,17 +53,17 @@ func (cfg *GSASConfig) ApplyDefaults() {
 // NewSequencer generates a new sequencer using the configuration parameters in
 // the structure.
 func (cfg GSASConfig) NewSequencer() (s Sequencer, err error) {
-	return NewGreedySuffixArraySequencer(cfg)
+	return newGreedySuffixArraySequencer(cfg)
 }
 
-// GreedySuffixArraySequencer provides a sequencer that uses a suffix array for
+// greedySuffixArraySequencer provides a sequencer that uses a suffix array for
 // the window and buffered data to create sequence. It looks for the two nearest
 // entries that have the longest match.
 //
 // Since computing the suffix array is rather slow, it consumes a lot of CPU.
 // Double Hash Sequencers are achieving almost the same compression rate with
 // much less CPU consumption.
-type GreedySuffixArraySequencer struct {
+type greedySuffixArraySequencer struct {
 	SeqBuffer
 
 	// suffix array
@@ -78,7 +78,7 @@ type GreedySuffixArraySequencer struct {
 }
 
 // MemSize returns the consumed memory size by the
-func (s *GreedySuffixArraySequencer) MemSize() uintptr {
+func (s *greedySuffixArraySequencer) MemSize() uintptr {
 	n := reflect.TypeOf(*s).Size()
 	n += s.SeqBuffer.additionalMemSize()
 	n += uintptr(cap(s.sa)) * reflect.TypeOf(int32(0)).Size()
@@ -86,11 +86,11 @@ func (s *GreedySuffixArraySequencer) MemSize() uintptr {
 	return n
 }
 
-// NewGreedySuffixArraySequencer creates a new value using the provided
+// newGreedySuffixArraySequencer creates a new value using the provided
 // configuration. If the configuration has inconsistencies an error will be
 // returned and the value of the return value s will be nil.
-func NewGreedySuffixArraySequencer(cfg GSASConfig) (s *GreedySuffixArraySequencer, err error) {
-	s = new(GreedySuffixArraySequencer)
+func newGreedySuffixArraySequencer(cfg GSASConfig) (s *greedySuffixArraySequencer, err error) {
+	s = new(greedySuffixArraySequencer)
 	err = s.Init(cfg)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func NewGreedySuffixArraySequencer(cfg GSASConfig) (s *GreedySuffixArraySequence
 
 // Init initializes the sequencer. If the configuration has inconsistencies or
 // invalid values the method returns an error.
-func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
+func (s *greedySuffixArraySequencer) Init(cfg GSASConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -118,7 +118,7 @@ func (s *GreedySuffixArraySequencer) Init(cfg GSASConfig) error {
 }
 
 // Reset puts the sequencer in the initial state.
-func (s *GreedySuffixArraySequencer) Reset(data []byte) error {
+func (s *greedySuffixArraySequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (s *GreedySuffixArraySequencer) Reset(data []byte) error {
 // sort computes the suffix array and its inverse 2gqqfor the window and all
 // buffered data. The bits bitmap marks all sa entries that are part of the
 // window.
-func (s *GreedySuffixArraySequencer) sort() {
+func (s *greedySuffixArraySequencer) sort() {
 	n := len(s.data)
 	if n > math.MaxInt32 {
 		panic("n too large")
@@ -162,7 +162,7 @@ func (s *GreedySuffixArraySequencer) sort() {
 // ErrEmptyBuffer will be returned.
 //
 // The method might compute the suffix array anew using the sort method.
-func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if n > s.BlockSize {
 		n = s.BlockSize
@@ -240,7 +240,7 @@ func (s *GreedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 }
 
 // Shrink reduces the window length to provide more space for writing.
-func (s *GreedySuffixArraySequencer) Shrink() int {
+func (s *greedySuffixArraySequencer) Shrink() int {
 	oldWindowLen := s.w
 	n := s.SeqBuffer.shrink()
 	if oldWindowLen == n {

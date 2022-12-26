@@ -2,7 +2,6 @@ package lz
 
 import (
 	"fmt"
-	"reflect"
 )
 
 // bucketHashSequencer allows the creation of sequence blocks using a simple hash
@@ -13,14 +12,6 @@ type bucketHashSequencer struct {
 	bucketHash
 }
 
-// MemSize returns the the memory that the bucketHashSequencer occupies.
-func (s *bucketHashSequencer) MemSize() uintptr {
-	n := reflect.TypeOf(*s).Size()
-	n += s.SeqBuffer.additionalMemSize()
-	n += s.bucketHash.additionalMemSize()
-	return n
-}
-
 // BUHSConfig provides the configuration parameters for the bucket hash sequencer.
 type BUHSConfig struct {
 	SBConfig
@@ -28,6 +19,8 @@ type BUHSConfig struct {
 	HashBits int
 	// length of the input used; range [2,8]
 	InputLen int
+	// size of a bucket; range [1,128]
+	BucketSize int
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
@@ -38,6 +31,9 @@ func (cfg *BUHSConfig) ApplyDefaults() {
 	}
 	if cfg.HashBits == 0 {
 		cfg.HashBits = 12
+	}
+	if cfg.BucketSize == 0 {
+		cfg.BucketSize = 10
 	}
 }
 
@@ -71,6 +67,10 @@ func (cfg *BUHSConfig) Verify() error {
 		return fmt.Errorf("lz: HashBits=%d; must be <= %d",
 			cfg.HashBits, maxHashBits)
 	}
+	if !(1 <= cfg.BucketSize && cfg.BucketSize <= 128) {
+		return fmt.Errorf("lz: BucketSize=%d; must be in range [1,128]",
+			cfg.BucketSize)
+	}
 	return nil
 }
 
@@ -101,7 +101,8 @@ func (s *bucketHashSequencer) Init(cfg BUHSConfig) error {
 	if err != nil {
 		return err
 	}
-	if err = s.bucketHash.init(cfg.InputLen, cfg.HashBits); err != nil {
+	err = s.bucketHash.init(cfg.InputLen, cfg.HashBits, cfg.BucketSize)
+	if err != nil {
 		return err
 	}
 
@@ -141,7 +142,7 @@ func (s *bucketHashSequencer) hashSegment(a, b int) {
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		s.table[s.hashValue(x)].add(uint32(i), uint32(x))
+		s.bucketHash.add(s.hashValue(x), uint32(i), uint32(x))
 	}
 }
 
@@ -187,13 +188,11 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 	_p := s.data[:inputEnd+7]
 
 	for ; i < inputEnd; i++ {
-		y := _getLE64(_p[i:])
-		x := y & s.mask
+		x := _getLE64(_p[i:]) & s.mask
 		h := s.hashValue(x)
-		bucket := &s.table[h]
 		v := uint32(x)
 		o, k := 0, 0
-		for _, e := range bucket.table {
+		for _, e := range s.bucket(h) {
 			if v != e.val {
 				continue
 			}
@@ -214,8 +213,8 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			}
 			o, k = oe, ke
 		}
-		bucket.add(uint32(i), v)
-		if k <= 1 {
+		s.add(h, uint32(i), v)
+		if k < 2 {
 			continue
 		}
 		q := p[litIndex:i]
@@ -236,7 +235,7 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		for j := i + 1; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.mask
 			h := s.hashValue(x)
-			s.table[h].add(uint32(j), uint32(x))
+			s.add(h, uint32(j), uint32(x))
 		}
 		i = litIndex - 1
 	}

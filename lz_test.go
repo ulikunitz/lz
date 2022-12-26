@@ -429,6 +429,7 @@ func BenchmarkSequencers(b *testing.B) {
 		{"BUHSequencer-3", &BUHSConfig{
 			InputLen: 3,
 			HashBits: 15,
+			BucketSize: 20,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},

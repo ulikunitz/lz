@@ -2,7 +2,6 @@ package lz
 
 import (
 	"fmt"
-	"reflect"
 )
 
 type bucketEntry struct {
@@ -10,46 +9,33 @@ type bucketEntry struct {
 	val uint32
 }
 
-// bucket is used for bucket. The value field allows a fast check whether
-// a match has been found, which is cache-optimized.
-type bucket struct {
-	table [32]bucketEntry
-	i byte
-}
-
-func (b *bucket) add(pos, val uint32) {
-	b.table[b.i] = bucketEntry{pos: pos, val: val}
-	b.i++
-	if int(b.i) >= len(b.table) {
-		b.i = 0
-	}
-}
-
-func (b *bucket) adapt(delta uint32) {
-	if delta == 0 {
-		return
-	}
-	for i, e := range b.table {
-		if e.pos < delta {
-			b.table[i] = bucketEntry{}
-		} else {
-			b.table[i].pos = e.pos - delta
-		}
-	}
-}
-
 type bucketHash struct {
-	table    []bucket
-	mask     uint64
-	shift    uint
-	inputLen int
+	buckets    []bucketEntry
+	indexes    []byte
+	mask       uint64
+	shift      uint
+	inputLen   int
+	bucketSize int
 }
 
-func (h *bucketHash) additionalMemSize() uintptr {
-	return uintptr(cap(h.table)) * reflect.TypeOf(bucket{}).Size()
+func (bh *bucketHash) bucket(h uint32) []bucketEntry {
+	k := int(h) * bh.bucketSize
+	return bh.buckets[k : k+bh.bucketSize]
 }
 
-func (h *bucketHash) init(inputLen, hashBits int) error {
+func (bh *bucketHash) add(h, pos, val uint32) {
+	pi := &bh.indexes[h]
+	i := int(*pi)
+	k := int(h)*bh.bucketSize + i
+	bh.buckets[k] = bucketEntry{pos, val}
+	i++
+	if i >= bh.bucketSize {
+		i = 0
+	}
+	*pi = byte(i)
+}
+
+func (bh *bucketHash) init(inputLen, hashBits, bucketSize int) error {
 	if !(2 <= inputLen && inputLen <= 8) {
 		return fmt.Errorf("lz: inputLen must be in range [2,8]")
 	}
@@ -61,39 +47,44 @@ func (h *bucketHash) init(inputLen, hashBits int) error {
 		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
 			hashBits, maxHashBits)
 	}
-
-	n := 1 << hashBits
-	if n <= cap(h.table) {
-		h.table = h.table[:n]
-		for i := range h.table {
-			h.table[i] = bucket{}
-		}
-	} else {
-		h.table = make([]bucket, n)
+	if !(1 <= bucketSize && bucketSize <= 128) {
+		return fmt.Errorf("lz: bucketSize must be in the range [1,128]")
 	}
 
-	h.mask = 1<<(uint(inputLen)*8) - 1
-	h.shift = 64 - uint(hashBits)
-	h.inputLen = inputLen
-
+	n := 1 << hashBits
+	*bh = bucketHash{
+		buckets:    make([]bucketEntry, n*bucketSize),
+		indexes:    make([]byte, n),
+		mask:       1 << (inputLen * 8)-1,
+		shift:      64 - uint(hashBits),
+		inputLen:   inputLen,
+		bucketSize: bucketSize,
+	}
 	return nil
 }
 
-func (h *bucketHash) reset() {
-	for i := range h.table {
-		h.table[i] = bucket{}
+func (bh *bucketHash) reset() {
+	for i := range bh.buckets {
+		bh.buckets[i] = bucketEntry{}
+	}
+	for i := range bh.indexes {
+		bh.indexes[i] = 0
 	}
 }
 
-func (h *bucketHash) adapt(delta uint32) {
+func (bh *bucketHash) adapt(delta uint32) {
 	if delta == 0 {
 		return
 	}
-	for i := range h.table {
-		h.table[i].adapt(delta)
+	for i, e := range bh.buckets {
+		if e.pos >= delta {
+			bh.buckets[i].pos = e.pos - delta
+		} else {
+			bh.buckets[i] = bucketEntry{}
+		}
 	}
 }
 
-func (h *bucketHash) hashValue(x uint64) uint32 {
-	return uint32((x * prime) >> h.shift)
+func (bh *bucketHash) hashValue(x uint64) uint32 {
+	return uint32((x * prime) >> bh.shift)
 }

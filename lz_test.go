@@ -131,6 +131,14 @@ func TestSequencers(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "BucketHashSequencer",
+			cfg: &BUHSConfig{
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
+			},
+		},
 	}
 	data, err := os.ReadFile(enwik7)
 	if err != nil {
@@ -247,6 +255,14 @@ func TestSequencersSimple(t *testing.T) {
 		{
 			name: "GSASequencer",
 			cfg: &GSASConfig{
+				SBConfig: SBConfig{
+					WindowSize: 8 << 20,
+				},
+			},
+		},
+		{
+			name: "BucketHashSequencer",
+			cfg: &BUHSConfig{
 				SBConfig: SBConfig{
 					WindowSize: 8 << 20,
 				},
@@ -406,6 +422,13 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"GSASequencer", &GSASConfig{
+			SBConfig: SBConfig{
+				WindowSize: 8 << 20,
+			},
+		}},
+		{"BUHSequencer-3", &BUHSConfig{
+			InputLen: 3,
+			HashBits: 15,
 			SBConfig: SBConfig{
 				WindowSize: 8 << 20,
 			},

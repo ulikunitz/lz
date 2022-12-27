@@ -6,8 +6,10 @@ import (
 	"reflect"
 )
 
-// BDHSConfig provides the confifuration parameters for the BackwardDoubleHashSequencer.
+// BDHSConfig provides the configuration parameters for the backward-looking
+// double Hash Sequencer.
 type BDHSConfig struct {
+	// sequence buffer conftiguration
 	SBConfig
 
 	// smaller hash input length; range 2 to 8
@@ -70,8 +72,8 @@ func (cfg *BDHSConfig) Verify() error {
 	return nil
 }
 
-// ApplyDefaults uses the defaults for the configuration parameters that are set
-// to zero.
+// ApplyDefaults sets for the zero fields in the configuration to the default
+// values.
 func (cfg *BDHSConfig) ApplyDefaults() {
 	cfg.SBConfig.ApplyDefaults()
 	if cfg.InputLen1 == 0 {

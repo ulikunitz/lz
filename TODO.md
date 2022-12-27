@@ -2,6 +2,8 @@
 
 ## v0.2.0
 
+* Write documentation for each client and document defaults
+* Package documentation should have table of supported sequencers
 * We support go1.18 and above
 * Write README.md
   - be explicit about no backward compatibility will be maintained; we

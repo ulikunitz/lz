@@ -48,7 +48,7 @@ func (cfg *DHSConfig) Verify() error {
 			cfg.InputLen2, cfg.InputLen1+1, 8)
 	}
 
-	maxHashBits1 := 32
+	maxHashBits1 := 28
 	if t := 8 * cfg.InputLen1; t < maxHashBits1 {
 		maxHashBits1 = t
 	}
@@ -57,7 +57,7 @@ func (cfg *DHSConfig) Verify() error {
 			cfg.HashBits1, 0, maxHashBits1)
 	}
 
-	maxHashBits2 := 32
+	maxHashBits2 := 28
 	if t := 8 * cfg.InputLen2; t < maxHashBits2 {
 		maxHashBits2 = t
 	}

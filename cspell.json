@@ -3,7 +3,9 @@
     "ignorePaths": [],
     "dictionaryDefinitions": [],
     "dictionaries": [],
-    "words": [],
+    "words": [
+        "kbyte"
+    ],
     "ignoreWords": [
         "BDHS",
         "BUHS",
@@ -14,6 +16,7 @@
         "gsum",
         "hbits",
         "hsum",
+        "serr",
         "testdata"
     ],
     "import": []

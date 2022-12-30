@@ -1,0 +1,11 @@
+go test fuzz v1
+int(1)
+int(0)
+int(0)
+int(10)
+int(0)
+int(16)
+int(512)
+int(497)
+int(128)
+[]byte("0")

@@ -1,0 +1,19 @@
+{
+        // Use IntelliSense to learn about possible attributes.
+        // Hover to view descriptions of existing attributes.
+        // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+        "version": "0.2.0",
+        "configurations": [
+                {
+                        "name": "Test Fuzz use case",
+                        "type": "go",
+                        "request": "launch",
+                        "mode": "test",
+                        "program": "lz_test.go",
+                        "args": [
+                                "-test.run",
+                                "FuzzSequencer/04466d992d07eccf52851e4c97407e4b6daf40d2fa3566618981a2b75b2651bd"
+                        ]
+                }
+        ]
+}

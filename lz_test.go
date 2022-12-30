@@ -657,26 +657,30 @@ func verifyBlock(blk *Block, minMatchLen, windowSize int) error {
 		return fmt.Errorf("lu: windowSize=%d < 1", windowSize)
 	}
 	litLen := int64(0)
-	for _, seq := range blk.Sequences {
+	for i, seq := range blk.Sequences {
 		if seq.Offset == 0 {
 			return errors.New("lz: offset is zero")
 		}
 		if int64(seq.Offset) > int64(windowSize) {
-			return fmt.Errorf("lz: offset=%d > windowSize=%d",
+			return fmt.Errorf("lz: %d/%d offset=%d > windowSize=%d",
+				i, len(blk.Sequences),
 				seq.Offset, windowSize)
 		}
 		if int64(seq.MatchLen) < int64(minMatchLen) {
-			return fmt.Errorf("lz: matchLen=%d < minMatchLen=%d",
+			return fmt.Errorf("lz: %d/%d matchLen=%d < minMatchLen=%d",
+				i, len(blk.Sequences),
 				seq.MatchLen, minMatchLen)
 		}
 		litLen += int64(seq.LitLen)
 		if int64(seq.LitLen) > int64(len(blk.Literals)) {
-			return fmt.Errorf("lz: litLen=%d > len(blk.Literals)=%d",
+			return fmt.Errorf("lz: %d/%d litLen=%d > len(blk.Literals)=%d",
+				i, len(blk.Sequences),
 				seq.LitLen, len(blk.Literals))
 		}
 		if litLen > int64(len(blk.Literals)) {
 			return fmt.Errorf(
-				"lz: cumulative litLen=%d (liLen=%d) > len(blk.Literals)=%d",
+				"lz: %d/%d cumulative litLen=%d (liLen=%d) > len(blk.Literals)=%d",
+				i, len(blk.Sequences),
 				litLen, seq.LitLen, len(blk.Literals))
 		}
 	}
@@ -868,6 +872,29 @@ func newFuzzConfig(cfg SeqConfig, data []byte) (fz *fuzzConfig, err error) {
 	}
 }
 
+func minMatchLen(cfg SeqConfig) (n int, err error) {
+	switch c := cfg.(type) {
+	case *HSConfig:
+		n = c.InputLen
+	case *BHSConfig:
+		n = c.InputLen
+	case *DHSConfig:
+		n = c.InputLen1
+	case *BDHSConfig:
+		n = c.InputLen1
+	case *GSASConfig:
+		n = c.MinMatchLen
+	case *BUHSConfig:
+		n = c.InputLen
+	default:
+		err = fmt.Errorf("lz.minMatchLen: config %+v not supported", cfg)
+	}
+	if n > 3 {
+		n = 3
+	}
+	return n, err
+}
+
 func FuzzSequencer(f *testing.F) {
 	tests := []struct {
 		cfg  SeqConfig
@@ -917,6 +944,12 @@ func FuzzSequencer(f *testing.F) {
 		if err = cfg.Verify(); err != nil {
 			t.Skip(err)
 		}
+		minMatchLen, err := minMatchLen(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		windowSize = cfg.BufferConfig().WindowSize
+
 		seq, err := cfg.NewSequencer()
 		if err != nil {
 			t.Fatalf("cfg.NewSequencer error %s", err)
@@ -944,7 +977,7 @@ func FuzzSequencer(f *testing.F) {
 				}
 				t.Fatalf("s.Sequence(blk) error %s", err)
 			}
-			err = verifyBlock(&blk, fz.len1, fz.windowSize)
+			err = verifyBlock(&blk, minMatchLen, windowSize)
 			if err != nil {
 				t.Fatalf("verifyBlock error %s", err)
 			}

@@ -52,7 +52,7 @@ func (cfg *BHSConfig) Verify() error {
 			"lz: WindowSize=%d; must be less than MaxUint32=%d",
 			cfg.WindowSize, maxUint32)
 	}
-	maxHashBits := 32
+	maxHashBits := 28
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}
@@ -184,6 +184,11 @@ func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 	i := s.w
 	litIndex := i
 
+	minMatchLen := 3
+	if s.inputLen < minMatchLen {
+		minMatchLen = s.inputLen
+	}
+
 	// Ensure that we can use _getLE64 all the time.
 	_p := s.data[:inputEnd+7]
 
@@ -209,6 +214,9 @@ func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
 		if k > len(p)-int(i) {
 			k = len(p) - int(i)
+		}
+		if k < minMatchLen {
+			continue
 		}
 		if k == 8 {
 			r := p[j+8:]

@@ -66,7 +66,7 @@ func (cfg *HSConfig) Verify() error {
 			"lz: WindowSize=%d; must be less than MaxUint32=%d",
 			cfg.WindowSize, maxUint32)
 	}
-	maxHashBits := 32
+	maxHashBits := 28
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}
@@ -192,6 +192,12 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	inputEnd := len(p) - s.inputLen + 1
 	i := s.w
 	litIndex := i
+	var minMatchLen int
+	if s.inputLen < 3 {
+		minMatchLen = s.inputLen
+	} else {
+		minMatchLen = 3
+	}
 
 	// Ensure that we can use _getLE64 all the time.
 	_p := s.data[:inputEnd+7]
@@ -219,6 +225,9 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		if k > len(p)-i {
 			k = len(p) - i
 		}
+		if k < minMatchLen {
+			continue
+		}
 		if k == 8 {
 			r := p[j+8:]
 			q := p[i+8:]
@@ -242,6 +251,7 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			}
 		match:
 		}
+
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{

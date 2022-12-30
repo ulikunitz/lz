@@ -187,6 +187,11 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 	i := s.w
 	litIndex := i
 
+	minMatchLen := 3
+	if s.inputLen < minMatchLen {
+		minMatchLen = s.inputLen
+	}
+
 	// Ensure that we can use _getLE64 all the time.
 	_p := s.data[:inputEnd+7]
 
@@ -220,7 +225,7 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 			o, k = oe, ke
 		}
 		s.add(h, uint32(i), v)
-		if k < 2 {
+		if k < minMatchLen {
 			continue
 		}
 		q := p[litIndex:i]

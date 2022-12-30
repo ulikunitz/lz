@@ -944,6 +944,17 @@ func FuzzSequencer(f *testing.F) {
 		if err = cfg.Verify(); err != nil {
 			t.Skip(err)
 		}
+		sbc := cfg.BufferConfig()
+		if sbc.WindowSize > 128<<20 {
+			t.Skip("window size limit")
+		}
+		if sbc.BufferSize > 256<<20 {
+			t.Skip("buffer size limit")
+		}
+		if sbc.BlockSize > 1<<20 {
+			t.Skip("block size limit")
+		}
+
 		minMatchLen, err := minMatchLen(cfg)
 		if err != nil {
 			t.Fatal(err)

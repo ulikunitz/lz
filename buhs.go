@@ -59,10 +59,9 @@ func (cfg *BUHSConfig) Verify() error {
 			"lz: WindowSize=%d; must be less than MaxUint32=%d",
 			cfg.WindowSize, maxUint32)
 	}
-	// A single hash table should not have more than 2 GByte size. Since the
-	// bucket size has the maximum 128. We can support only 24 bits for rhe
-	// hash size at maximum.
-	maxHashBits := 24
+	// We want to reduce the hash table size, which may lead to
+	// out-of-memory conditions.
+	maxHashBits := 23
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}

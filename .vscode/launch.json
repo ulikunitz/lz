@@ -12,7 +12,7 @@
                         "program": "lz_test.go",
                         "args": [
                                 "-test.run",
-                                "FuzzSequencer/39afa292889a8fdedb690ad584f960936e26c35eb65cd067c1cc7f12b80c51fa"
+                                "FuzzSequencer/e4842f964e984ad76d042e38f72fed9a742eebd263cc1128b35795a045d90969"
                         ]
                 }
         ]

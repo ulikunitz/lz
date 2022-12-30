@@ -291,8 +291,8 @@ func NewDecoder(w io.Writer, cfg DConfig) (*Decoder, error) {
 	return d, err
 }
 
-// Init initializes the decoder. Internal bufferes will be reused if they are
-// largen enougn.
+// Init initializes the decoder. Internal buffers will be reused if they are
+// large enough.
 func (d *Decoder) Init(w io.Writer, cfg DConfig) error {
 	cfg.ApplyDefaults()
 	if err := cfg.Verify(); err != nil {
@@ -317,7 +317,7 @@ func (d *Decoder) Flush() error {
 	return err
 }
 
-// Write writes data directoly into the decoder.
+// Write writes data directly into the decoder.
 func (d *Decoder) Write(p []byte) (n int, err error) {
 	n, err = d.buf.Write(p)
 	if err != ErrFullBuffer {

@@ -1,0 +1,20 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [],
+    "ignoreWords": [
+        "BDHS",
+        "BUHS",
+        "GSAS",
+        "dogdog",
+        "enwik",
+        "foofoobarfoobar",
+        "gsum",
+        "hbits",
+        "hsum",
+        "testdata"
+    ],
+    "import": []
+}

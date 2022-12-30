@@ -3,6 +3,8 @@ package lz
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
+	"fmt"
 	"io"
 	"math/bits"
 	"os"
@@ -642,4 +644,325 @@ func TestGSASSimple(t *testing.T) {
 		t.Fatalf("uncompressed string %q; want %q", g, str)
 	}
 	t.Logf("g: %q", g)
+}
+
+func verifyBlock(blk *Block, minMatchLen, windowSize int) error {
+	if blk == nil {
+		return errors.New("lz: blk is nil")
+	}
+	if minMatchLen < 1 {
+		return fmt.Errorf("lz: minMatchLen=%d < 1", minMatchLen)
+	}
+	if windowSize < 1 {
+		return fmt.Errorf("lu: windowSize=%d < 1", windowSize)
+	}
+	litLen := int64(0)
+	for _, seq := range blk.Sequences {
+		if seq.Offset == 0 {
+			return errors.New("lz: offset is zero")
+		}
+		if int64(seq.Offset) > int64(windowSize) {
+			return fmt.Errorf("lz: offset=%d > windowSize=%d",
+				seq.Offset, windowSize)
+		}
+		if int64(seq.MatchLen) < int64(minMatchLen) {
+			return fmt.Errorf("lz: matchLen=%d < minMatchLen=%d",
+				seq.MatchLen, minMatchLen)
+		}
+		litLen += int64(seq.LitLen)
+		if int64(seq.LitLen) > int64(len(blk.Literals)) {
+			return fmt.Errorf("lz: litLen=%d > len(blk.Literals)=%d",
+				seq.LitLen, len(blk.Literals))
+		}
+		if litLen > int64(len(blk.Literals)) {
+			return fmt.Errorf(
+				"lz: cumulative litLen=%d (liLen=%d) > len(blk.Literals)=%d",
+				litLen, seq.LitLen, len(blk.Literals))
+		}
+	}
+	return nil
+}
+
+type fuzzConfig struct {
+	hs int
+
+	len1   int
+	len2   int
+	hbits1 int
+	hbits2 int
+
+	shrinkSize int
+	windowSize int
+	bufferSize int
+	blockSize  int
+
+	data []byte
+}
+
+const (
+	fzHS = iota + 1
+	fzBHS
+	fzDHS
+	fzBDHS
+	fzGSAS
+	fzBUHS
+)
+
+func (fz *fuzzConfig) seqConfig() (cfg SeqConfig, err error) {
+	switch fz.hs {
+	case fzHS:
+		return &HSConfig{
+			InputLen: fz.len1,
+			HashBits: fz.hbits1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	case fzBHS:
+		return &BHSConfig{
+			InputLen: fz.len1,
+			HashBits: fz.hbits1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	case fzDHS:
+		return &DHSConfig{
+			InputLen1: fz.len1,
+			HashBits1: fz.hbits1,
+			InputLen2: fz.len1,
+			HashBits2: fz.hbits1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	case fzBDHS:
+		return &BDHSConfig{
+			InputLen1: fz.len1,
+			HashBits1: fz.hbits1,
+			InputLen2: fz.len1,
+			HashBits2: fz.hbits1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	case fzGSAS:
+		return &GSASConfig{
+			MinMatchLen: fz.len1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	case fzBUHS:
+		return &BUHSConfig{
+			InputLen:   fz.len1,
+			BucketSize: fz.len2,
+			HashBits:   fz.hbits1,
+			SBConfig: SBConfig{
+				ShrinkSize: fz.shrinkSize,
+				WindowSize: fz.windowSize,
+				BufferSize: fz.bufferSize,
+				BlockSize:  fz.blockSize,
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("lz: hs code %d not supported", fz.hs)
+	}
+}
+
+func (fz *fuzzConfig) add(f *testing.F) {
+	f.Add(fz.hs, fz.len1, fz.len2, fz.hbits1, fz.hbits2,
+		fz.shrinkSize, fz.windowSize, fz.bufferSize, fz.blockSize,
+		fz.data)
+}
+
+func newFuzzConfig(cfg SeqConfig, data []byte) (fz *fuzzConfig, err error) {
+	switch c := cfg.(type) {
+	case *HSConfig:
+		return &fuzzConfig{
+			hs:         fzHS,
+			len1:       c.InputLen,
+			hbits1:     c.HashBits,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	case *BHSConfig:
+		return &fuzzConfig{
+			hs:         fzBHS,
+			len1:       c.InputLen,
+			hbits1:     c.HashBits,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	case *DHSConfig:
+		return &fuzzConfig{
+			hs:         fzDHS,
+			len1:       c.InputLen1,
+			hbits1:     c.HashBits1,
+			len2:       c.InputLen2,
+			hbits2:     c.InputLen2,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	case *BDHSConfig:
+		return &fuzzConfig{
+			hs:         fzBDHS,
+			len1:       c.InputLen1,
+			hbits1:     c.HashBits1,
+			len2:       c.InputLen2,
+			hbits2:     c.InputLen2,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	case *GSASConfig:
+		return &fuzzConfig{
+			hs:         fzGSAS,
+			len1:       c.MinMatchLen,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	case *BUHSConfig:
+		return &fuzzConfig{
+			hs:         fzGSAS,
+			len1:       c.InputLen,
+			len2:       c.BucketSize,
+			hbits1:     c.HashBits,
+			shrinkSize: c.ShrinkSize,
+			windowSize: c.WindowSize,
+			bufferSize: c.BufferSize,
+			blockSize:  c.BlockSize,
+			data:       data,
+		}, nil
+	default:
+		return nil, errors.New("lz: FuzzSequencer doesn't support configuration")
+	}
+}
+
+func FuzzSequencer(f *testing.F) {
+	tests := []struct {
+		cfg  SeqConfig
+		data []byte
+	}{
+		{
+			&HSConfig{
+				InputLen: 3,
+				HashBits: 10,
+				SBConfig: SBConfig{
+					ShrinkSize: 16,
+					WindowSize: 512,
+					BufferSize: 512,
+					BlockSize:  128,
+				},
+			},
+			[]byte("HalloBallo"),
+		},
+	}
+	for _, tc := range tests {
+		fz, err := newFuzzConfig(tc.cfg, tc.data)
+		if err != nil {
+			f.Fatalf("newFuzzConfig error %s", err)
+		}
+		fz.add(f)
+	}
+	f.Fuzz(func(t *testing.T, hs, len1, len2, hbits1, hbits2,
+		shrinkSize, windowSize, bufferSize, blockSize int, data []byte) {
+
+		fz := &fuzzConfig{
+			hs:         hs,
+			len1:       len1,
+			len2:       len2,
+			hbits1:     hbits1,
+			hbits2:     hbits2,
+			shrinkSize: shrinkSize,
+			windowSize: windowSize,
+			bufferSize: bufferSize,
+			blockSize:  blockSize,
+			data:       data,
+		}
+		cfg, err := fz.seqConfig()
+		if err != nil {
+			t.Skip(err)
+		}
+		cfg.ApplyDefaults()
+		if err = cfg.Verify(); err != nil {
+			t.Skip(err)
+		}
+		seq, err := cfg.NewSequencer()
+		if err != nil {
+			t.Fatalf("cfg.NewSequencer error %s", err)
+		}
+		s := Wrap(bytes.NewReader(fz.data), seq)
+
+		h := sha256.New()
+		h.Write(fz.data)
+		hsum := h.Sum(nil)
+		h.Reset()
+
+		d, err := NewDecoder(h, DConfig{
+			WindowSize: fz.windowSize,
+			MaxSize:    2 * fz.windowSize})
+		if err != nil {
+			t.Fatalf("NewDecoder error %s", err)
+		}
+
+		var blk Block
+		for {
+			_, err := s.Sequence(&blk, 0)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				t.Fatalf("s.Sequence(blk) error %s", err)
+			}
+			err = verifyBlock(&blk, fz.len1, fz.windowSize)
+			if err != nil {
+				t.Fatalf("verifyBlock error %s", err)
+			}
+
+			_, _, _, err = d.WriteBlock(blk)
+			if err != nil {
+				t.Fatalf("d.WriteBlock error %s", err)
+			}
+		}
+
+		if err = d.Flush(); err != nil {
+			t.Fatalf("d.Flush error %s", err)
+		}
+
+		gsum := h.Sum(nil)
+		if !bytes.Equal(gsum, hsum) {
+			t.Fatalf("checksum got %x; want %x", gsum, hsum)
+		}
+
+	})
 }

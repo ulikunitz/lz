@@ -238,6 +238,11 @@ func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 	i := s.w
 	litIndex := i
 
+	minMatchLen := 3
+	if s.h1.inputLen < minMatchLen {
+		minMatchLen = s.h1.inputLen
+	}
+
 	// Ensure that we can use _getLE64 all the time.
 	_p := s.data[:e1+7]
 
@@ -269,6 +274,9 @@ func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
 		if k > len(p)-i {
 			k = len(p) - i
+		}
+		if k < minMatchLen {
+			continue
 		}
 		if k == 8 {
 			r := p[j+8:]
@@ -354,6 +362,9 @@ func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
 		if k > len(p)-i {
 			k = len(p) - i
+		}
+		if k < minMatchLen {
+			continue
 		}
 		if k == 8 {
 			r := p[j+8:]

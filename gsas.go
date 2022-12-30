@@ -9,7 +9,7 @@ import (
 )
 
 // GSASConfig defines the configuration parameter for the greedy suffix array
-// seqeuncer.
+// sequencer.
 type GSASConfig struct {
 	SBConfig
 	// minimum match len
@@ -128,7 +128,7 @@ func (s *greedySuffixArraySequencer) Reset(data []byte) error {
 	return nil
 }
 
-// sort computes the suffix array and its inverse 2gqqfor the window and all
+// sort computes the suffix array and its inverse for the window and all
 // buffered data. The bits bitmap marks all sa entries that are part of the
 // window.
 func (s *greedySuffixArraySequencer) sort() {
@@ -187,7 +187,7 @@ func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 
 	p := s.data[:len(s.sa)]
 	litIndex := i
-	for i < len(p) {
+	for ;i < len(p); i++ {
 		j := int(s.isa[i])
 		s.bits.insert(j)
 		k1, ok1 := s.bits.memberBefore(j)
@@ -212,6 +212,9 @@ func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 		if !(0 < o && o < s.WindowSize) {
 			i++
 			continue
+		}
+		if m > s.WindowSize {
+			m = s.WindowSize
 		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,

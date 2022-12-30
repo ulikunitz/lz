@@ -17,7 +17,8 @@
         "hbits",
         "hsum",
         "serr",
-        "testdata"
+        "testdata",
+        "ulikunitz"
     ],
     "import": []
 }

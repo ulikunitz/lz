@@ -39,7 +39,7 @@ func (bh *bucketHash) init(inputLen, hashBits, bucketSize int) error {
 	if !(2 <= inputLen && inputLen <= 8) {
 		return fmt.Errorf("lz: inputLen must be in range [2,8]")
 	}
-	maxHashBits := 28
+	maxHashBits := 24
 	if t := 8 * inputLen; t < maxHashBits {
 		maxHashBits = t
 	}

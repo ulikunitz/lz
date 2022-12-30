@@ -52,7 +52,7 @@ func (cfg *BHSConfig) Verify() error {
 			"lz: WindowSize=%d; must be less than MaxUint32=%d",
 			cfg.WindowSize, maxUint32)
 	}
-	maxHashBits := 28
+	maxHashBits := 24
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}

@@ -157,7 +157,7 @@ func (s *doubleHashSequencer) Reset(data []byte) error {
 	return nil
 }
 
-// hashSegment1 hases the provided segment of data for the first hash table.
+// hashSegment1 has the provided segment of data for the first hash table.
 func (s *doubleHashSequencer) hashSegment1(a, b int) {
 	if a < 0 {
 		a = 0

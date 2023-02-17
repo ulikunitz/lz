@@ -3,7 +3,6 @@ package lz
 import (
 	"bytes"
 	"fmt"
-	"sort"
 )
 
 // bTree represents a B-Tree as described by Donald Knuth. The slice p holds
@@ -84,11 +83,24 @@ func (t *bTree) add(pos uint32) {
 	t.root = root
 }
 
+func (t *bTree) search(o *bNode, pos uint32) int {
+	q := t.p[pos:]
+	p := t.p
+	keys := o.keys
+	i, j := 0, len(keys)
+	for i < j {
+		h := int(uint(i+j) >> 1)
+		if bytes.Compare(q, p[keys[h]:]) > 0 {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+	return i
+}
+
 func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
-	p := t.p[pos:]
-	i := sort.Search(len(o.keys), func(i int) bool {
-		return bytes.Compare(p, t.p[o.keys[i]:]) <= 0
-	})
+	i := t.search(o, pos)
 	if len(o.children) == 0 {
 		// We are at he bottom of the tree.
 		k := len(o.keys)
@@ -149,7 +161,7 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 		up = pos
 		or.children[0] = ot
 	case i > k:
-		i -= k+1
+		i -= k + 1
 		up = or.keys[0]
 		copy(or.keys[:i], or.keys[1:])
 		or.keys[i] = pos

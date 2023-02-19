@@ -31,40 +31,6 @@ func newBtree(order int, p []byte) *bTree {
 	}
 }
 
-func (t *bTree) rotateRight(o *bNode, i int, n int) {
-	or := o.children[i+1]
-	or.keys = or.keys[:len(or.keys)+n]
-	copy(or.keys[n:], or.keys)
-	ol := o.children[i]
-	kl := len(ol.keys) - n
-	or.keys[n-1], o.keys[i] = o.keys[i], ol.keys[kl]
-	copy(or.keys[:n-1], ol.keys[kl+1:])
-	ol.keys = ol.keys[:kl]
-
-	or.children = or.children[:len(o.children)+n]
-	copy(or.children[n:], or.children)
-	cl := len(o.children) - n
-	copy(or.children, ol.children[cl:])
-	ol.children = ol.children[:cl]
-}
-
-func (t *bTree) rotateLeft(o *bNode, i int, n int) {
-	ol := o.children[i]
-	kl := len(ol.keys)
-	ol.keys = ol.keys[:kl+n]
-	or := o.children[i+1]
-	ol.keys[kl], o.keys[i] = o.keys[i], or.keys[n-1]
-	copy(ol.keys[kl+1:], or.keys)
-	k := copy(or.keys, or.keys[n:])
-	or.keys = or.keys[:k]
-
-	cl := len(ol.children)
-	ol.children = ol.children[:cl+n]
-	copy(ol.children[cl:], or.children)
-	k = copy(or.children, or.children[n:])
-	or.children = or.children[:k]
-}
-
 func (t *bTree) add(pos uint32) {
 	if t.root == nil {
 		t.root = &bNode{keys: make([]uint32, 0, t.order-1)}
@@ -110,7 +76,7 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 			o.keys[i] = pos
 			return 0, nil
 		}
-		kr := (t.order - 1) >> 1
+		kr := (t.order >> 1) - 1
 		or = &bNode{keys: make([]uint32, kr, t.order-1)}
 		k -= kr
 		copy(or.keys, o.keys[k:])
@@ -146,7 +112,7 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 		o.children[i+1] = ot
 		return 0, nil
 	}
-	kr := (t.order - 1) >> 1
+	kr := (t.order >> 1) - 1
 	or = &bNode{
 		keys:     make([]uint32, kr, t.order-1),
 		children: make([]*bNode, kr+1, t.order),

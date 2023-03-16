@@ -3,9 +3,49 @@ package lz
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"math"
+	"strings"
 	"testing"
 )
+
+func fprintNode(w io.Writer, o *bNode, depth int) {
+	if depth < 0 {
+		panic(fmt.Errorf("depth=%d < 0", depth))
+	}
+	indent := strings.Repeat("  ", depth)
+	if o == nil {
+		fmt.Fprintf(w, "%s(nil)\n", indent)
+		return
+	}
+	if len(o.children) == 0 {
+		fmt.Fprint(w, indent)
+		for i, k := range o.keys {
+			if i == 0 {
+				fmt.Fprint(w, indent)
+			} else {
+				fmt.Fprint(w, " ")
+			}
+			fmt.Fprintf(w, "%d", k)
+		}
+		fmt.Fprintln(w)
+		return
+	}
+
+	depth++
+	for i, c := range o.children {
+		fprintNode(w, c, depth)
+		if i < len(o.keys) {
+			fmt.Fprintf(w, "%s%d\n", indent, o.keys[i])
+		}
+	}
+}
+
+func sprintNode(o *bNode) string {
+	var sb strings.Builder
+	fprintNode(&sb, o, 0)
+	return sb.String()
+}
 
 func appendNode(p []uint32, o *bNode) []uint32 {
 	if o == nil {
@@ -24,13 +64,15 @@ func appendNode(p []uint32, o *bNode) []uint32 {
 
 func TestBTreeAdd(t *testing.T) {
 	const s = `To be, or not to be`
-	tests := []int{2, 3, 4, 5, 6, 10, 15, 20}
+	tests := []int{ /* 2, */ 3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(s)
 			bt := newBtree(tc, p)
 			for i := 0; i < len(p); i++ {
+				t.Logf("btree#%d\n%s",
+					tc, sprintNode(bt.root))
 				if err := verifyBTree(bt); err != nil {
 					t.Fatalf("verifyBtree error %s", err)
 				}

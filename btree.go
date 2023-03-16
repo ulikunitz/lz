@@ -83,7 +83,7 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 			o.keys[i] = pos
 			return 0, nil
 		}
-		kr := (t.order >> 1) - 1
+		kr := t.order >> 1
 		or = &bNode{keys: make([]uint32, kr, t.order-1)}
 		k -= kr
 		copy(or.keys, o.keys[k:])
@@ -119,7 +119,7 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 		o.children[i+1] = ot
 		return 0, nil
 	}
-	kr := (t.order >> 1) - 1
+	kr := t.order >> 1
 	or = &bNode{
 		keys:     make([]uint32, kr, t.order-1),
 		children: make([]*bNode, kr+1, t.order),

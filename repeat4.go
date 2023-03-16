@@ -1,5 +1,7 @@
 package lz
 
+/*
+
 type repeat4 [4]uint32
 
 func (r *repeat4) find(p []byte, i int) (o int, k int) {
@@ -30,3 +32,5 @@ func (r *repeat4) pick(o int) {
 	case r[0]:
 	}
 }
+
+*/

@@ -15,6 +15,13 @@ type bTree struct {
 	// depth?
 }
 
+func (t *bTree) m2() int {
+	if t.order == 2 {
+		return 2
+	}
+	return (t.order + 1) >> 1
+}
+
 type bNode struct {
 	keys     []uint32
 	children []*bNode
@@ -143,3 +150,137 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	return up, or
 
 }
+
+func (t *bTree) stealRight(o *bNode, i int) bool {
+	if i >= len(o.keys) {
+		return false
+	}
+	or := o.children[i+1]
+	if len(or.keys) < t.m2() {
+		return false
+	}
+	ol := o.children[i]
+	k := len(ol.keys)
+	ol.keys = ol.keys[:k+1]
+	ol.keys[k], o.keys[i] = o.keys[i], or.keys[0]
+	copy(or.keys, or.keys[1:])
+	or.keys = or.keys[:len(or.keys)-1]
+	if len(ol.children) == 0 {
+		return true
+	}
+	k++
+	ol.children = ol.children[:k+1]
+	ol.children[k] = or.children[0]
+	copy(or.children, or.children[1:])
+	or.children = or.children[:len(or.children)-1]
+	return true
+}
+
+func (t *bTree) stealLeft(o *bNode, i int) bool {
+	if i <= 0 {
+		return false
+	}
+	i--
+	ol := o.children[i]
+	if len(ol.keys) < t.m2() {
+		return false
+	}
+	or := o.children[i+1]
+	or.keys = or.keys[:len(or.keys)+1]
+	copy(or.keys[1:], or.keys)
+	k := len(ol.keys) - 1
+	or.keys[0], o.keys[i] = o.keys[i], ol.keys[k]
+	ol.keys = ol.keys[:k]
+	if len(ol.children) == 0 {
+		return true
+	}
+	k++
+	or.children = or.children[:len(or.children)+1]
+	copy(or.children[1:], or.children)
+	or.children[0] = ol.children[k]
+	ol.children = ol.children[:k]
+	return true
+}
+
+func (t *bTree) dropKey(o *bNode, i int) {
+	ol, or := o.children[i], o.children[i+1]
+	k := len(ol.keys)
+	ol.keys = ol.keys[:k+1+len(or.keys)]
+	ol.keys[k] = o.keys[i]
+	copy(ol.keys[k+1:], or.keys)
+	copy(o.keys[i:], o.keys[i+1:])
+	o.keys = o.keys[:len(o.keys)-1]
+	i++
+	copy(o.children[i:], o.children[i+1:])
+	o.children = o.children[:len(o.children)-1]
+	if len(ol.children) == 0 {
+		return
+	}
+	k = len(ol.children)
+	ol.children = ol.children[:k+len(or.children)]
+	copy(ol.children[k:], or.children)
+}
+
+func (t *bTree) delMax(o *bNode) (r uint32, ok bool) {
+	i := len(o.keys)
+	if len(o.children) == 0 {
+		if i == 0 {
+			return 0, false
+		}
+		i--
+		r = o.keys[i]
+		o.keys = o.keys[:i]
+		return r, true
+	}
+	oc := o.children[i]
+	r, ok = t.delMax(oc)
+	if !ok {
+		panic("unexpected; children should have more than m/2 entries")
+	}
+	if len(oc.keys)+1 >= t.m2() {
+		return r, true
+	}
+	if t.stealLeft(o, i) {
+		return r, true
+	}
+	t.dropKey(o, i-1)
+	return r, true
+}
+
+func (t *bTree) del(o *bNode, pos uint32) {
+	i := t.search(o, pos)
+	if len(o.children) == 0 {
+		if i >= len(o.keys) || o.keys[i] != pos {
+			return
+		}
+		copy(o.keys[i:], o.keys[i+1:])
+		o.keys = o.keys[:len(o.keys)-1]
+		return
+	}
+	oc := o.children[i]
+	if i < len(o.keys) && o.keys[i] == pos {
+		var ok bool
+		o.keys[i], ok = t.delMax(oc)
+		if !ok {
+			panic("unexpected")
+		}
+	} else {
+		t.del(oc, pos)
+	}
+	if len(oc.keys)+1 >= t.m2() {
+		return
+	}
+	if t.stealRight(o, i) {
+		return
+	}
+	if t.stealLeft(o, i) {
+		return
+	}
+	if i == len(o.keys) {
+		i--
+	}
+	t.dropKey(o, i)
+}
+
+// delete removes position pos from the B-Tree.
+func (t *bTree) delete(pos uint32) { t.del(t.root, pos) }

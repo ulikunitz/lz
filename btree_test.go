@@ -64,7 +64,7 @@ func appendNode(p []uint32, o *bNode) []uint32 {
 
 func TestBTreeAdd(t *testing.T) {
 	const s = `To be, or not to be`
-	tests := []int{ /* 2, */ 3, 4, 5, 6, 10, 15, 20}
+	tests := []int{2, 3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
@@ -92,34 +92,46 @@ func TestBTreeAdd(t *testing.T) {
 }
 
 func (t *bTree) verifyNode(o *bNode) error {
-	if !(len(o.keys)+1 <= t.order) {
-		return fmt.Errorf(
-			"lz.bTree: len(o.keys)+1=%d; must be less than order %d",
-			len(o.keys), t.order)
-	}
-	if len(o.keys) == 0 {
-		return fmt.Errorf(
-			"lz.bTree: len(o.keys) == 0; must be greater zero")
-	}
-	m2 := t.m2()
-	if o != t.root && !(m2 <= len(o.keys)+1) {
-		return fmt.Errorf(
-			"lz.bTree: len(o.keys)+1=%d; must be >= m/2=%d",
-			len(o.keys)+1, m2)
-	}
-	if len(o.children) == 0 {
+	if o == nil {
 		return nil
 	}
-	if !(len(o.children) <= t.order) {
-		return fmt.Errorf(
-			"lz.bTree: len(o.children)=%d; must be less or equal order %d",
-			len(o.children), t.order)
+
+	// compute the number of children.
+	k := len(o.children)
+	if k == 0 {
+		k = len(o.keys) + 1
 	}
-	if o != t.root && !(m2 <= len(o.children)) {
-		return fmt.Errorf(
-			"lz.bTree: len(o.children)=%d; must be >= m/2=%d",
-			len(o.children), m2)
+
+	// We are checking Knuth's properties.
+
+	// i) Every node has at most $m$ children.
+	//    Since we are not storing leaves we have to take that into account.
+	if k > t.order {
+		return fmt.Errorf("i) k=%d > m=%d", k, t.order)
 	}
+
+	// ii) Every node, except for the root and the leaves has at most m/2
+	//     children.
+	m2 := (t.order + 1) >> 1
+	if o != t.root && k < m2 {
+		return fmt.Errorf("ii) k=%d < ceil(m/2)=%d", k, m2)
+	}
+
+	// iii) The root has at least 2 children (unless it is a leaf).
+	if o == t.root && k < 2 {
+		return fmt.Errorf("iii) k=%d < 2 for root", len(o.children))
+	}
+
+	// iv) All leaves appear on the same level and carry no information.
+	//     Can't test it without additional information.
+
+	// v) A nonleaf node with k children contains k-1 keys.
+	if len(o.keys) != k-1 {
+		return fmt.Errorf("v) len(o.keys)=%d != (k=%d)-1",
+			len(o.keys), k)
+	}
+
+	// Check all children.
 	for _, child := range o.children {
 		if err := t.verifyNode(child); err != nil {
 			return err
@@ -160,7 +172,7 @@ func verifyBTree(t *bTree) error {
 func TestBTreeDel(t *testing.T) {
 	const s = `To be, or not to be`
 	// 2 and 3 have the problem that len(keys) may be 0.
-	tests := []int{ /*2, 3,*/ 4, 5, 6, 10, 15, 20}
+	tests := []int{2, 3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {

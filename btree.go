@@ -7,7 +7,9 @@ import (
 
 // bTree represents a B-Tree as described by Donald Knuth. The slice p holds
 // the data to compress and we store indexes to that array in the B-Tree sorted
-// by the bytes slices p[key:].
+// by the bytes slices p[key:]. Note that we are only supporting trees with
+// order 3 or higher. B-Trees with oider 1 and 2 under the definition of Donald
+// Knuth don't exist.
 type bTree struct {
 	p     []byte
 	root  *bNode
@@ -283,4 +285,17 @@ func (t *bTree) del(o *bNode, pos uint32) {
 }
 
 // delete removes position pos from the B-Tree.
-func (t *bTree) delete(pos uint32) { t.del(t.root, pos) }
+func (t *bTree) delete(pos uint32) {
+	if t.root == nil {
+		return
+	}
+	t.del(t.root, pos)
+	switch len(t.root.children) {
+	case 0:
+		if len(t.root.keys) == 0 {
+			t.root = nil
+		}
+	case 1:
+		t.root = t.root.children[0]
+	}
+}

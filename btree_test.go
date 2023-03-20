@@ -208,3 +208,32 @@ func TestBTreeDel(t *testing.T) {
 	}
 
 }
+
+func TestBTreeShift(t *testing.T) {
+	const s = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
+			p := []byte(s)
+			bt := newBtree(tc, p)
+			if err := verifyBTree(bt); err != nil {
+				t.Fatalf("verifyBtree error %s", err)
+			}
+			for i := 0; i < len(p); i++ {
+				bt.add(uint32(i))
+				if err := verifyBTree(bt); err != nil {
+					t.Fatalf("add(%d) - verifyBtree error %s",
+						i, err)
+				}
+			}
+			bt.shift(7)
+			if err := verifyBTree(bt); err != nil {
+				t.Fatalf("shift(%d) - verifyBTree error %s",
+					7, err)
+			}
+			keys := appendNode(nil, bt.root)
+			t.Logf("bt.shift(%d) -> %d", 7, keys)
+		})
+	}
+}

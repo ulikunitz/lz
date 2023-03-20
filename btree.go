@@ -148,7 +148,78 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 		o.children[i+1] = ot
 	}
 	return up, or
+}
 
+func (t *bTree) addMax(pos uint32) {
+	if t.root == nil {
+		t.root = &bNode{keys: make([]uint32, 0, t.order-1)}
+	}
+	up, or := t.addMaxAt(t.root, pos)
+	if or == nil {
+		return
+	}
+	root := &bNode{
+		keys:     make([]uint32, 1, t.order-1),
+		children: make([]*bNode, 2, t.order),
+	}
+	root.keys[0] = up
+	root.children[0] = t.root
+	root.children[1] = or
+	t.root = root
+}
+
+func (t *bTree) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
+	i := len(o.keys)
+	if len(o.children) == 0 {
+		// We are at he bottom of the tree.
+		k := i
+		if k+1 < t.order {
+			o.keys = o.keys[:k+1]
+			o.keys[k] = pos
+			return 0, nil
+		}
+		kr := t.order >> 1
+		or = &bNode{keys: make([]uint32, kr, t.order-1)}
+		k -= kr
+		copy(or.keys, o.keys[k:])
+		o.keys = o.keys[:k]
+		i -= k + 1
+		up = or.keys[0]
+		copy(or.keys[:i], or.keys[1:])
+		or.keys[i] = pos
+		return up, or
+	}
+	// Care for the children!
+	var ot *bNode
+	pos, ot = t.addMaxAt(o.children[i], pos)
+	if ot == nil {
+		return 0, nil
+	}
+	k := len(o.keys)
+	if k+1 < t.order {
+		o.keys = o.keys[:k+1]
+		o.keys[i] = pos
+		o.children = o.children[:len(o.children)+1]
+		o.children[i+1] = ot
+		return 0, nil
+	}
+	kr := t.order >> 1
+	or = &bNode{
+		keys:     make([]uint32, kr, t.order-1),
+		children: make([]*bNode, kr+1, t.order),
+	}
+	k -= kr
+	copy(or.keys, o.keys[k:])
+	o.keys = o.keys[:k]
+	copy(or.children, o.children[k:])
+	o.children = o.children[:k+1]
+	i -= k + 1
+	up = or.keys[0]
+	copy(or.keys[:i], or.keys[1:])
+	or.keys[i] = pos
+	copy(or.children[:i+1], or.children[1:])
+	or.children[i+1] = ot
+	return up, or
 }
 
 func (t *bTree) stealRight(o *bNode, i int) bool {
@@ -296,4 +367,39 @@ func (t *bTree) delete(pos uint32) {
 	case 1:
 		t.root = t.root.children[0]
 	}
+}
+
+func (t *bTree) walkNode(o *bNode, f func([]uint32)) {
+	if o == nil {
+		return
+	}
+	if len(o.children) == 0 {
+		f(o.keys)
+		return
+	}
+	for i := range o.keys {
+		t.walkNode(o.children[i], f)
+		f(o.keys[i : i+1])
+	}
+	t.walkNode(o.children[len(o.children)-1], f)
+}
+
+func (t *bTree) walk(f func(p []uint32)) {
+	t.walkNode(t.root, f)
+}
+
+func (t *bTree) shift(s uint32) {
+	p := t.p
+	copy(p, p[s:])
+	u := &bTree{order: t.order, p: p}
+	f := func(p []uint32) {
+		for _, k := range p {
+			if k < s {
+				continue
+			}
+			u.addMax(k - s)
+		}
+	}
+	t.walk(f)
+	t.root = u.root
 }

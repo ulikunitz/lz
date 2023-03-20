@@ -8,8 +8,7 @@ import (
 // bTree represents a B-Tree as described by Donald Knuth. The slice p holds
 // the data to compress and we store indexes to that array in the B-Tree sorted
 // by the bytes slices p[key:]. Note that we are only supporting trees with
-// order 3 or higher. B-Trees with oider 1 and 2 under the definition of Donald
-// Knuth don't exist.
+// order 3 or higher.
 type bTree struct {
 	p     []byte
 	root  *bNode
@@ -20,9 +19,6 @@ type bTree struct {
 }
 
 func (t *bTree) m2() int {
-	if t.order == 2 {
-		return 2
-	}
 	return (t.order + 1) >> 1
 }
 
@@ -32,8 +28,8 @@ type bNode struct {
 }
 
 func newBtree(order int, p []byte) *bTree {
-	if order < 2 {
-		panic(fmt.Errorf("lz: order=%d; must be >= %d", order, 2))
+	if order < 3 {
+		panic(fmt.Errorf("lz: order=%d; must be >= %d", order, 3))
 	}
 	return &bTree{
 		p:     p,

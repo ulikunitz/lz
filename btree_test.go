@@ -58,8 +58,8 @@ func appendNode(p []uint32, o *bNode) []uint32 {
 }
 
 func TestBTreeAdd(t *testing.T) {
-	const s = `To be, or not to be`
-	tests := []int{2, 3, 4, 5, 6, 10, 15, 20}
+	const s = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
@@ -174,9 +174,8 @@ func verifyBTree(t *bTree) error {
 }
 
 func TestBTreeDel(t *testing.T) {
-	const s = `To be, or not to be`
-	// 2 and 3 have the problem that len(keys) may be 0.
-	tests := []int{ /* 2, */ 3, 4, 5, 6, 10, 15, 20}
+	const s = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {

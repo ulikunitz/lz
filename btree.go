@@ -14,7 +14,9 @@ type bTree struct {
 	p     []byte
 	root  *bNode
 	order int
-	// depth?
+
+	// helper field used for debugging
+	aux int
 }
 
 func (t *bTree) m2() int {

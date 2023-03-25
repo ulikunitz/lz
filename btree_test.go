@@ -105,7 +105,7 @@ func (t *bTree) verifyNode(o *bNode, depth int) error {
 		return fmt.Errorf("i) k=%d > m=%d", k, t.order)
 	}
 
-	// ii) Every node, except for the root and the leaves has at most m/2
+	// ii) Every node, except for the root and the leaves, has at most m/2
 	//     children.
 	m2 := (t.order + 1) >> 1
 	if o != t.root && k < m2 {

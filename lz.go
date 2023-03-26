@@ -5,7 +5,7 @@
 // A Sequencer is an encoder that converts a byte stream into blocks of
 // sequences. A Decoder converts the block of sequences into the
 // original decompressed byte stream. A wrapped Sequencer reads the byte
-// stream from a reader. The sequencers are provided here seperately
+// stream from a reader. The sequencers are provided here separately
 // because they are more efficient for encoding byte slices directly.
 //
 // The module provides multiple sequencers that provide different
@@ -13,7 +13,7 @@
 // slower sequencer will generate a better compression ratio.
 //
 // We provide also two decoders. The Decoder slides the decompression
-// window through a larger buffer implmented by Buffer. The RingDecoder
+// window through a larger buffer implemented by Buffer. The RingDecoder
 // uses the RingBuffer that requires only a slice of the size of the
 // window plus 1. The Decoder is significantly faster.
 package lz

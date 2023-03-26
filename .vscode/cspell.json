@@ -5,6 +5,7 @@
     "dictionaries": [],
     "words": [
         "kbyte",
+        "Lempel",
         "nonleaf"
     ],
     "ignoreWords": [
@@ -19,7 +20,8 @@
         "hsum",
         "serr",
         "testdata",
-        "ulikunitz"
+        "ulikunitz",
+        "zstd"
     ],
     "import": []
 }

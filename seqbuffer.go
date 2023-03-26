@@ -34,7 +34,7 @@ type SeqBuffer struct {
 type SBConfig struct {
 	// WindowSize is the maximum window size in bytes
 	WindowSize int
-	// ShrinkSize provides the size the buffer is shrinked to if the buffer
+	// ShrinkSize provides the size the buffer is shrunk to if the buffer
 	// has been completely filled and encoded. It must be smaller than the
 	// BufferSize, and should be significantly so.
 	ShrinkSize int
@@ -134,7 +134,7 @@ func (w *SeqBuffer) Init(cfg SBConfig) error {
 	return nil
 }
 
-// Reset cleans the window structure for reuse. It will use the data structue
+// Reset cleans the window structure for reuse. It will use the data structure
 // for the data. Note that the condition cap(data) > len(data) + 7 must be met
 // to avoid copying. The data length must not exceed the buffer size.
 func (w *SeqBuffer) Reset(data []byte) error {

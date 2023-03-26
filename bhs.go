@@ -119,11 +119,9 @@ func (s *backwardHashSequencer) Reset(data []byte) error {
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *backwardHashSequencer) Shrink() int {
-	w := s.SeqBuffer.w
-	n := s.SeqBuffer.shrink()
-	s.hash.adapt(uint32(w - n))
-	return n
+func (s *backwardHashSequencer) Shrink() {
+	delta := uint32(s.SeqBuffer.shrink())
+	s.hash.adapt(delta)
 }
 
 func (s *backwardHashSequencer) hashSegment(a, b int) {

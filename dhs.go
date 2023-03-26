@@ -426,11 +426,8 @@ func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *doubleHashSequencer) Shrink() int {
-	w := s.SeqBuffer.w
-	n := s.SeqBuffer.shrink()
-	delta := uint32(w - n)
+func (s *doubleHashSequencer) Shrink() {
+	delta := uint32(s.SeqBuffer.shrink())
 	s.h1.adapt(delta)
 	s.h2.adapt(delta)
-	return n
 }

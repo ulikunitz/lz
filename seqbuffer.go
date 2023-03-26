@@ -191,19 +191,19 @@ func (w *SeqBuffer) Len() int {
 // Pos returns the absolute position of the window head
 func (w *SeqBuffer) Pos() int64 { return w.start + int64(w.w) }
 
-// shrink reduces the current window length. The method returns the actual
-// window length after shrinking.
+// shrink reduces the current window length. The method returns the non-negative
+// delta that the window has been shifted. 
 func (w *SeqBuffer) shrink() int {
 	r := w.w - w.ShrinkSize
 	if r <= 0 {
-		return w.w
+		return 0
 	}
 
 	k := copy(w.data, w.data[r:])
 	w.data = w.data[:k]
 	w.start += int64(r)
 	w.w = w.ShrinkSize
-	return w.ShrinkSize
+	return r
 }
 
 // ErrFullBuffer indicates that the buffer is full and no further data can be

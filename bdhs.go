@@ -440,11 +440,8 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *backwardDoubleHashSequencer) Shrink() int {
-	w := s.SeqBuffer.w
-	n := s.SeqBuffer.shrink()
-	delta := uint32(w - n)
+func (s *backwardDoubleHashSequencer) Shrink() {
+	delta := uint32(s.SeqBuffer.shrink())
 	s.h1.adapt(delta)
 	s.h2.adapt(delta)
-	return n
 }

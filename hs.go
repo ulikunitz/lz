@@ -123,11 +123,9 @@ func (s *hashSequencer) Reset(data []byte) error {
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *hashSequencer) Shrink() int {
-	w := s.SeqBuffer.w
-	n := s.SeqBuffer.shrink()
-	s.hash.adapt(uint32(w - n))
-	return n
+func (s *hashSequencer) Shrink() {
+	delta := uint32(s.SeqBuffer.shrink())
+	s.hash.adapt(delta)
 }
 
 func (s *hashSequencer) hashSegment(a, b int) {

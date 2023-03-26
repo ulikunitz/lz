@@ -104,10 +104,9 @@ func TestWindow_shrink(t *testing.T) {
 
 	w.w = winSize
 
-	n := w.shrink()
-	if n != shrinkSize {
-		t.Fatalf("w.shrink(%d) returned %d; want %d",
-			shrinkSize, n, shrinkSize)
+	w.shrink()
+	if w.w != shrinkSize {
+		t.Fatalf("w.shrink() returned %d; want %d", w.w, shrinkSize)
 	}
 
 	if len(w.data) != shrinkSize {

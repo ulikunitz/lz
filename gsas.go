@@ -187,7 +187,7 @@ func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 
 	p := s.data[:len(s.sa)]
 	litIndex := i
-	for ;i < len(p); i++ {
+	for ; i < len(p); i++ {
 		j := int(s.isa[i])
 		s.bits.insert(j)
 		k1, ok1 := s.bits.memberBefore(j)
@@ -243,14 +243,11 @@ func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err
 }
 
 // Shrink reduces the window length to provide more space for writing.
-func (s *greedySuffixArraySequencer) Shrink() int {
-	oldWindowLen := s.w
-	n := s.SeqBuffer.shrink()
-	if oldWindowLen == n {
-		return n
+func (s *greedySuffixArraySequencer) Shrink() {
+	delta := s.SeqBuffer.shrink()
+	if delta == 0 {
+		return
 	}
 	s.sa = s.sa[:0]
 	s.isa = s.isa[:0]
-	s.bits.clear()
-	return n
 }

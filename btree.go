@@ -407,12 +407,11 @@ func (t *bTree) walk(f func(p []uint32)) {
 	t.walkNode(t.root, f)
 }
 
-// shift moves the content of the byte slices s bytes to the left and modifies
-// the B-Tree accordingly. The current implementation recreates the B-Tree.
-func (t *bTree) shift(s uint32) {
-	p := t.p
-	copy(p, p[s:])
-	u := &bTree{order: t.order, p: p}
+// adapt moves the content of the byte slices s bytes to the left and modifies
+// the B-Tree accordingly. The current implementation recreates the B-Tree. Note
+// that the shift in the slice must have been done, before calling adapt.
+func (t *bTree) adapt(s uint32) {
+	u := &bTree{order: t.order, p: t.p}
 	f := func(p []uint32) {
 		for _, k := range p {
 			if k < s {

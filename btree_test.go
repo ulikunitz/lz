@@ -209,7 +209,7 @@ func TestBTreeDel(t *testing.T) {
 
 }
 
-func TestBTreeShift(t *testing.T) {
+func TestBTreeAdapt(t *testing.T) {
 	const s = "To be, or not to be"
 	tests := []int{3, 4, 5, 6, 10, 15, 20}
 	for _, tc := range tests {
@@ -227,13 +227,15 @@ func TestBTreeShift(t *testing.T) {
 						i, err)
 				}
 			}
-			bt.shift(7)
+			const delta = 7
+			copy(p, p[delta:])
+			bt.adapt(delta)
 			if err := verifyBTree(bt); err != nil {
-				t.Fatalf("shift(%d) - verifyBTree error %s",
-					7, err)
+				t.Fatalf("bt.adapt(%d) - verifyBTree error %s",
+					delta, err)
 			}
 			keys := appendNode(nil, bt.root)
-			t.Logf("bt.shift(%d) -> %d", 7, keys)
+			t.Logf("bt.adapt(%d) -> %d", delta, keys)
 		})
 	}
 }

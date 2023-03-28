@@ -118,6 +118,21 @@ func (cfg *SBConfig) Verify() error {
 	return nil
 }
 
+// ensureMargin ensures that there is a margin of 7 bytes following the data
+// length allowing to extend the byte slice for access by _getLE64.
+func ensureMargin(p []byte) []byte {
+	k := len(p) + 7
+	if cap(p) >= k {
+		return p
+	}
+	if k < 1024 {
+		k = 1024
+	}
+	q := make([]byte, len(p), k)
+	copy(q, p)
+	return q
+}
+
 // Init initializes the window. The parameter size must be positive.
 func (w *SeqBuffer) Init(cfg SBConfig) error {
 	cfg.ApplyDefaults()
@@ -128,9 +143,7 @@ func (w *SeqBuffer) Init(cfg SBConfig) error {
 		data:     w.data[:0],
 		SBConfig: cfg,
 	}
-	if cap(w.data) < 7 {
-		w.data = make([]byte, 0, 1024)
-	}
+	w.data = ensureMargin(w.data)
 	return nil
 }
 
@@ -147,14 +160,15 @@ func (w *SeqBuffer) Reset(data []byte) error {
 				" must not be larger than the buffer size (%d)",
 			len(data), w.BufferSize)
 	}
-	if len(data)+7 > cap(data) {
-		if len(data)+7 <= cap(w.data) {
+	k := len(data)+7
+	if k > cap(data) {
+		if cap(w.data) >= k {
 			w.data = w.data[:len(data)]
+			copy(w.data, data)
+			data = w.data
 		} else {
-			w.data = make([]byte, len(data), len(data)+7)
+			data = ensureMargin(data)
 		}
-		copy(w.data, data)
-		data = w.data
 	}
 	*w = SeqBuffer{
 		data:     data,

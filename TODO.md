@@ -1,10 +1,7 @@
 # TODO lz module
 
 ## updates
-* SeqBuffer shrink should return delta uint32 > 0
-* Make hash a match finder
-* Make Btree a match finder
-* Make a 3-letter Btree  match finder
+* Make a 3-letter Btree match finder
 * Write general sequencer that uses multiple match finders, is backward looking
   and supports also a repeater.
 * We can now experiment using the general sequencer.

@@ -5,50 +5,76 @@ import (
 	"fmt"
 )
 
-// bTree represents a B-Tree as described by Donald Knuth. The slice p holds
-// the data to compress and we store indexes to that array in the B-Tree sorted
-// by the suffixes starting at the key positions. Note that we are only supporting trees with
-// order 3 or higher.
-type bTree struct {
-	p     []byte
-	root  *bNode
+// btMask is the mask for the little endian 64-bit representation of the input
+// value. We use 3 characters as input for the hash.
+const btMask = 1<<24 - 1
+
+// bTrees stores B-Trees in a hash table. The B-Trees follow the definition of
+// Donald Knuth. The implementation supports B-Trees auf order 3 or higher.
+type bTrees struct {
+	// byte slice for the ordering.
+	p []byte
+
+	// byte slice for access by _getLE64 for all valid positions
+	_p []byte
+
+	// hash table for the individual B-Trees.
+	roots []*bNode
+
+	// order of the B-Trees
 	order int
 
-	// helper field used for debugging
-	aux int
+	// shift value for the calculation of the hash value.
+	shift uint
 }
 
 // m2 returns the ceiling of the order divided by 2.
-func (t *bTree) m2() int {
+func (t *bTrees) m2() int {
 	return (t.order + 1) >> 1
 }
 
-// bNode represents a node in the B-Tree. We are not storing leaves in the
-// tree. In a node that has leaves the length of the children slice will be
+// bNode represents a node in a B-Tree. We are not storing leaves in the
+// tree. In a node that has leaves, the length of the children slice will be
 // zero.
 type bNode struct {
 	keys     []uint32
 	children []*bNode
 }
 
-// newBtree creates a new B-Tree. The order must be larger than or equal 3.
-func newBtree(order int, p []byte) *bTree {
+// newBtrees creates a new B-Tree. The order must be larger than or equal 3. THe
+// hashBits should be less or equal 24.
+func newBTrees(order int, hashBits int, p []byte) *bTrees {
 	if order < 3 {
 		panic(fmt.Errorf("lz: order=%d; must be >= %d", order, 3))
 	}
-	return &bTree{
+	if 0 < hashBits && hashBits < 24 {
+		panic(fmt.Errorf("lz: hashBits=%d; must be >= %d", hashBits, 0))
+	}
+	if len(p)+7 > cap(p) {
+		panic(fmt.Errorf("byte slice p has no 7-byte margin"))
+	}
+	return &bTrees{
 		p:     p,
-		root:  nil,
+		_p:    p[:len(p)+7],
+		roots: make([]*bNode, 1<<hashBits),
 		order: order,
+		shift: 64 - uint(hashBits),
 	}
 }
 
+func (t *bTrees) hashValue(x uint64) uint32 {
+	x &= btMask
+	return uint32((x * prime) >> t.shift)
+}
+
 // add adds a position to the binary tree.
-func (t *bTree) add(pos uint32) {
-	if t.root == nil {
-		t.root = &bNode{keys: make([]uint32, 0, t.order-1)}
+func (t *bTrees) add(pos uint32, x uint64) {
+	pRoot := &t.roots[t.hashValue(x)]
+	if *pRoot == nil {
+		*pRoot = &bNode{keys: make([]uint32, 0, t.order-1)}
 	}
-	up, or := t.addAt(t.root, pos)
+
+	up, or := t.addAt(*pRoot, pos)
 	if or == nil {
 		return
 	}
@@ -57,13 +83,13 @@ func (t *bTree) add(pos uint32) {
 		children: make([]*bNode, 2, t.order),
 	}
 	root.keys[0] = up
-	root.children[0] = t.root
+	root.children[0] = *pRoot
 	root.children[1] = or
-	t.root = root
+	*pRoot = root
 }
 
 // search searches for a position in the given node.
-func (t *bTree) search(o *bNode, pos uint32) int {
+func (t *bTrees) search(o *bNode, pos uint32) int {
 	q := t.p[pos:]
 	p := t.p
 	keys := o.keys
@@ -81,7 +107,7 @@ func (t *bTree) search(o *bNode, pos uint32) int {
 
 // addAt adds the position to the node o. If the node is split the node up with
 // must be pushed higher and a new node is provided.
-func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
+func (t *bTrees) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	i := t.search(o, pos)
 	if len(o.children) == 0 {
 		// We are at he bottom of the tree.
@@ -159,13 +185,19 @@ func (t *bTree) addAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	return up, or
 }
 
+func (t *bTrees) xValue(pos uint32) uint64 {
+	return _getLE64(t._p[pos:]) & btMask
+}
+
 // addMax adds a new position under the assumption that the suffix starting at
 // pos is larger than all suffixes added before.
-func (t *bTree) addMax(pos uint32) {
-	if t.root == nil {
-		t.root = &bNode{keys: make([]uint32, 0, t.order-1)}
+func (t *bTrees) addMax(pos uint32) {
+	x := t.xValue(pos)
+	pRoot := &t.roots[t.hashValue(x)]
+	if *pRoot == nil {
+		*pRoot = &bNode{keys: make([]uint32, 0, t.order-1)}
 	}
-	up, or := t.addMaxAt(t.root, pos)
+	up, or := t.addMaxAt(*pRoot, pos)
 	if or == nil {
 		return
 	}
@@ -174,14 +206,14 @@ func (t *bTree) addMax(pos uint32) {
 		children: make([]*bNode, 2, t.order),
 	}
 	root.keys[0] = up
-	root.children[0] = t.root
+	root.children[0] = *pRoot
 	root.children[1] = or
-	t.root = root
+	*pRoot = root
 }
 
 // addMaxAt adds the a suffix starting at pos to the node under the assumption
 // that the suffix is larger than all suffixes stored in the node.
-func (t *bTree) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
+func (t *bTrees) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	i := len(o.keys)
 	if len(o.children) == 0 {
 		// We are at he bottom of the tree.
@@ -235,7 +267,7 @@ func (t *bTree) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	return up, or
 }
 
-func (t *bTree) stealRight(o *bNode, i int) bool {
+func (t *bTrees) stealRight(o *bNode, i int) bool {
 	if i >= len(o.keys) {
 		return false
 	}
@@ -260,7 +292,7 @@ func (t *bTree) stealRight(o *bNode, i int) bool {
 	return true
 }
 
-func (t *bTree) stealLeft(o *bNode, i int) bool {
+func (t *bTrees) stealLeft(o *bNode, i int) bool {
 	if i <= 0 {
 		return false
 	}
@@ -286,7 +318,7 @@ func (t *bTree) stealLeft(o *bNode, i int) bool {
 	return true
 }
 
-func (t *bTree) dropKey(o *bNode, i int) {
+func (t *bTrees) dropKey(o *bNode, i int) {
 	ol, or := o.children[i], o.children[i+1]
 	k := len(ol.keys)
 	ol.keys = ol.keys[:k+1+len(or.keys)]
@@ -307,7 +339,7 @@ func (t *bTree) dropKey(o *bNode, i int) {
 
 // delMax deletes the largest suffix from the node and returns its position r if
 // it can be found.
-func (t *bTree) delMax(o *bNode) (r uint32, ok bool) {
+func (t *bTrees) delMax(o *bNode) (r uint32, ok bool) {
 	i := len(o.keys)
 	if len(o.children) == 0 {
 		if i == 0 {
@@ -334,7 +366,7 @@ func (t *bTree) delMax(o *bNode) (r uint32, ok bool) {
 }
 
 // del deletes the suffix starting at pos from the node.
-func (t *bTree) del(o *bNode, pos uint32) {
+func (t *bTrees) del(o *bNode, pos uint32) {
 	i := t.search(o, pos)
 	if len(o.children) == 0 {
 		if i >= len(o.keys) || o.keys[i] != pos {
@@ -370,24 +402,27 @@ func (t *bTree) del(o *bNode, pos uint32) {
 }
 
 // delete removes the suffix starting at position pos from the B-Tree.
-func (t *bTree) delete(pos uint32) {
-	if t.root == nil {
+func (t *bTrees) delete(pos uint32) {
+	x := t.xValue(pos)
+	pRoot := &t.roots[t.hashValue(x)]
+	if *pRoot == nil {
 		return
 	}
-	t.del(t.root, pos)
-	switch len(t.root.children) {
+	root := *pRoot
+	t.del(root, pos)
+	switch len(root.children) {
 	case 0:
-		if len(t.root.keys) == 0 {
-			t.root = nil
+		if len(root.keys) == 0 {
+			*pRoot = nil
 		}
 	case 1:
-		t.root = t.root.children[0]
+		*pRoot = root.children[0]
 	}
 }
 
 // walkNode calls function f in sequence of the sorted keys in the subtree
 // starting at o.
-func (t *bTree) walkNode(o *bNode, f func([]uint32)) {
+func (t *bTrees) walkNode(o *bNode, f func([]uint32)) {
 	if o == nil {
 		return
 	}
@@ -395,31 +430,47 @@ func (t *bTree) walkNode(o *bNode, f func([]uint32)) {
 		f(o.keys)
 		return
 	}
-	for i := range o.keys {
-		t.walkNode(o.children[i], f)
-		f(o.keys[i : i+1])
+	for i, c := range o.children {
+		t.walkNode(c, f)
+		if i < len(o.keys) {
+			f(o.keys[i : i+1])
+		}
 	}
-	t.walkNode(o.children[len(o.children)-1], f)
 }
 
-// walks calls f for the key in the B-Tree in their sorted order.
-func (t *bTree) walk(f func(p []uint32)) {
-	t.walkNode(t.root, f)
+func (t *bTrees) addMaxRoot(root *bNode, pos uint32) *bNode {
+	if root == nil {
+		root = &bNode{keys: make([]uint32, 0, t.order-1)}
+	}
+	up, or := t.addMaxAt(root, pos)
+	if or == nil {
+		return root
+	}
+	r := &bNode{
+		keys:     make([]uint32, 1, t.order-1),
+		children: make([]*bNode, 2, t.order),
+	}
+	r.keys[0] = up
+	r.children[0] = root
+	r.children[1] = or
+	return r
 }
 
 // adapt moves the content of the byte slices s bytes to the left and modifies
 // the B-Tree accordingly. The current implementation recreates the B-Tree. Note
 // that the shift in the slice must have been done, before calling adapt.
-func (t *bTree) adapt(s uint32) {
-	u := &bTree{order: t.order, p: t.p}
-	f := func(p []uint32) {
-		for _, k := range p {
-			if k < s {
-				continue
+func (t *bTrees) adapt(s uint32) {
+	for i, r := range t.roots {
+		var root *bNode
+		f := func(p []uint32) {
+			for _, k := range p {
+				if k < s {
+					continue
+				}
+				root = t.addMaxRoot(root, k-s)
 			}
-			u.addMax(k - s)
 		}
+		t.walkNode(r, f)
+		t.roots[i] = root
 	}
-	t.walk(f)
-	t.root = u.root
 }

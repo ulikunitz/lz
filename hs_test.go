@@ -288,7 +288,7 @@ func TestLoopReader(t *testing.T) {
 		t.Fatalf("io.Copy(&sb, r) error %s", err)
 	}
 	if n != size {
-		t.Fatalf("io.Copy(&sb. r) returne %d; want %d", n, size)
+		t.Fatalf("io.Copy(&sb. r) returns %d; want %d", n, size)
 	}
 	t.Logf("%q", sb.String())
 }

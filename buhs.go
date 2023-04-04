@@ -142,7 +142,7 @@ func (s *bucketHashSequencer) hashSegment(a, b int) {
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		s.bucketHash.add(s.hashValue(x), uint32(i), uint32(x))
+		s.bucketHash.add(hashValue(x, s.shift), uint32(i), uint32(x))
 	}
 }
 
@@ -194,7 +194,7 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 
 	for ; i < inputEnd; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		h := s.hashValue(x)
+		h := hashValue(x, s.shift)
 		v := uint32(x)
 		o, k := 0, 0
 		for _, e := range s.bucket(h) {
@@ -242,7 +242,7 @@ func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 		}
 		for j := i + 1; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.mask
-			h := s.hashValue(x)
+			h := hashValue(x, s.shift)
 			s.add(h, uint32(j), uint32(x))
 		}
 		i = litIndex - 1

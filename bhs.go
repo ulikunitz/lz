@@ -138,7 +138,7 @@ func (s *backwardHashSequencer) hashSegment(a, b int) {
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		h := s.hashValue(x)
+		h := hashValue(x, s.shift)
 		s.table[h] = hashEntry{
 			pos:   uint32(i),
 			value: uint32(x),
@@ -193,7 +193,7 @@ func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 	for ; i < inputEnd; i++ {
 		y := _getLE64(_p[i:])
 		x := y & s.mask
-		h := s.hashValue(x)
+		h := hashValue(x, s.shift)
 		entry := s.table[h]
 		v := uint32(x)
 		s.table[h] = hashEntry{
@@ -262,7 +262,7 @@ func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 		}
 		for j = i + 1; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.mask
-			h := s.hashValue(x)
+			h := hashValue(x, s.shift)
 			s.table[h] = hashEntry{
 				pos:   uint32(j),
 				value: uint32(x),

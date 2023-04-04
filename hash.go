@@ -74,7 +74,7 @@ func (h *hash) adapt(delta uint32) {
 
 func (h *hash) add(pos uint32, x uint64) {
 	x &= h.mask
-	e := &h.table[h.hashValue(x)]
+	e := &h.table[hashValue(x, h.shift)]
 	e.pos = pos
 	e.value = uint32(x)
 }
@@ -82,18 +82,18 @@ func (h *hash) add(pos uint32, x uint64) {
 func (h *hash) appendMatchAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
 	x &= h.mask
 	y := uint32(x)
-	e := &h.table[h.hashValue(x)]
+	e := &h.table[hashValue(x, h.shift)]
 	if e.value == y {
 		matches = append(matches, e.pos)
 	}
 	e.pos = pos
 	e.value = y
-	return matches 
+	return matches
 }
 
 // prime is used for hashing
 const prime = 9920624304325388887
 
-func (h *hash) hashValue(x uint64) uint32 {
-	return uint32((x * prime) >> h.shift)
+func hashValue(x uint64, shift uint) uint32 {
+	return uint32((x * prime) >> shift)
 }

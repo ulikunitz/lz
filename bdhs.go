@@ -170,7 +170,7 @@ func (s *backwardDoubleHashSequencer) hashSegment1(a, b int) {
 
 	for i := a; i < e1; i++ {
 		x := _getLE64(_p[i:]) & s.h1.mask
-		h := s.h1.hashValue(x)
+		h := hashValue(x, s.h1.shift)
 		s.h1.table[h] = hashEntry{
 			pos:   uint32(i),
 			value: uint32(x),
@@ -191,7 +191,7 @@ func (s *backwardDoubleHashSequencer) hashSegment2(a, b int) {
 
 	for i := a; i < e2; i++ {
 		x := _getLE64(_p[i:]) & s.h2.mask
-		h := s.h2.hashValue(x)
+		h := hashValue(x, s.h2.shift)
 		s.h2.table[h] = hashEntry{
 			pos:   uint32(i),
 			value: uint32(x),
@@ -246,13 +246,13 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 	for ; i < e2; i++ {
 		y := _getLE64(_p[i:])
 		x := y & s.h2.mask
-		h := s.h2.hashValue(x)
+		h := hashValue(x, s.h2.shift)
 		entry := s.h2.table[h]
 		v2 := uint32(x)
 		pos := uint32(i)
 		s.h2.table[h] = hashEntry{pos: pos, value: v2}
 		x = y & s.h1.mask
-		h = s.h1.hashValue(x)
+		h = hashValue(x, s.h1.shift)
 		entry1 := s.h1.table[h]
 		v1 := uint32(x)
 		s.h1.table[h] = hashEntry{pos: pos, value: v1}
@@ -322,11 +322,11 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		for j = i + 1; j < b; j++ {
 			y := _getLE64(_p[j:])
 			x := y & s.h2.mask
-			h := s.h2.hashValue(x)
+			h := hashValue(x, s.h2.shift)
 			pos := uint32(j)
 			s.h2.table[h] = hashEntry{pos: pos, value: uint32(x)}
 			x = y & s.h1.mask
-			h = s.h1.hashValue(x)
+			h = hashValue(x, s.h1.shift)
 			s.h1.table[h] = hashEntry{pos: pos, value: uint32(x)}
 		}
 		if j < litIndex {
@@ -336,7 +336,7 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 			}
 			for ; j < b; j++ {
 				x := _getLE64(_p[j:]) & s.h1.mask
-				h := s.h1.hashValue(x)
+				h := hashValue(x, s.h1.shift)
 				s.h1.table[h] = hashEntry{
 					pos:   uint32(j),
 					value: uint32(x),
@@ -348,7 +348,7 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 	for ; i < e1; i++ {
 		y := _getLE64(_p[i:])
 		x := y & s.h1.mask
-		h := s.h1.hashValue(x)
+		h := hashValue(x, s.h1.shift)
 		entry := s.h1.table[h]
 		v1 := uint32(x)
 		s.h1.table[h] = hashEntry{
@@ -418,7 +418,7 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		}
 		for ; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.h1.mask
-			h := s.h1.hashValue(x)
+			h := hashValue(x, s.h1.shift)
 			s.h1.table[h] = hashEntry{
 				pos:   uint32(j),
 				value: uint32(x),

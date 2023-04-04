@@ -109,7 +109,3 @@ func (bh *bucketHash) adapt(delta uint32) {
 		bh.indexes[h] = byte(i)
 	}
 }
-
-func (bh *bucketHash) hashValue(x uint64) uint32 {
-	return uint32((x * prime) >> bh.shift)
-}

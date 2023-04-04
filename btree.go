@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// bTree represents a B-Tree as described by Donald Knuth. The slice p holds
-// the data to compress and we store indexes to that array in the B-Tree sorted
-// by the suffixes starting at the key positions. Note that we are only supporting trees with
-// order 3 or higher.
+// bTree represents a B-tree as described by Donald Knuth. The slice p holds the
+// data to compress and we store indexes to that array in the B-tree sorted by
+// the suffixes starting at the key positions. Note that we are only supporting
+// trees with order 3 or higher.
 type bTree struct {
 	p     []byte
 	root  *bNode
@@ -23,7 +23,7 @@ func (t *bTree) m2() int {
 	return (t.order + 1) >> 1
 }
 
-// bNode represents a node in the B-Tree. We are not storing leaves in the
+// bNode represents a node in the B-tree. We are not storing leaves in the
 // tree. In a node that has leaves the length of the children slice will be
 // zero.
 type bNode struct {
@@ -31,7 +31,7 @@ type bNode struct {
 	children []*bNode
 }
 
-// newBtree creates a new B-Tree. The order must be larger than or equal 3.
+// newBtree creates a new B-tree. The order must be larger than or equal 3.
 func newBtree(order int, p []byte) *bTree {
 	if order < 3 {
 		panic(fmt.Errorf("lz: order=%d; must be >= %d", order, 3))
@@ -369,7 +369,7 @@ func (t *bTree) del(o *bNode, pos uint32) {
 	t.dropKey(o, i)
 }
 
-// delete removes the suffix starting at position pos from the B-Tree.
+// delete removes the suffix starting at position pos from the B-tree.
 func (t *bTree) delete(pos uint32) {
 	if t.root == nil {
 		return
@@ -402,13 +402,13 @@ func (t *bTree) walkNode(o *bNode, f func([]uint32)) {
 	t.walkNode(o.children[len(o.children)-1], f)
 }
 
-// walks calls f for the key in the B-Tree in their sorted order.
+// walks calls f for the key in the B-tree in their sorted order.
 func (t *bTree) walk(f func(p []uint32)) {
 	t.walkNode(t.root, f)
 }
 
 // adapt moves the content of the byte slices s bytes to the left and modifies
-// the B-Tree accordingly. The current implementation recreates the B-Tree. Note
+// the B-tree accordingly. The current implementation recreates the B-tree. Note
 // that the shift in the slice must have been done, before calling adapt.
 func (t *bTree) adapt(s uint32) {
 	u := &bTree{order: t.order, p: t.p}

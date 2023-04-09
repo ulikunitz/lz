@@ -1,7 +1,9 @@
 # TODO lz module
 
 ## updates
-* Make a 3-letter Btree match finder
+* Make a bTreeHash finder
+* Make bTree also a match finder and implement the bTree functions in terms of
+  bPath manipulations instead of recursive functions
 * Write general sequencer that uses multiple match finders, is backward looking
   and supports also a repeater.
 * We can now experiment using the general sequencer.

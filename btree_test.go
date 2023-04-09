@@ -71,7 +71,7 @@ func TestBTreeAdd(t *testing.T) {
 				if err := verifyBTree(bt); err != nil {
 					t.Fatalf("verifyBtree error %s", err)
 				}
-				bt.add(uint32(i))
+				bt._add(uint32(i))
 			}
 			q := appendNode(nil, bt.root)
 			for i := 1; i < len(q); i++ {
@@ -185,7 +185,7 @@ func TestBTreeDel(t *testing.T) {
 				t.Fatalf("verifyBtree error %s", err)
 			}
 			for i := 0; i < len(p); i++ {
-				bt.add(uint32(i))
+				bt._add(uint32(i))
 				if err := verifyBTree(bt); err != nil {
 					t.Fatalf("add(%d) - verifyBtree error %s",
 						i, err)
@@ -221,7 +221,7 @@ func TestBTreeAdapt(t *testing.T) {
 				t.Fatalf("verifyBtree error %s", err)
 			}
 			for i := 0; i < len(p); i++ {
-				bt.add(uint32(i))
+				bt._add(uint32(i))
 				if err := verifyBTree(bt); err != nil {
 					t.Fatalf("add(%d) - verifyBtree error %s",
 						i, err)

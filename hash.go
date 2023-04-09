@@ -79,7 +79,7 @@ func (h *hash) add(pos uint32, x uint64) {
 	e.value = uint32(x)
 }
 
-func (h *hash) appendMatchAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
+func (h *hash) appendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
 	x &= h.mask
 	y := uint32(x)
 	e := &h.table[hashValue(x, h.shift)]

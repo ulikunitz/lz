@@ -102,19 +102,22 @@ func (t *bTree) verifyNode(o *bNode, depth int) error {
 	// i) Every node has at most $m$ children.
 	//    Since we are not storing leaves we have to take that into account.
 	if k > t.order {
-		return fmt.Errorf("i) k=%d > m=%d", k, t.order)
+		return fmt.Errorf("i) k=%d > m=%d; %s", k, t.order,
+			sprintNode(o))
 	}
 
 	// ii) Every node, except for the root and the leaves, has at most m/2
 	//     children.
 	m2 := (t.order + 1) >> 1
 	if o != t.root && k < m2 {
-		return fmt.Errorf("ii) k=%d < ceil(m/2)=%d", k, m2)
+		return fmt.Errorf("ii) k=%d < ceil(m/2)=%d; %s", k, m2,
+			sprintNode(o))
 	}
 
 	// iii) The root has at least 2 children (unless it is a leaf).
 	if o == t.root && k < 2 {
-		return fmt.Errorf("iii) k=%d < 2 for root", len(o.children))
+		return fmt.Errorf("iii) k=%d < 2 for root; %s", len(o.children),
+			sprintNode(o))
 	}
 
 	// iv) All leaves appear on the same level and carry no information.
@@ -123,15 +126,15 @@ func (t *bTree) verifyNode(o *bNode, depth int) error {
 		if t.aux < 0 {
 			t.aux = depth
 		} else if t.aux != depth {
-			return fmt.Errorf("iv) depth=%d; expected %d",
-				depth, t.aux)
+			return fmt.Errorf("iv) depth=%d; expected %d; %s",
+				depth, t.aux, sprintNode(o))
 		}
 	}
 
 	// v) A nonleaf node with k children contains k-1 keys.
 	if len(o.keys) != k-1 {
-		return fmt.Errorf("v) len(o.keys)=%d != (k=%d)-1",
-			len(o.keys), k)
+		return fmt.Errorf("v) len(o.keys)=%d != (k=%d)-1; %s",
+			len(o.keys), k, sprintNode(o))
 	}
 
 	// Check all children.
@@ -191,9 +194,11 @@ func TestBTreeDel(t *testing.T) {
 						i, err)
 				}
 			}
+			t.Logf("full tree %s", sprintNode(bt.root))
 			for i := len(p) - 1; i >= 0; i-- {
-				t.Logf("%d %s", i, sprintNode(bt.root))
 				bt.delete(uint32(i))
+				t.Logf("after bt.delete(%d) %s", i,
+					sprintNode(bt.root))
 				if err := verifyBTree(bt); err != nil {
 					t.Fatalf("delete(%d) - verifyBtree error %s",
 						i, err)

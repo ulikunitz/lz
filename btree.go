@@ -9,6 +9,8 @@ import (
 // data to compress and we store indexes to that array in the B-tree sorted by
 // the suffixes starting at the key positions. Note that we are only supporting
 // trees with order 3 or higher.
+//
+// The operations on the bTree are implement using a [bPath].
 type bTree struct {
 	p     []byte
 	root  *bNode
@@ -159,6 +161,7 @@ func (t *bTree) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
 	return up, or
 }
 
+// stealRight checks whether it can steal a key from the right node.
 func (t *bTree) stealRight(o *bNode, i int) bool {
 	if i >= len(o.keys) {
 		return false
@@ -184,6 +187,7 @@ func (t *bTree) stealRight(o *bNode, i int) bool {
 	return true
 }
 
+// stealLeft checks if we can steal a key from the left node.
 func (t *bTree) stealLeft(o *bNode, i int) bool {
 	if i <= 0 {
 		return false
@@ -210,6 +214,9 @@ func (t *bTree) stealLeft(o *bNode, i int) bool {
 	return true
 }
 
+// dropKey drops a key and merges the right and left child node to ensure there
+// are enough keys in the child. Note we must do stealing before to ensure that
+// this works.
 func (t *bTree) dropKey(o *bNode, i int) {
 	ol, or := o.children[i], o.children[i+1]
 	k := len(ol.keys)
@@ -229,84 +236,12 @@ func (t *bTree) dropKey(o *bNode, i int) {
 	copy(ol.children[k:], or.children)
 }
 
-// delMax deletes the largest suffix from the node and returns its position r if
-// it can be found.
-func (t *bTree) delMax(o *bNode) (r uint32, ok bool) {
-	i := len(o.keys)
-	if len(o.children) == 0 {
-		if i == 0 {
-			return 0, false
-		}
-		i--
-		r = o.keys[i]
-		o.keys = o.keys[:i]
-		return r, true
-	}
-	oc := o.children[i]
-	r, ok = t.delMax(oc)
-	if !ok {
-		panic("unexpected; children should have more than m/2 entries")
-	}
-	if len(oc.keys)+1 >= t.m2() {
-		return r, true
-	}
-	if t.stealLeft(o, i) {
-		return r, true
-	}
-	t.dropKey(o, i-1)
-	return r, true
-}
-
-// del deletes the suffix starting at pos from the node.
-func (t *bTree) del(o *bNode, pos uint32) {
-	i := t.search(o, pos)
-	if len(o.children) == 0 {
-		if i >= len(o.keys) || o.keys[i] != pos {
-			return
-		}
-		copy(o.keys[i:], o.keys[i+1:])
-		o.keys = o.keys[:len(o.keys)-1]
-		return
-	}
-	oc := o.children[i]
-	if i < len(o.keys) && o.keys[i] == pos {
-		var ok bool
-		o.keys[i], ok = t.delMax(oc)
-		if !ok {
-			panic("unexpected")
-		}
-	} else {
-		t.del(oc, pos)
-	}
-	if len(oc.keys)+1 >= t.m2() {
-		return
-	}
-	if t.stealRight(o, i) {
-		return
-	}
-	if t.stealLeft(o, i) {
-		return
-	}
-	if i == len(o.keys) {
-		i--
-	}
-	t.dropKey(o, i)
-}
-
-// delete removes the suffix starting at position pos from the B-tree.
+// delete deletes the position from the B-Tree. If the position is not part of
+// the B-Tree the function does nothing.
 func (t *bTree) delete(pos uint32) {
-	if t.root == nil {
-		return
-	}
-	t.del(t.root, pos)
-	switch len(t.root.children) {
-	case 0:
-		if len(t.root.keys) == 0 {
-			t.root = nil
-		}
-	case 1:
-		t.root = t.root.children[0]
-	}
+	var p bPath
+	p.init(t)
+	p.del(pos)
 }
 
 // walkNode calls function f in sequence of the sorted keys in the subtree
@@ -389,8 +324,7 @@ func (p *bPath) reset() {
 	p.s = p.s[:0]
 }
 
-func (p *bPath) isEmpty() bool { return len(p.s) == 0 }
-
+// subtree returns the root node of the subtree the path points to if it exists.
 func (p *bPath) subtree() *bNode {
 	if len(p.s) == 0 {
 		return p.t.root
@@ -421,35 +355,42 @@ func (p *bPath) _search(pos uint32) {
 	}
 }
 
-func (p *bPath) search(pos uint32) {
+// search looks for the pos value at the subtree described by the path and
+// extends until it found pos or a position where it should be inserted. It
+// returns whether the position has been found in the tree.
+func (p *bPath) search(pos uint32) bool {
 	o := p.subtree()
 	if o == nil {
-		return
+		return false
 	}
 	search := p.t.search
 	for {
 		i := search(o, pos)
 		p.append(o, i)
-		if len(o.children) == 0 {
-			return
-		}
 		if i < len(o.keys) && o.keys[i] == pos {
-			return
+			return true
+		}
+		if len(o.children) == 0 {
+			return false
 		}
 		o = o.children[i]
 	}
 }
 
+// clone creates a copy of the path.
 func (p *bPath) clone() *bPath {
 	s := make([]bEdge, len(p.s), cap(p.s))
 	copy(s, p.s)
 	return &bPath{s: s, t: p.t}
 }
 
+// append appends an edge to the path.
 func (p *bPath) append(o *bNode, i int) {
 	p.s = append(p.s, bEdge{o: o, i: i})
 }
 
+// max extends the path to the maximum element of the subtree the path points
+// to.
 func (p *bPath) max() {
 	o := p.subtree()
 	if o == nil {
@@ -464,6 +405,8 @@ func (p *bPath) max() {
 	p.append(o, i)
 }
 
+// min extends the path to the minimum element of the subtree the path points
+// to.
 func (p *bPath) min() {
 	o := p.subtree()
 	if o == nil {
@@ -478,6 +421,9 @@ func (p *bPath) min() {
 	}
 }
 
+// next returns the path to the next key in sort order. The function returns
+// an empty path at the end of the elements. The first element can be found with
+// an empty path.
 func (p *bPath) next() {
 	j := len(p.s) - 1
 	if j < 0 {
@@ -503,6 +449,9 @@ func (p *bPath) next() {
 	}
 }
 
+// prev returns the previous element in the sort order. For an empty path it
+// returns the maximum element. For the minimum element the function returns the
+// empty path.
 func (p *bPath) prev() {
 	j := len(p.s) - 1
 	if j < 0 {
@@ -529,6 +478,7 @@ func (p *bPath) prev() {
 
 }
 
+// key returns the key the path points to.
 func (p *bPath) key() (pos uint32, ok bool) {
 	j := len(p.s) - 1
 	if j < 0 {
@@ -553,6 +503,105 @@ func (p *bPath) _insert(pos uint32) {
 		t.root.keys[0] = pos
 		return
 	}
+	o, i := p.s[j].o, p.s[j].i
+	if len(o.children) > 0 {
+		panic(fmt.Errorf("len(o.children) is %d; want zero",
+			len(o.children)))
+	}
+	k := len(o.keys)
+	if k+1 < t.order {
+		o.keys = o.keys[:k+1]
+		copy(o.keys[i+1:], o.keys[i:])
+		o.keys[i] = pos
+		return
+	}
+
+	kr := t.order >> 1
+	or := &bNode{keys: make([]uint32, kr, t.order-1)}
+	k -= kr
+	copy(or.keys, o.keys[k:])
+	o.keys = o.keys[:k]
+	var up uint32
+	switch {
+	case i > k:
+		i -= k + 1
+		up = or.keys[0]
+		copy(or.keys[:i], or.keys[1:])
+		or.keys[i] = pos
+	case i < k:
+		up = o.keys[k-1]
+		copy(o.keys[i+1:], o.keys[i:])
+		o.keys[i] = pos
+	default: // i == k
+		up = pos
+	}
+	for j--; j >= 0; j-- {
+		o, i = p.s[j].o, p.s[j].i
+		k = len(o.keys)
+		if k+1 < t.order {
+			o.keys = o.keys[:k+1]
+			copy(o.keys[i+1:], o.keys[i:])
+			o.keys[i] = up
+			o.children = o.children[:len(o.children)+1]
+			copy(o.children[i+2:], o.children[i+1:])
+			o.children[i+1] = or
+			return
+		}
+		pos = up
+		kr = t.order >> 1
+		ot := or
+		or = &bNode{
+			keys:     make([]uint32, kr, t.order-1),
+			children: make([]*bNode, kr+1, t.order),
+		}
+		k -= kr
+		copy(or.keys, o.keys[k:])
+		o.keys = o.keys[:k]
+		copy(or.children, o.children[k:])
+		o.children = o.children[:k+1]
+		switch {
+		case i > k:
+			i -= k + 1
+			up = or.keys[0]
+			copy(or.keys[:i], or.keys[1:])
+			or.keys[i] = pos
+			copy(or.children[:i+1], or.children[1:])
+			or.children[i+1] = ot
+		case i < k:
+			up = o.keys[k-1]
+			copy(o.keys[i+1:], o.keys[i:])
+			o.keys[i] = pos
+			copy(o.children[i+2:], o.children[i+1:])
+			o.children[i+1] = ot
+		default: // i == k
+			or.children[0] = ot
+		}
+	}
+	root := &bNode{
+		keys:     make([]uint32, 1, t.order-1),
+		children: make([]*bNode, 2, t.order),
+	}
+	root.keys[0] = up
+	root.children[0] = t.root
+	root.children[1] = or
+	t.root = root
+	return
+}
+
+// _insertPath adds pos32 before the position that p points to. Note that the path
+// must always point to a node with leaves (len(o.children) == 0). In the
+// difference to [bPath._insert] it updates the path to the position of the
+// newly added item. Note that the position might be moved up in the tree, so
+// you cannot call _insertPath usually after an insert.
+func (p *bPath) _insertPath(pos uint32) {
+	t := p.t
+	j := len(p.s) - 1
+	if j < 0 {
+		t.root = &bNode{keys: make([]uint32, 1, t.order-1)}
+		t.root.keys[0] = pos
+		p.append(t.root, 0)
+		return
+	}
 	e := &p.s[j]
 	o, i := e.o, e.i
 	if len(o.children) > 0 {
@@ -575,31 +624,21 @@ func (p *bPath) _insert(pos uint32) {
 	var up uint32
 	switch {
 	case i > k:
-		i -= k+1
+		i -= k + 1
 		up = or.keys[0]
 		copy(or.keys[:i], or.keys[1:])
 		or.keys[i] = pos
+		e.o, e.i = or, i
 	case i < k:
 		up = o.keys[k-1]
 		copy(o.keys[i+1:], o.keys[i:])
 		o.keys[i] = pos
 	default: // i == k
 		up = pos
+		p.s = p.s[:k]
 	}
-	for {
-		j--
-		if j < 0 {
-			root := &bNode{
-				keys:     make([]uint32, 1, t.order-1),
-				children: make([]*bNode, 2, t.order),
-			}
-			root.keys[0] = up
-			root.children[0] = t.root
-			root.children[1] = or
-			t.root = root
-			return
-		}
-		e := &p.s[j]
+	for j--; j >= 0; j-- {
+		e = &p.s[j]
 		o, i = e.o, e.i
 		k = len(o.keys)
 		if k+1 < t.order {
@@ -609,13 +648,16 @@ func (p *bPath) _insert(pos uint32) {
 			o.children = o.children[:len(o.children)+1]
 			copy(o.children[i+2:], o.children[i+1:])
 			o.children[i+1] = or
+			if j+1 < len(p.s) && p.s[j+1].o == or {
+				e.i++
+			}
 			return
 		}
 		pos = up
 		kr = t.order >> 1
 		ot := or
 		or = &bNode{
-			keys: make([]uint32, kr, t.order-1),
+			keys:     make([]uint32, kr, t.order-1),
 			children: make([]*bNode, kr+1, t.order),
 		}
 		k -= kr
@@ -625,20 +667,134 @@ func (p *bPath) _insert(pos uint32) {
 		o.children = o.children[:k+1]
 		switch {
 		case i > k:
-			i -= k+1
+			i -= k + 1
 			up = or.keys[0]
 			copy(or.keys[:i], or.keys[1:])
 			or.keys[i] = pos
 			copy(or.children[:i+1], or.children[1:])
 			or.children[i+1] = ot
+			e.o, e.i = or, i
+			if j+1 < len(p.s) && p.s[j+1].o == ot {
+				e.i++
+			}
 		case i < k:
 			up = o.keys[k-1]
 			copy(o.keys[i+1:], o.keys[i:])
 			o.keys[i] = pos
 			copy(o.children[i+2:], o.children[i+1:])
 			o.children[i+1] = ot
+			if j+1 < len(p.s) && p.s[j+1].o == ot {
+				e.i++
+			}
 		default: // i == k
 			or.children[0] = ot
+			if j+1 < len(p.s) {
+				if p.s[j+1].o == ot {
+					e.o, e.i = or, 0
+				}
+			} else {
+				p.s = p.s[:j]
+			}
 		}
+	}
+	root := &bNode{
+		keys:     make([]uint32, 1, t.order-1),
+		children: make([]*bNode, 2, t.order),
+	}
+	root.keys[0] = up
+	root.children[0] = t.root
+	root.children[1] = or
+	t.root = root
+	j = len(p.s) + 1
+	if j > cap(p.s) {
+		s := make([]bEdge, j)
+		copy(s[1:], p.s)
+		p.s = s
+	} else {
+		p.s = p.s[:j]
+		copy(p.s[1:], p.s)
+	}
+	e = &p.s[0]
+	e.o, e.i = root, 0
+	if 1 < len(p.s) && p.s[1].o == or {
+		e.i = 1
+	}
+}
+
+// nextInsert returns the next element to use the insert functions for
+// insertAfter.
+func (p *bPath) nextInsert() {
+	j := len(p.s) - 1
+	if j < 0 {
+		p.min()
+		return
+	}
+	e := &p.s[j]
+	o, i := e.o, e.i
+	if len(o.children) == 0 {
+		if i < len(o.keys) {
+			e.i++
+		}
+		return
+	}
+	if i < len(o.keys) {
+		e.i++
+	}
+	p.min()
+}
+
+// insertAfter inserts pos after where the path points to.
+func (p *bPath) insertAfter(pos uint32) {
+	p.nextInsert()
+	p._insertPath(pos)
+}
+
+// del removes the pos from the subtree the path points to. The path is
+// undefined after deletion.
+func (p *bPath) del(pos uint32) {
+	if found := p.search(pos); !found {
+		return
+	}
+	d := len(p.s) - 1
+	o, i := p.s[d].o, p.s[d].i
+	var j int
+	if len(o.children) > 0 {
+		p.max()
+		o.keys[i], _ = p.key()
+		j = len(p.s) - 1
+		o, i = p.s[j].o, p.s[j].i
+	} else {
+		j = d
+	}
+	copy(o.keys[i:], o.keys[i+1:])
+	o.keys = o.keys[:len(o.keys)-1]
+	t := p.t
+	for {
+		if len(o.keys)+1 >= t.m2() {
+			return
+		}
+		j--
+		if j < 0 {
+			break
+		}
+		o, i = p.s[j].o, p.s[j].i
+		if j <= d && t.stealRight(o, i) {
+			return
+		}
+		if t.stealLeft(o, i) {
+			return
+		}
+		if i >= len(o.keys) {
+			i--
+		}
+		t.dropKey(o, i)
+	}
+	switch len(t.root.children) {
+	case 0:
+		if len(t.root.keys) == 0 {
+			t.root = nil
+		}
+	case 1:
+		t.root = t.root.children[0]
 	}
 }

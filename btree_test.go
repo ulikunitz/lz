@@ -232,15 +232,63 @@ func TestBTreeAdapt(t *testing.T) {
 						i, err)
 				}
 			}
+			origKeys := appendNode(nil, bt.root)
+			t.Logf("origKeys: *%d%d", len(origKeys), origKeys)
 			const delta = 7
-			copy(p, p[delta:])
+			k := copy(p, p[delta:])
+			p = p[:k]
 			bt.adapt(delta)
 			if err := verifyBTree(bt); err != nil {
 				t.Fatalf("bt.adapt(%d) - verifyBTree error %s",
 					delta, err)
 			}
 			keys := appendNode(nil, bt.root)
-			t.Logf("bt.adapt(%d) -> %d", delta, keys)
+			t.Logf("bt.adapt(%d) -> *%d%d", delta, len(keys), keys)
+			if len(keys) != len(p) {
+				t.Fatalf("bt.adapt(%d): len(keys)=%d; want %d",
+					delta, len(keys), len(p))
+			}
+			for k, i := range keys[:len(keys)-1] {
+				j := keys[k+1]
+				if bytes.Compare(p[i:], p[j:]) >= 0 {
+					t.Fatalf("p[%d:]=%q >= p[%d:]=%q",
+						i, j, p[i:], p[j:])
+				}
+			}
+		})
+	}
+}
+
+func TestBTreePathMethods(t *testing.T) {
+	const str = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
+			p := []byte(str)
+			bt := newBtree(tc, p)
+			for i := range p {
+				bt._add(uint32(i))
+			}
+			var bp bPath
+			bp.init(bt)
+			s := make([]uint32, len(p))
+			n, _ := bp.readKeys(s)
+			if n != len(p) {
+				t.Fatalf("bp.readKeys(s) returned %d; want %d",
+					n, len(p))
+			}
+			t.Logf("suffix array %d", s)
+			for k, i := range s[:len(s)-1] {
+				j := s[k+1]
+				if bytes.Compare(p[i:], p[j:]) > 0 {
+					t.Fatalf("p[%d:]=%q > p[%d:]=%q",
+						i, p[i:], j, p[j:])
+				}
+			}
+			for _, k := range s {
+				t.Logf("%q", p[k:])
+			}
 		})
 	}
 }

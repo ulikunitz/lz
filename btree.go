@@ -3,6 +3,7 @@ package lz
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // bTree represents a B-tree as described by Donald Knuth. The slice p holds the
@@ -83,82 +84,6 @@ func (t *bTree) search(o *bNode, pos uint32) int {
 		}
 	}
 	return i
-}
-
-// addMax adds a new position under the assumption that the suffix starting at
-// pos is larger than all suffixes added before.
-func (t *bTree) addMax(pos uint32) {
-	if t.root == nil {
-		t.root = &bNode{keys: make([]uint32, 0, t.order-1)}
-	}
-	up, or := t.addMaxAt(t.root, pos)
-	if or == nil {
-		return
-	}
-	root := &bNode{
-		keys:     make([]uint32, 1, t.order-1),
-		children: make([]*bNode, 2, t.order),
-	}
-	root.keys[0] = up
-	root.children[0] = t.root
-	root.children[1] = or
-	t.root = root
-}
-
-// addMaxAt adds the a suffix starting at pos to the node under the assumption
-// that the suffix is larger than all suffixes stored in the node.
-func (t *bTree) addMaxAt(o *bNode, pos uint32) (up uint32, or *bNode) {
-	i := len(o.keys)
-	if len(o.children) == 0 {
-		// We are at he bottom of the tree.
-		k := i
-		if k+1 < t.order {
-			o.keys = o.keys[:k+1]
-			o.keys[k] = pos
-			return 0, nil
-		}
-		kr := t.order >> 1
-		or = &bNode{keys: make([]uint32, kr, t.order-1)}
-		k -= kr
-		copy(or.keys, o.keys[k:])
-		o.keys = o.keys[:k]
-		i -= k + 1
-		up = or.keys[0]
-		copy(or.keys[:i], or.keys[1:])
-		or.keys[i] = pos
-		return up, or
-	}
-	// Care for the children!
-	var ot *bNode
-	pos, ot = t.addMaxAt(o.children[i], pos)
-	if ot == nil {
-		return 0, nil
-	}
-	k := len(o.keys)
-	if k+1 < t.order {
-		o.keys = o.keys[:k+1]
-		o.keys[i] = pos
-		o.children = o.children[:len(o.children)+1]
-		o.children[i+1] = ot
-		return 0, nil
-	}
-	kr := t.order >> 1
-	or = &bNode{
-		keys:     make([]uint32, kr, t.order-1),
-		children: make([]*bNode, kr+1, t.order),
-	}
-	k -= kr
-	copy(or.keys, o.keys[k:])
-	o.keys = o.keys[:k]
-	copy(or.children, o.children[k:])
-	o.children = o.children[:k+1]
-	i -= k + 1
-	up = or.keys[0]
-	copy(or.keys[:i], or.keys[1:])
-	or.keys[i] = pos
-	copy(or.children[:i+1], or.children[1:])
-	or.children[i+1] = ot
-	return up, or
 }
 
 // stealRight checks whether it can steal a key from the right node.
@@ -266,20 +191,47 @@ func (t *bTree) walk(f func(p []uint32)) {
 	t.walkNode(t.root, f)
 }
 
-// adapt moves the content of the byte slices s bytes to the left and modifies
+// _adapt moves the content of the byte slices s bytes to the left and modifies
 // the B-tree accordingly. The current implementation recreates the B-tree. Note
 // that the shift in the slice must have been done, before calling adapt.
-func (t *bTree) adapt(s uint32) {
+func (t *bTree) _adapt(s uint32) {
+	// TODO: use readKeys on a path
 	u := &bTree{order: t.order, p: t.p}
+	var pu bPath
+	pu.init(u)
 	f := func(p []uint32) {
 		for _, k := range p {
 			if k < s {
 				continue
 			}
-			u.addMax(k - s)
+			pu.insertAfter(k - s)
 		}
 	}
 	t.walk(f)
+	t.root = u.root
+}
+
+// adapt moves the content of the byte slices s bytes to the left and modifies
+// the B-tree accordingly. The current implementation recreates the B-tree. Note
+// that the shift in the slice must have been done, before calling adapt.
+func (t *bTree) adapt(s uint32) {
+	var pt bPath
+	pt.init(t)
+	u := &bTree{order: t.order, p: t.p}
+	var pu bPath
+	pu.init(u)
+	buf := make([]uint32, 16)
+	for {
+		n, err := pt.readKeys(buf)
+		for _, k := range buf[:n] {
+			if k >= s {
+				pu.insertAfter(k - s)
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
 	t.root = u.root
 }
 
@@ -344,9 +296,9 @@ func (p *bPath) _search(pos uint32) {
 	if o == nil {
 		return
 	}
-	search := p.t.search
+	t := p.t
 	for {
-		i := search(o, pos)
+		i := t.search(o, pos)
 		p.append(o, i)
 		if len(o.children) == 0 {
 			return
@@ -484,8 +436,7 @@ func (p *bPath) key() (pos uint32, ok bool) {
 	if j < 0 {
 		return 0, false
 	}
-	e := p.s[j]
-	o, i := e.o, e.i
+	o, i := p.s[j].o, p.s[j].i
 	if i >= len(o.keys) {
 		return 0, false
 	}
@@ -585,7 +536,6 @@ func (p *bPath) _insert(pos uint32) {
 	root.children[0] = t.root
 	root.children[1] = or
 	t.root = root
-	return
 }
 
 // _insertPath adds pos32 before the position that p points to. Note that the path
@@ -796,5 +746,70 @@ func (p *bPath) del(pos uint32) {
 		}
 	case 1:
 		t.root = t.root.children[0]
+	}
+}
+
+func (p *bPath) back(n int) int {
+	if n == 0 {
+		return 0
+	}
+	k := 0
+	if len(p.s) == 0 {
+		p.prev()
+		if len(p.s) == 0 {
+			return 0
+		}
+		k++
+	}
+	for k < n {
+		e := &p.s[len(p.s)-1]
+		o, i := e.o, e.i
+		if len(o.children) > 0 || i == 0 {
+			p.prev()
+			if len(p.s) == 0 {
+				break
+			}
+			k++
+			continue
+		}
+		d := i - (n - k)
+		if d >= 0 {
+			e.i = d
+			break
+		}
+		e.i = 0
+		k += i
+	}
+	return k
+}
+
+// readKeys reads keys from the tree in sorted order starting with the position
+// the path points to. It returns io.EOF once. A repeat call will start reading
+// the keys again.
+func (p *bPath) readKeys(s []uint32) (n int, err error) {
+	if len(p.s) == 0 {
+		p.next()
+	}
+	for {
+		if len(p.s) == 0 {
+			return n, io.EOF
+		}
+		if n == len(s) {
+			return n, nil
+		}
+		e := &p.s[len(p.s)-1]
+		o, i := e.o, e.i
+		switch {
+		case i == len(o.keys):
+			p.next()
+		case len(o.children) == 0:
+			k := copy(s[n:], o.keys[i:])
+			n += k
+			e.i += k
+		default:
+			s[n] = o.keys[i]
+			n++
+			p.next()
+		}
 	}
 }

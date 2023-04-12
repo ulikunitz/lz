@@ -169,48 +169,6 @@ func (t *bTree) delete(pos uint32) {
 	p.del(pos)
 }
 
-// walkNode calls function f in sequence of the sorted keys in the subtree
-// starting at o.
-func (t *bTree) walkNode(o *bNode, f func([]uint32)) {
-	if o == nil {
-		return
-	}
-	if len(o.children) == 0 {
-		f(o.keys)
-		return
-	}
-	for i := range o.keys {
-		t.walkNode(o.children[i], f)
-		f(o.keys[i : i+1])
-	}
-	t.walkNode(o.children[len(o.children)-1], f)
-}
-
-// walks calls f for the key in the B-tree in their sorted order.
-func (t *bTree) walk(f func(p []uint32)) {
-	t.walkNode(t.root, f)
-}
-
-// _adapt moves the content of the byte slices s bytes to the left and modifies
-// the B-tree accordingly. The current implementation recreates the B-tree. Note
-// that the shift in the slice must have been done, before calling adapt.
-func (t *bTree) _adapt(s uint32) {
-	// TODO: use readKeys on a path
-	u := &bTree{order: t.order, p: t.p}
-	var pu bPath
-	pu.init(u)
-	f := func(p []uint32) {
-		for _, k := range p {
-			if k < s {
-				continue
-			}
-			pu.insertAfter(k - s)
-		}
-	}
-	t.walk(f)
-	t.root = u.root
-}
-
 // adapt moves the content of the byte slices s bytes to the left and modifies
 // the B-tree accordingly. The current implementation recreates the B-tree. Note
 // that the shift in the slice must have been done, before calling adapt.

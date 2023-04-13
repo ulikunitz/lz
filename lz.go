@@ -1,21 +1,19 @@
-// Package lz provides encoders and decoders for LZ77 sequences. A
-// sequence, as described in the zstd specification, describes a number
-// of literal bytes and a match.
+// Package lz provides encoders and decoders for LZ77 sequences. A sequence, as
+// described in the zstd specification, describes a number of literal bytes and
+// a match.
 //
 // A Sequencer is an encoder that converts a byte stream into blocks of
-// sequences. A Decoder converts the block of sequences into the
-// original decompressed byte stream. A wrapped Sequencer reads the byte
-// stream from a reader. The sequencers are provided here separately
-// because they are more efficient for encoding byte slices directly.
+// sequences. A Decoder converts the block of sequences into the original
+// decompressed byte stream. A wrapped Sequencer reads the byte stream from a
+// reader. The sequencers are provided here separately because they are more
+// efficient for encoding byte slices directly.
 //
-// The module provides multiple sequencers that provide different
-// combinations of encoding speed  and compression ratios. Usually a
-// slower sequencer will generate a better compression ratio.
+// The module provides multiple sequencers that provide different combinations
+// of encoding speed  and compression ratios. Usually a slower sequencer will
+// generate a better compression ratio.
 //
-// We provide also two decoders. The Decoder slides the decompression
-// window through a larger buffer implemented by Buffer. The RingDecoder
-// uses the RingBuffer that requires only a slice of the size of the
-// window plus 1. The Decoder is significantly faster.
+// The [Decoder] slides the decompression window through a larger buffer
+// implemented by [DecBuffer].
 package lz
 
 // Seq represents a single Lempel-Ziv 77 Sequence describing a match,

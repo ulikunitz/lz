@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -289,6 +290,75 @@ func TestBTreePathMethods(t *testing.T) {
 			for _, k := range s {
 				t.Logf("%q", p[k:])
 			}
+		})
+	}
+}
+
+func TestBTreeBack(t *testing.T) {
+	const str = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
+			p := []byte(str)
+			bt := newBtree(tc, p)
+			for i := range p {
+				bt._add(uint32(i))
+			}
+			var bp bPath
+			bp.init(bt)
+			s := make([]uint32, len(p))
+			k, _ := bp.readKeys(s)
+			if k != len(p) {
+				t.Fatalf("bp.readKeys returned %d; want %d",
+					k, len(bt.p))
+			}
+			t.Logf("keys: %d", s)
+			bp.reset()
+
+			n := 0
+			for {
+				k, err := bp.back(2)
+				n += k
+				if !(0 <= k && k <= 2) {
+					t.Fatalf("bp.back(%d) returned k=%d",
+						2, k)
+				}
+				if err == io.EOF {
+					break
+				}
+			}
+			if n != len(bt.p) {
+				t.Fatalf(
+					"bp.back() returned %d in total; want %d",
+					n, len(bt.p))
+			}
+		})
+	}
+}
+
+func TestBTreeAppendMatchesAndAdd(t *testing.T) {
+	//           0123456789012345678
+	const str = "To be, or not to be"
+	tests := []int{3, 4, 5, 6, 10, 15, 20}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
+			p := []byte(str)
+			bt := newBtree(tc, p)
+			bt.setMatches(2)
+			for i := range p[:14] {
+				bt._add(uint32(i))
+			}
+			const pos = 15
+			w := []uint32{10, 1}
+			matches := bt.appendMatchesAndAdd(nil, pos,
+				getLE64(p[pos:]))
+			if !reflect.DeepEqual(matches, w) {
+				t.Fatalf("bt.appendMatchesAndAdd returned %d; want %d",
+					matches, w)
+			}
+			t.Logf("matches: %d", matches)
 		})
 	}
 }

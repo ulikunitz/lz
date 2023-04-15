@@ -18,7 +18,8 @@ type bTree struct {
 	order int
 
 	// helper field used for debugging
-	aux int
+	aux    int
+	keybuf []uint32
 }
 
 // m2 returns the ceiling of the order divided by 2.
@@ -40,9 +41,17 @@ func (t *bTree) init(order int, p []byte) error {
 		return fmt.Errorf("lz: order=%d; must be >= %d", order, 3)
 	}
 	*t = bTree{
-		p:     p,
-		order: order,
+		p:      p,
+		order:  order,
 	}
+	return nil
+}
+
+func (t *bTree) setMatches(m int) error {
+	if m < 0 {
+		return fmt.Errorf("lz: matches=%d must not be negative", m)
+	}
+	t.keybuf = make([]uint32, m)
 	return nil
 }
 
@@ -194,7 +203,15 @@ func (t *bTree) adapt(s uint32) {
 }
 
 func (t *bTree) appendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
-	panic("TODO")
+	var p bPath
+	p.init(t)
+	p._search(pos)
+	q := p.clone()
+	q.back(len(t.keybuf) >> 1)
+	n, _ := q.readKeys(t.keybuf)
+	matches = append(matches, t.keybuf[:n]...)
+	p._insert(pos)
+	return matches
 }
 
 // bEdge describes an edge in the b-Tree. The field node must not be nil it must
@@ -707,15 +724,16 @@ func (p *bPath) del(pos uint32) {
 	}
 }
 
-func (p *bPath) back(n int) int {
+// back tries to jump back n keys. If the end is reached [io.EOF] will be
+// returned and the number of keys that have been jumped over.
+func (p *bPath) back(n int) (k int, err error) {
 	if n == 0 {
-		return 0
+		return 0, nil
 	}
-	k := 0
 	if len(p.s) == 0 {
 		p.prev()
 		if len(p.s) == 0 {
-			return 0
+			return 0, io.EOF
 		}
 		k++
 	}
@@ -725,7 +743,7 @@ func (p *bPath) back(n int) int {
 		if len(o.children) > 0 || i == 0 {
 			p.prev()
 			if len(p.s) == 0 {
-				break
+				return k, io.EOF
 			}
 			k++
 			continue
@@ -738,7 +756,7 @@ func (p *bPath) back(n int) int {
 		e.i = 0
 		k += i
 	}
-	return k
+	return n, nil
 }
 
 // readKeys reads keys from the tree in sorted order starting with the position

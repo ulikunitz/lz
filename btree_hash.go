@@ -11,7 +11,7 @@ type bTreeHash struct {
 	workTree bTree
 }
 
-func (h *bTreeHash) init(order int, p []byte, inputLen int, hashBits int) error {
+func (h *bTreeHash) init(order int, p []byte, matches int, inputLen int, hashBits int) error {
 	if err := h.workTree.init(order, p); err != nil {
 		return err
 	}
@@ -33,6 +33,10 @@ func (h *bTreeHash) init(order int, p []byte, inputLen int, hashBits int) error 
 	h.inputLen = inputLen
 
 	return nil
+}
+
+func (h *bTreeHash) setMatches(m int) error {
+	return h.workTree.setMatches(m)
 }
 
 func (h *bTreeHash) add(pos uint32, x uint64) {

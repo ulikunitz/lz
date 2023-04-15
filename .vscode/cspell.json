@@ -27,6 +27,7 @@
         "hbits",
         "hsum",
         "iverson",
+        "keybuf",
         "proot",
         "serr",
         "testdata",

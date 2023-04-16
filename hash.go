@@ -132,19 +132,28 @@ type hashFinder struct {
 	_data []byte
 }
 
-// Reset resets the hash finder to the new data input while handling the shrink
-// size.
-func (f *hashFinder) Reset(p []byte, delta int) {
-	if delta > 0 {
-		if !(delta < maxUint32) {
-			panic(fmt.Errorf("lz: delta=%d is too large", delta))
-		}
-		f.hash.shiftOffsets(uint32(delta))
-	} else {
+// Update informs the hash finder to data changes in the data slice. If delta is
+// less than zero than complete new data is provided. If the delta is positive
+// data has been moved delta bytes down in the slice. If delta is zero data has
+// been added.
+func (f *hashFinder) Update(p []byte, delta int) {
+	switch {
+	case delta < 0:
 		f.hash.reset()
+	case delta > 0:
+		f.hash.shiftOffsets(uint32(delta))
+	}
+	if len(p) == 0 {
+		f.hash.reset()
+		f.data = f.data[:0]
+		return
 	}
 	if len(p)+7 > cap(p) {
-		f.data = make([]byte, len(p), len(p)+7)
+		if len(p)+7 > cap(f.data) {
+			f.data = make([]byte, len(p), len(p)+7)
+		} else {
+			f.data = f.data[:len(p)]
+		}
 		copy(f.data, p)
 	} else {
 		f.data = p

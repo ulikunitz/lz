@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"fmt"
 	"math/bits"
 )
 
@@ -12,26 +11,26 @@ type hashSequencer struct {
 
 	w int
 
-	windowSize int
-	blockSize  int
+	HSConfig
 }
 
 // HSConfig provides the configuration parameters for the
-// HashSequencer.
+// HashSequencer. Sequencer doesn't use ShrinkSize and and BufferSize itself,
+// but it provides it to other code that have to handle the buffer.
 type HSConfig struct {
-	BufferConfig
+	BufConfig
 	HashConfig
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) ApplyDefaults() {
-	cfg.BufferConfig.ApplyDefaults()
+	cfg.BufConfig.ApplyDefaults()
 	cfg.HashConfig.ApplyDefaults()
 }
 
 // Verify checks the config for correctness.
 func (cfg *HSConfig) Verify() error {
-	if err := cfg.BufferConfig.Verify(); err != nil {
+	if err := cfg.BufConfig.Verify(); err != nil {
 		return err
 	}
 	if err := cfg.HashConfig.Verify(); err != nil {
@@ -61,23 +60,24 @@ func (s *hashSequencer) init(cfg HSConfig) error {
 	if err = s.hashFinder.init(cfg.InputLen, cfg.HashBits); err != nil {
 		return err
 	}
-	
-	s.windowSize = cfg.WindowSize
-	s.blockSize = cfg.BlockSize
+
+	s.HSConfig = cfg
 	return nil
 }
 
-func (s *hashSequencer) Reset(data []byte, delta int) {
-	if delta <= 0 {
+func (s *hashSequencer) Update(data []byte, delta int) {
+	switch {
+	case delta > 0:
+		s.w = doz(s.w, delta)
+	case delta < 0 || s.w > len(data):
 		s.w = 0
-	} else {
-		s.w -= delta
-		if !(0 <= s.w && s.w <= len(s.data)) {
-			panic(fmt.Errorf("new s.w=%d is out of range [%d,%d]",
-				s.w, 0, len(s.data)))
-		}
 	}
-	s.hashFinder.Reset(data, delta)
+	s.hashFinder.Update(data, delta)
+}
+
+// Config returns the HSConfig.
+func (s *hashSequencer) Config() SeqConfig {
+	return &s.HSConfig
 }
 
 // Sequence converts the next block to sequences. The contents of the blk
@@ -87,20 +87,20 @@ func (s *hashSequencer) Reset(data []byte, delta int) {
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, head int, err error) {
+func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = len(s.data) - s.w
-	if n > s.blockSize {
-		n = s.blockSize
+	if n > s.BlockSize {
+		n = s.BlockSize
 	}
 
 	if blk == nil {
 		if n == 0 {
-			return 0, s.w, ErrNoData
+			return 0, ErrNoData
 		}
 		t := s.w + n
 		s.ProcessSegment(s.w-s.hash.inputLen+1, t)
 		s.w = t
-		return n, t, nil
+		return n, nil
 
 	}
 
@@ -108,7 +108,7 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, head int, err er
 	blk.Literals = blk.Literals[:0]
 
 	if n == 0 {
-		return 0, s.w, ErrNoData
+		return 0, ErrNoData
 	}
 
 	s.ProcessSegment(s.w-s.inputLen+1, s.w)
@@ -143,7 +143,7 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, head int, err er
 		// potential match
 		j := int(entry.pos)
 		o := i - j
-		if !(0 < o && o <= s.windowSize) {
+		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
@@ -211,5 +211,5 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, head int, err er
 	}
 	n = i - s.w
 	s.w = i
-	return n, i, nil
+	return n, nil
 }

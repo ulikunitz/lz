@@ -6,6 +6,8 @@ const (
 	maxUint32 = 1<<32 - 1
 )
 
+// iverson returns 1 or 0 depending whether the boolean parameter is true or
+// false.
 func iverson(f bool) int {
 	if f {
 		return 1
@@ -19,6 +21,7 @@ func max(x, y int) int {
 }
 */
 
+// doz computes the positive difference or zero.
 func doz(x, y int) int {
 	return (x - y) & (-iverson(x >= y))
 }

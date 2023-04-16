@@ -2,7 +2,11 @@ package lz
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"flag"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -12,7 +16,7 @@ func TestHashSequencerSimple(t *testing.T) {
 
 	var s hashSequencer
 	err := s.init(HSConfig{
-		BufferConfig{
+		BufConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 		},
@@ -24,10 +28,10 @@ func TestHashSequencerSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
-	s.Reset([]byte(str), 0)
+	s.Update([]byte(str), 0)
 
 	var blk Block
-	n, _, err := s.Sequence(&blk, 0)
+	n, err := s.Sequence(&blk, 0)
 	if err != nil {
 		t.Fatalf("s.Sequence error %s", err)
 	}
@@ -131,7 +135,6 @@ func FuzzHashSequencer(f *testing.F) {
 }
 */
 
-/*
 func TestWrapOldHashSequencer(t *testing.T) {
 	const (
 		windowSize = 1024
@@ -139,13 +142,16 @@ func TestWrapOldHashSequencer(t *testing.T) {
 		str        = "=====foofoobarfoobar bartender===="
 	)
 
-	ws, err := newHashSequencer(HSConfig{
-		BufferConfig: BufferConfig{
+	cfg := HSConfig{
+		BufConfig{
 			WindowSize: windowSize,
 			BlockSize:  blockSize,
 		},
-		InputLen: 3,
-	})
+		HashConfig{
+			InputLen: 3,
+		},
+	}
+	ws, err := cfg.NewSequencer()
 	if err != nil {
 		t.Fatalf("NewHashSequencer error %s", err)
 	}
@@ -176,12 +182,10 @@ func TestWrapOldHashSequencer(t *testing.T) {
 		t.Fatalf("got string %q; want %q", g, str)
 	}
 }
-*/
 
-/*
 func TestHashSequencerEnwik7(t *testing.T) {
 	const (
-		enwik7     = "../testdata/enwik7"
+		enwik7     = "testdata/enwik7"
 		blockSize  = 128 * 1024
 		windowSize = 2*blockSize + 123
 	)
@@ -198,7 +202,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	r := io.TeeReader(f, h1)
 
 	cfg := HSConfig{
-		BufferConfig{
+		BufConfig{
 			ShrinkSize: windowSize + 100,
 			WindowSize: windowSize,
 			BufferSize: 2 * windowSize,
@@ -245,7 +249,6 @@ func TestHashSequencerEnwik7(t *testing.T) {
 		t.Fatalf("decoded hash sum: %x; want %x", sum2, sum1)
 	}
 }
-*/
 
 type loopReader struct {
 	r io.ReadSeeker
@@ -290,7 +293,6 @@ func TestLoopReader(t *testing.T) {
 	t.Logf("%q", sb.String())
 }
 
-/*
 var largeFlag = flag.Bool("large", false, "test large parameters")
 
 func TestLargeParameters(t *testing.T) {
@@ -308,9 +310,9 @@ func TestLargeParameters(t *testing.T) {
 		cfg      HSConfig
 	}{
 		{enwik7, 9 << 30, HSConfig{
-			BufferConfig{
+			BufConfig{
 				WindowSize: 8 << 20,
-				BlockSize:  128 * kb,
+				BlockSize:  128 * _KiB,
 			},
 			HashConfig{
 				InputLen: 3,
@@ -380,4 +382,3 @@ func TestLargeParameters(t *testing.T) {
 		})
 	}
 }
-*/

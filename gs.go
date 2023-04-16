@@ -2,10 +2,11 @@ package lz
 
 // A matchFinder is used to find potential matches.
 type MatchFinder interface {
-	// Resets the data slice to search for matches and applies the delta. If
-	// delta is zero no data has been retained from the last data slice
-	// provided.
-	Reset(data []byte, delta int)
+	// Update informs the match finder to data changes in the data slice. If
+	// delta is less than zero than complete new data is provided. If the
+	// delta is positive data has been moved delta bytes down in the slice.
+	// If delta is zero data has been added.
+	Update(data []byte, delta int)
 
 	// Process segment puts all hashes into the has table unless there is
 	// not enough enough data at the end.

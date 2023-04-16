@@ -4,7 +4,7 @@
 //
 // A [Sequencer] is an encoder that converts a byte stream into blocks of
 // sequences. A [Decoder] converts the block of sequences into the original
-// decompressed byte stream. 
+// decompressed byte stream.
 //
 // The module provides multiple sequencers that provide different combinations
 // of encoding speed  and compression ratios. Usually a slower sequencer will
@@ -56,25 +56,35 @@ var ErrNoData = errors.New("lz: no more data in buffer")
 // Sequencer transforms byte streams into Lempel-Ziv sequences, that allow the
 // reconstruction of the input data.
 type Sequencer interface {
-	// Reset resets the data slice from which to search data.
+	// Update informs the sequencer that there is a change of the data
+	// slice. There are three cases:
 	//
-	// The argument shrinkSize says how much data has been moved from the
-	// previous data slice to the front of this data slice. The parameter must
-	// be less than len(data) of course for the old and the new slice.
-	Reset(data []byte, shrinkSize int)
+	// 1. delta < 0: The sequencer is informed that this is complete new
+	//    data.
+	// 2. delta == 0: There should be additional data, but it is ok to
+	//    provide the same data slice again.
+	// 3. delta > 0: The data has been shifted down. The delta must be
+	//    smaller than the old data slice provided.
+	Update(data []byte, delta int)
 
 	// Sequence finds Lempel-Ziv sequences. It returns the number of bytes
 	// sequenced and the current position of window head in the provided data
 	// slice. If no more data is available the method returns [fErrNoData].
-	Sequence(blk *Block, flags int) (n int, head int, err error)
+	Sequence(blk *Block, flags int) (n int, err error)
+
+	// Config returns the config generating this sequencer. This allows
+	// upper level code to access the configuration information. So we don't
+	// need to find a new mechanism for the configuration of buffer sizes
+	// and shrink sizes.
+	Config() SeqConfig
 }
 
-// BufferConfig describes the various sizes relevant for the buffer. Note that
+// BufConfig describes the various sizes relevant for the buffer. Note that
 // ShrinkSize should be significantly smaller than BufferSize at most 50%. The
 // WindowSize is independent of the BufferSize, but usually the BufferSize
 // should be larger or equal the WindowSize. A typical BlockSize for instance
 // for the ZStandard compression is 128 kByte and limits the largest match len.
-type BufferConfig struct {
+type BufConfig struct {
 	ShrinkSize int
 	BufferSize int
 
@@ -87,7 +97,7 @@ type BufferConfig struct {
 // used for the WriteSequencer which provides a WriteCloser interface.
 type SeqConfig interface {
 	NewSequencer() (s Sequencer, err error)
-	BufferConfig() BufferConfig
+	BufferConfig() BufConfig
 	ApplyDefaults()
 	Verify() error
 }
@@ -113,7 +123,7 @@ func (b *Block) Len() int64 {
 // Verify checks the buffer configuration. Note that window size and block size
 // are independent of the rest of the other sizes only the shrink size must be
 // less than the buffer size.
-func (cfg *BufferConfig) Verify() error {
+func (cfg *BufConfig) Verify() error {
 	maxSize := int64(maxUint32)
 	if int64(maxInt) < maxSize {
 		maxSize = maxInt
@@ -140,11 +150,11 @@ func (cfg *BufferConfig) Verify() error {
 // ApplyDefaults sets the defaults for the various size values. The defaults are
 // given below.
 //
-//   BufferSize:   8 MiB
-//   ShrinkSize:  32 KiB (or half of BufferSize, if it is smaller than 64 KiB)
-//   WindowSize: BufferSize
-//   BlockSize:  128 KiB
-func (cfg *BufferConfig) ApplyDefaults() {
+//	BufferSize:   8 MiB
+//	ShrinkSize:  32 KiB (or half of BufferSize, if it is smaller than 64 KiB)
+//	WindowSize: BufferSize
+//	BlockSize:  128 KiB
+func (cfg *BufConfig) ApplyDefaults() {
 	if cfg.BufferSize == 0 {
 		cfg.BufferSize = 8 * _MiB
 	}
@@ -161,4 +171,9 @@ func (cfg *BufferConfig) ApplyDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * _KiB
 	}
+}
+
+// BufConfig returns the buffer configuration.
+func (cfg *BufConfig) BufferConfig() BufConfig {
+	return *cfg
 }

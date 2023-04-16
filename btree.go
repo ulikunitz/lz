@@ -13,7 +13,7 @@ import (
 //
 // The operations on the bTree are implement using a [bPath].
 type bTree struct {
-	p     []byte
+	pdata *[]byte
 	root  *bNode
 	order int
 
@@ -23,9 +23,7 @@ type bTree struct {
 }
 
 // m2 returns the ceiling of the order divided by 2.
-func (t *bTree) m2() int {
-	return (t.order + 1) >> 1
-}
+func (t *bTree) m2() int { return (t.order + 1) >> 1 }
 
 // bNode represents a node in the B-tree. We are not storing leaves in the
 // tree. In a node that has leaves the length of the children slice will be
@@ -36,19 +34,19 @@ type bNode struct {
 }
 
 // init initializes the tree structure
-func (t *bTree) init(order int, p []byte) error {
+func (t *bTree) init(order int, pdata *[]byte) error {
 	if order < 3 {
 		return fmt.Errorf("lz: order=%d; must be >= %d", order, 3)
 	}
 	*t = bTree{
-		p:     p,
+		pdata: pdata,
 		order: order,
 	}
 	return nil
 }
 
-func (t *bTree) Reset(p []byte) {
-	t.p = p
+func (t *bTree) Reset(pdata *[]byte) {
+	t.pdata = pdata
 	t.root = nil
 	t.aux = 0
 }
@@ -62,9 +60,9 @@ func (t *bTree) setMatches(m int) error {
 }
 
 // newBtree creates a new B-tree. The order must be larger than or equal 3.
-func newBtree(order int, p []byte) *bTree {
+func newBtree(order int, pdata *[]byte) *bTree {
 	t := new(bTree)
-	if err := t.init(order, p); err != nil {
+	if err := t.init(order, pdata); err != nil {
 		panic(err)
 	}
 	return t
@@ -86,8 +84,8 @@ func (t *bTree) Add(pos uint32, x uint64) {
 
 // search searches for a position in the given node.
 func (t *bTree) search(o *bNode, pos uint32) int {
-	q := t.p[pos:]
-	p := t.p
+	p := *t.pdata
+	q := p[pos:]
 	keys := o.keys
 	i, j := 0, len(keys)
 	for i < j {
@@ -190,7 +188,7 @@ func (t *bTree) delete(pos uint32) {
 func (t *bTree) Adapt(s uint32) {
 	var pt bPath
 	pt.init(t)
-	u := &bTree{order: t.order, p: t.p}
+	u := &bTree{order: t.order, pdata: t.pdata}
 	var pu bPath
 	pu.init(u)
 	buf := make([]uint32, 16)

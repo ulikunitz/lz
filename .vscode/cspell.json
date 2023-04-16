@@ -28,6 +28,7 @@
         "hsum",
         "iverson",
         "keybuf",
+        "pdata",
         "proot",
         "serr",
         "testdata",

@@ -98,7 +98,7 @@ func (h *hash) reset() {
 	}
 }
 
-func (h *hash) Reset(p []byte) {
+func (h *hash) Reset(pdata *[]byte) {
 	h.reset()
 }
 

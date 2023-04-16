@@ -12,7 +12,11 @@ type MatchFinder interface {
 	Add(pos uint32, x uint64)
 	AppendMatchesAndAdd(m []uint32, pos uint32, x uint64) []uint32
 	Adapt(delta uint32)
-	Reset(p []byte)
+
+	// Resets the match finder and sets the pointer to the new data slice. The
+	// pointer is used to ensure that length changes are available to the match
+	// finders.
+	Reset(pdata *[]byte)
 }
 
 type mfs []MatchFinder
@@ -36,9 +40,9 @@ func (s mfs) Adapt(delta uint32) {
 	}
 }
 
-func (s mfs) Reset(p []byte) {
+func (s mfs) Reset(pdata *[]byte) {
 	for _, f := range s {
-		f.Reset(p)
+		f.Reset(pdata)
 	}
 }
 
@@ -93,7 +97,7 @@ func (cfg *GenericSequencerConfig) NewSequencer() (s Sequencer, err error) {
 	if err = gs.Init(*cfg); err != nil {
 		return nil, err
 	}
-	return gs, nil
+	panic("TODO")
 }
 
 type genericSequencer struct {
@@ -131,7 +135,7 @@ func (s *genericSequencer) Reset(data []byte) error {
 	if err = s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
-	s.matchFinder.Reset(data)
+	s.matchFinder.Reset(&s.SeqBuffer.data)
 	s.costEstimator.Reset()
 	return nil
 }
@@ -142,20 +146,21 @@ func (s *genericSequencer) Shrink() {
 }
 
 func (s *genericSequencer) hashSegment(a, b int) {
-	if a < 0 {
-		a = 0
-	}
-	c := len(s.data) - s.inputLen + 1
-	if b > c {
-		b = c
-	}
+	/*
+		if a < 0 {
+			a = 0
+		}
+		c := len(s.data) - s.inputLen + 1
+		if b > c {
+			b = c
+		}
 
-	// Ensure that we can use _getLE64 all the time.
-	_p := s.data[:b+7]
+		// Ensure that we can use _getLE64 all the time.
+		_p := s.data[:b+7]
 
-	for i := a; i < b; i++ {
-		x := _getLE64(_p[i:])
-		s.matchFinder.Add(uint32(i), x)
-	}
-
+		for i := a; i < b; i++ {
+			x := _getLE64(_p[i:])
+			s.matchFinder.Add(uint32(i), x)
+		}
+	*/
 }

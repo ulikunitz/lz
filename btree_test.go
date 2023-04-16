@@ -65,7 +65,7 @@ func TestBTreeAdd(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(s)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			for i := 0; i < len(p); i++ {
 				t.Logf("btree#%d %s",
 					tc, sprintNode(bt.root))
@@ -151,9 +151,13 @@ func verifyBTree(t *bTree) error {
 	if t == nil {
 		return fmt.Errorf("lz.bTree: is nil; must be non-nil")
 	}
-	if len(t.p) > math.MaxUint32 {
-		return fmt.Errorf("lz.bTree: len(t.p) is %d; must be less than MaxUint32=%d",
-			len(t.p), math.MaxUint32)
+	if t.pdata == nil {
+		return fmt.Errorf("lz.bTree: pdata is nil; must be non-nil")
+	}
+	p := *t.pdata
+	if len(p) > math.MaxUint32 {
+		return fmt.Errorf("lz.bTree: len(p) is %d; must be less than MaxUint32=%d",
+			len(p), math.MaxUint32)
 	}
 	if !(t.order >= 2) {
 		return fmt.Errorf("lz.bTree: t.order is %d; must be >= %d",
@@ -167,7 +171,7 @@ func verifyBTree(t *bTree) error {
 	}
 	s := appendNode(nil, t.root)
 	for i := 0; i < len(s); i++ {
-		if i > 0 && bytes.Compare(t.p[s[i-1]:], t.p[s[i]:]) >= 0 {
+		if i > 0 && bytes.Compare(p[s[i-1]:], p[s[i]:]) >= 0 {
 			return fmt.Errorf(
 				"lz.bTree: wrong keys order s[%d]=%d is large or equal s[%d]=%d",
 				i-1, s[i-1], i, s[i])
@@ -184,7 +188,7 @@ func TestBTreeDel(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(s)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			if err := verifyBTree(bt); err != nil {
 				t.Fatalf("verifyBtree error %s", err)
 			}
@@ -222,7 +226,7 @@ func TestBTreeAdapt(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(s)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			if err := verifyBTree(bt); err != nil {
 				t.Fatalf("verifyBtree error %s", err)
 			}
@@ -267,7 +271,7 @@ func TestBTreePathMethods(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(str)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			for i := range p {
 				bt._add(uint32(i))
 			}
@@ -301,7 +305,7 @@ func TestBTreeBack(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(str)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			for i := range p {
 				bt._add(uint32(i))
 			}
@@ -310,8 +314,7 @@ func TestBTreeBack(t *testing.T) {
 			s := make([]uint32, len(p))
 			k, _ := bp.readKeys(s)
 			if k != len(p) {
-				t.Fatalf("bp.readKeys returned %d; want %d",
-					k, len(bt.p))
+				t.Fatalf("bp.readKeys returned %d; want %d", k, len(p))
 			}
 			t.Logf("keys: %d", s)
 			bp.reset()
@@ -328,10 +331,10 @@ func TestBTreeBack(t *testing.T) {
 					break
 				}
 			}
-			if n != len(bt.p) {
+			if n != len(p) {
 				t.Fatalf(
 					"bp.back() returned %d in total; want %d",
-					n, len(bt.p))
+					n, len(p))
 			}
 		})
 	}
@@ -345,7 +348,7 @@ func TestBTreeAppendMatchesAndAdd(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc), func(t *testing.T) {
 			p := []byte(str)
-			bt := newBtree(tc, p)
+			bt := newBtree(tc, &p)
 			bt.setMatches(2)
 			for i := range p[:14] {
 				bt._add(uint32(i))

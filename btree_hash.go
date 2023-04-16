@@ -11,8 +11,8 @@ type bTreeHash struct {
 	workTree bTree
 }
 
-func (h *bTreeHash) init(order int, p []byte, inputLen int, hashBits int) error {
-	if err := h.workTree.init(order, p); err != nil {
+func (h *bTreeHash) init(order int, pdata *[]byte, inputLen int, hashBits int) error {
+	if err := h.workTree.init(order, pdata); err != nil {
 		return err
 	}
 	if !(2 <= inputLen && inputLen <= 8) {
@@ -35,8 +35,8 @@ func (h *bTreeHash) init(order int, p []byte, inputLen int, hashBits int) error 
 	return nil
 }
 
-func (h *bTreeHash) Reset(p []byte) {
-	h.workTree.Reset(p)
+func (h *bTreeHash) Reset(pdata *[]byte) {
+	h.workTree.Reset(pdata)
 	for i := range h.table {
 		h.table[i] = nil
 	}

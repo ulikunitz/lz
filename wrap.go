@@ -8,16 +8,13 @@ import (
 // Wrap combines a reader and a Sequencer and makes a Sequencer. The user
 // doesn't need to take care of filling the Sequencer with additional data. The
 // returned sequencer returns EOF if no further data is available.
-//
-// Wrap chooses the minimum of 32 kbyte or half of the window size as shrink
-// size.
 func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
 	cfg := seq.Config().BufferConfig()
 	s := &WrappedSequencer{
-		BufConfig: cfg,
-		wr:           r,
-		s:            seq,
-		data:         make([]byte, cfg.BufferSize, cfg.BufferSize+7),
+		BufConfig: seq.Config().BufferConfig(),
+		r:         r,
+		s:         seq,
+		data:      make([]byte, cfg.BufferSize, cfg.BufferSize+7),
 	}
 	return s
 }
@@ -27,9 +24,9 @@ func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
 type WrappedSequencer struct {
 	BufConfig
 
-	wr io.Reader
+	r   io.Reader
 	err error
-	s  Sequencer
+	s   Sequencer
 
 	data []byte
 	n    int
@@ -51,8 +48,8 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			s.n = copy(s.data, s.data[delta:s.n])
 			s.w -= delta
 		}
-		r, err := io.ReadFull(s.wr, s.data[s.n:])
-		s.n += r
+		n, err := io.ReadFull(s.r, s.data[s.n:])
+		s.n += n
 		if err != nil {
 			if err == io.ErrUnexpectedEOF {
 				err = io.EOF
@@ -60,7 +57,7 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			s.err = err
 		}
 		s.s.Update(s.data[:s.n], delta)
-		k = s.n-s.w
+		k = s.n - s.w
 	}
 	if k == 0 {
 		if s.err == nil {
@@ -84,7 +81,7 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 // Reset puts the WrappedSequencer in its initial state and changes the wrapped
 // reader to another reader.
 func (s *WrappedSequencer) Reset(r io.Reader) {
-	s.wr = r
+	s.r = r
 	s.err = nil
 	s.w = 0
 	s.n = 0

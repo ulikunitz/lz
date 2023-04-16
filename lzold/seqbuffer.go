@@ -1,4 +1,4 @@
-package lz
+package lzold
 
 import (
 	"errors"
@@ -160,7 +160,7 @@ func (w *SeqBuffer) Reset(data []byte) error {
 				" must not be larger than the buffer size (%d)",
 			len(data), w.BufferSize)
 	}
-	k := len(data)+7
+	k := len(data) + 7
 	if k > cap(data) {
 		if cap(w.data) >= k {
 			w.data = w.data[:len(data)]
@@ -206,7 +206,7 @@ func (w *SeqBuffer) Len() int {
 func (w *SeqBuffer) Pos() int64 { return w.start + int64(w.w) }
 
 // shrink reduces the current window length. The method returns the non-negative
-// delta that the window has been shifted. 
+// delta that the window has been shifted.
 func (w *SeqBuffer) shrink() int {
 	r := w.w - w.ShrinkSize
 	if r <= 0 {

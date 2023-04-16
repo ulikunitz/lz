@@ -1,4 +1,4 @@
-package lz
+package lzold
 
 var hsParameters = []hsParams{
 	{33951, 2, 7},

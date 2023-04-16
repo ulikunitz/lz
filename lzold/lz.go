@@ -14,7 +14,7 @@
 //
 // The [Decoder] slides the decompression window through a larger buffer
 // implemented by [DecBuffer].
-package lz
+package lzold
 
 // Seq represents a single Lempel-Ziv 77 Sequence describing a match,
 // consisting of the offset, the length of the match and the number of

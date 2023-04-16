@@ -1,4 +1,4 @@
-package lz
+package lzold
 
 import (
 	"bytes"
@@ -185,7 +185,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 
 func TestHashSequencerEnwik7(t *testing.T) {
 	const (
-		enwik7     = "testdata/enwik7"
+		enwik7     = "../testdata/enwik7"
 		blockSize  = 128 * 1024
 		windowSize = 2*blockSize + 123
 	)
@@ -302,7 +302,7 @@ func TestLargeParameters(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("test is slow")
 	}
-	const enwik7 = "testdata/enwik7"
+	const enwik7 = "../testdata/enwik7"
 
 	var tests = []struct {
 		filename string

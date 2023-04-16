@@ -1,40 +1,30 @@
-package lz
+package lzold
 
 import (
-	"errors"
 	"fmt"
-	"math/bits"
-	"reflect"
 )
 
-// hashSequencer allows the creation of sequence blocks using a simple hash
+// bucketHashSequencer allows the creation of sequence blocks using a simple hash
 // table.
-type hashSequencer struct {
+type bucketHashSequencer struct {
 	SeqBuffer
 
-	hash
+	bucketHash
 }
 
-// MemSize returns the the memory that the HashSequencer occupies.
-func (s *hashSequencer) MemSize() uintptr {
-	n := reflect.TypeOf(*s).Size()
-	n += s.SeqBuffer.additionalMemSize()
-	n += s.hash.additionalMemSize()
-	return n
-}
-
-// HSConfig provides the configuration parameters for the
-// HashSequencer.
-type HSConfig struct {
+// BUHSConfig provides the configuration parameters for the bucket hash sequencer.
+type BUHSConfig struct {
 	SBConfig
 	// number of bits of the hash index
 	HashBits int
 	// length of the input used; range [2,8]
 	InputLen int
+	// size of a bucket; range [1,128]
+	BucketSize int
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
-func (cfg *HSConfig) ApplyDefaults() {
+func (cfg *BUHSConfig) ApplyDefaults() {
 	cfg.SBConfig.ApplyDefaults()
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
@@ -42,10 +32,13 @@ func (cfg *HSConfig) ApplyDefaults() {
 	if cfg.HashBits == 0 {
 		cfg.HashBits = 12
 	}
+	if cfg.BucketSize == 0 {
+		cfg.BucketSize = 10
+	}
 }
 
 // Verify checks the config for correctness.
-func (cfg *HSConfig) Verify() error {
+func (cfg *BUHSConfig) Verify() error {
 	if err := cfg.SBConfig.Verify(); err != nil {
 		return err
 	}
@@ -66,7 +59,9 @@ func (cfg *HSConfig) Verify() error {
 			"lz: WindowSize=%d; must be less than MaxUint32=%d",
 			cfg.WindowSize, maxUint32)
 	}
-	maxHashBits := 24
+	// We want to reduce the hash table size, which may lead to
+	// out-of-memory conditions.
+	maxHashBits := 23
 	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}
@@ -74,17 +69,21 @@ func (cfg *HSConfig) Verify() error {
 		return fmt.Errorf("lz: HashBits=%d; must be <= %d",
 			cfg.HashBits, maxHashBits)
 	}
+	if !(1 <= cfg.BucketSize && cfg.BucketSize <= 128) {
+		return fmt.Errorf("lz: BucketSize=%d; must be in range [1,128]",
+			cfg.BucketSize)
+	}
 	return nil
 }
 
 // NewSequencer creates a new hash sequencer.
-func (cfg HSConfig) NewSequencer() (s Sequencer, err error) {
-	return newHashSequencer(cfg)
+func (cfg BUHSConfig) NewSequencer() (s Sequencer, err error) {
+	return newBucketHashSequencer(cfg)
 }
 
-// newHashSequencer creates a new hash sequencer.
-func newHashSequencer(cfg HSConfig) (s *hashSequencer, err error) {
-	s = new(hashSequencer)
+// newBucketHashSequencer creates a new hash sequencer.
+func newBucketHashSequencer(cfg BUHSConfig) (s *bucketHashSequencer, err error) {
+	s = new(bucketHashSequencer)
 	if err := s.Init(cfg); err != nil {
 		return nil, err
 	}
@@ -93,7 +92,7 @@ func newHashSequencer(cfg HSConfig) (s *hashSequencer, err error) {
 
 // Init initializes the hash sequencer. It returns an error if there is an issue
 // with the configuration parameters.
-func (s *hashSequencer) Init(cfg HSConfig) error {
+func (s *bucketHashSequencer) Init(cfg BUHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -104,7 +103,8 @@ func (s *hashSequencer) Init(cfg HSConfig) error {
 	if err != nil {
 		return err
 	}
-	if err = s.hash.init(cfg.InputLen, cfg.HashBits); err != nil {
+	err = s.bucketHash.init(cfg.InputLen, cfg.HashBits, cfg.BucketSize)
+	if err != nil {
 		return err
 	}
 
@@ -113,22 +113,22 @@ func (s *hashSequencer) Init(cfg HSConfig) error {
 
 // Reset resets the hash sequencer. The sequencer will be in the same state as
 // after Init.
-func (s *hashSequencer) Reset(data []byte) error {
+func (s *bucketHashSequencer) Reset(data []byte) error {
 	if err := s.SeqBuffer.Reset(data); err != nil {
 		return err
 	}
-	s.hash.reset()
+	s.bucketHash.reset()
 	return nil
 }
 
 // Shrink shortens the window size to make more space available for Write and
 // ReadFrom.
-func (s *hashSequencer) Shrink() {
+func (s *bucketHashSequencer) Shrink() {
 	delta := uint32(s.SeqBuffer.shrink())
-	s.hash.Adapt(delta)
+	s.bucketHash.adapt(delta)
 }
 
-func (s *hashSequencer) hashSegment(a, b int) {
+func (s *bucketHashSequencer) hashSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -142,16 +142,9 @@ func (s *hashSequencer) hashSegment(a, b int) {
 
 	for i := a; i < b; i++ {
 		x := _getLE64(_p[i:]) & s.mask
-		s.table[hashValue(x, s.shift)] = hashEntry{
-			pos:   uint32(i),
-			value: uint32(x),
-		}
+		s.bucketHash.add(hashValue(x, s.shift), uint32(i), uint32(x))
 	}
 }
-
-// ErrEmptyBuffer indicates that the buffer is empty and no more data can be
-// read or processed. More data must be provided to the buffer.
-var ErrEmptyBuffer = errors.New("lz: empty buffer")
 
 // Sequence converts the next block to sequences. The contents of the blk
 // variable will be overwritten. The method returns the number of bytes
@@ -160,7 +153,7 @@ var ErrEmptyBuffer = errors.New("lz: empty buffer")
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = s.Buffered()
 	if n > s.BlockSize {
 		n = s.BlockSize
@@ -171,7 +164,7 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			return 0, ErrEmptyBuffer
 		}
 		t := s.w + n
-		s.hashSegment(s.w-s.hash.inputLen+1, t)
+		s.hashSegment(s.w-s.inputLen+1, t)
 		s.w = t
 		return n, nil
 
@@ -190,66 +183,48 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	inputEnd := len(p) - s.inputLen + 1
 	i := s.w
 	litIndex := i
-	var minMatchLen int
-	if s.inputLen < 3 {
+
+	minMatchLen := 3
+	if s.inputLen < minMatchLen {
 		minMatchLen = s.inputLen
-	} else {
-		minMatchLen = 3
 	}
 
 	// Ensure that we can use _getLE64 all the time.
 	_p := s.data[:inputEnd+7]
 
 	for ; i < inputEnd; i++ {
-		y := _getLE64(_p[i:])
-		x := y & s.mask
+		x := _getLE64(_p[i:]) & s.mask
 		h := hashValue(x, s.shift)
-		entry := s.table[h]
 		v := uint32(x)
-		s.table[h] = hashEntry{
-			pos:   uint32(i),
-			value: v,
+		o, k := 0, 0
+		for _, e := range s.bucket(h) {
+			if v != e.val {
+				if e.val == 0 && e.pos == 0 {
+					break
+				}
+				continue
+			}
+			j := int(e.pos)
+			oe := i - j
+			if !(0 < oe && oe <= s.WindowSize) {
+				continue
+			}
+			// We are are not immediately computing the match length
+			// but check a  byte, whether there is a chance to
+			// find a longer match than already found.
+			if k > 0 && p[j+k-1] != p[i+k-1] {
+				continue
+			}
+			ke := matchLen(p[j:], p[i:])
+			if ke < k || (ke == k && oe >= o) {
+				continue
+			}
+			o, k = oe, ke
 		}
-		if v != entry.value {
-			continue
-		}
-		// potential match
-		j := int(entry.pos)
-		o := i - j
-		if !(0 < o && o <= s.WindowSize) {
-			continue
-		}
-		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
-		if k > len(p)-i {
-			k = len(p) - i
-		}
+		s.add(h, uint32(i), v)
 		if k < minMatchLen {
 			continue
 		}
-		if k == 8 {
-			r := p[j+8:]
-			q := p[i+8:]
-			for len(q) >= 8 {
-				x := _getLE64(r) ^ _getLE64(q)
-				b := bits.TrailingZeros64(x) >> 3
-				k += b
-				if b < 8 {
-					goto match
-				}
-				r = r[8:]
-				q = q[8:]
-			}
-			if len(q) > 0 {
-				x := getLE64(r) ^ getLE64(q)
-				b := bits.TrailingZeros64(x) >> 3
-				if b > len(q) {
-					b = len(q)
-				}
-				k += b
-			}
-		match:
-		}
-
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{
@@ -265,13 +240,10 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		} else {
 			b = litIndex
 		}
-		for j = i + 1; j < b; j++ {
+		for j := i + 1; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.mask
 			h := hashValue(x, s.shift)
-			s.table[h] = hashEntry{
-				pos:   uint32(j),
-				value: uint32(x),
-			}
+			s.add(h, uint32(j), uint32(x))
 		}
 		i = litIndex - 1
 	}

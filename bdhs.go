@@ -442,6 +442,6 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 // ReadFrom.
 func (s *backwardDoubleHashSequencer) Shrink() {
 	delta := uint32(s.SeqBuffer.shrink())
-	s.h1.adapt(delta)
-	s.h2.adapt(delta)
+	s.h1.Adapt(delta)
+	s.h2.Adapt(delta)
 }

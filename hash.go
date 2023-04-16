@@ -23,6 +23,45 @@ func (h *hash) additionalMemSize() uintptr {
 	return uintptr(cap(h.table)) * reflect.TypeOf(hashEntry{}).Size()
 }
 
+type HashConfig struct {
+	InputLen int
+	HashBits int
+}
+
+func (cfg *HashConfig) ApplyDefaults() {
+	if cfg.InputLen == 0 {
+		cfg.InputLen = 3
+	}
+	if cfg.HashBits == 0 {
+		cfg.HashBits = 18
+	}
+}
+
+func (cfg *HashConfig) Verify() error {
+	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
+		return fmt.Errorf("lz: InputLen must be in range [2,8]")
+	}
+	maxHashBits := 24
+	if t := 8 * cfg.InputLen; t < maxHashBits {
+		maxHashBits = t
+	}
+	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
+		return fmt.Errorf("lz: HashBits=%d; must be <= %d",
+			cfg.HashBits, maxHashBits)
+	}
+	return nil
+}
+
+func (cfg *HashConfig) NewMatchFinder() (mf MatchFinder, err error) {
+	cfg.ApplyDefaults()
+	if err = cfg.Verify(); err != nil {
+		return nil, err
+	}
+	h := new(hash)
+	h.init(cfg.InputLen, cfg.HashBits)
+	return h, nil
+}
+
 func (h *hash) init(inputLen, hashBits int) error {
 	if !(2 <= inputLen && inputLen <= 8) {
 		return fmt.Errorf("lz: inputLen must be in range [2,8]")
@@ -59,7 +98,11 @@ func (h *hash) reset() {
 	}
 }
 
-func (h *hash) adapt(delta uint32) {
+func (h *hash) Reset(p []byte) {
+	h.reset()
+}
+
+func (h *hash) Adapt(delta uint32) {
 	if delta == 0 {
 		return
 	}
@@ -72,14 +115,14 @@ func (h *hash) adapt(delta uint32) {
 	}
 }
 
-func (h *hash) add(pos uint32, x uint64) {
+func (h *hash) Add(pos uint32, x uint64) {
 	x &= h.mask
 	e := &h.table[hashValue(x, h.shift)]
 	e.pos = pos
 	e.value = uint32(x)
 }
 
-func (h *hash) appendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
+func (h *hash) AppendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
 	x &= h.mask
 	y := uint32(x)
 	e := &h.table[hashValue(x, h.shift)]

@@ -238,7 +238,7 @@ func TestBTreeAdapt(t *testing.T) {
 			const delta = 7
 			k := copy(p, p[delta:])
 			p = p[:k]
-			bt.adapt(delta)
+			bt.Adapt(delta)
 			if err := verifyBTree(bt); err != nil {
 				t.Fatalf("bt.adapt(%d) - verifyBTree error %s",
 					delta, err)
@@ -352,7 +352,7 @@ func TestBTreeAppendMatchesAndAdd(t *testing.T) {
 			}
 			const pos = 15
 			w := []uint32{10, 1}
-			matches := bt.appendMatchesAndAdd(nil, pos,
+			matches := bt.AppendMatchesAndAdd(nil, pos,
 				getLE64(p[pos:]))
 			if !reflect.DeepEqual(matches, w) {
 				t.Fatalf("bt.appendMatchesAndAdd returned %d; want %d",

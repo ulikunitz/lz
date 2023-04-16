@@ -125,7 +125,7 @@ func (s *hashSequencer) Reset(data []byte) error {
 // ReadFrom.
 func (s *hashSequencer) Shrink() {
 	delta := uint32(s.SeqBuffer.shrink())
-	s.hash.adapt(delta)
+	s.hash.Adapt(delta)
 }
 
 func (s *hashSequencer) hashSegment(a, b int) {

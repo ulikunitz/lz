@@ -41,10 +41,16 @@ func (t *bTree) init(order int, p []byte) error {
 		return fmt.Errorf("lz: order=%d; must be >= %d", order, 3)
 	}
 	*t = bTree{
-		p:      p,
-		order:  order,
+		p:     p,
+		order: order,
 	}
 	return nil
+}
+
+func (t *bTree) Reset(p []byte) {
+	t.p = p
+	t.root = nil
+	t.aux = 0
 }
 
 func (t *bTree) setMatches(m int) error {
@@ -74,7 +80,7 @@ func (t *bTree) _add(pos uint32) {
 }
 
 // add adds a position to the binary tree.
-func (t *bTree) add(pos uint32, x uint64) {
+func (t *bTree) Add(pos uint32, x uint64) {
 	t._add(pos)
 }
 
@@ -181,7 +187,7 @@ func (t *bTree) delete(pos uint32) {
 // adapt moves the content of the byte slices s bytes to the left and modifies
 // the B-tree accordingly. The current implementation recreates the B-tree. Note
 // that the shift in the slice must have been done, before calling adapt.
-func (t *bTree) adapt(s uint32) {
+func (t *bTree) Adapt(s uint32) {
 	var pt bPath
 	pt.init(t)
 	u := &bTree{order: t.order, p: t.p}
@@ -202,7 +208,7 @@ func (t *bTree) adapt(s uint32) {
 	t.root = u.root
 }
 
-func (t *bTree) appendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
+func (t *bTree) AppendMatchesAndAdd(matches []uint32, pos uint32, x uint64) []uint32 {
 	var p bPath
 	p.init(t)
 	p._search(pos)
@@ -788,4 +794,41 @@ func (p *bPath) readKeys(s []uint32) (n int, err error) {
 			p.next()
 		}
 	}
+}
+
+type BTreeConfig struct {
+	Order   int
+	Matches int
+}
+
+func (cfg *BTreeConfig) Verify() error {
+	if cfg.Order < 3 {
+		return fmt.Errorf("lz: Order must be >= 3")
+	}
+	if cfg.Matches < 0 {
+		return fmt.Errorf("lz: Matches must be >= 0")
+	}
+	return nil
+}
+
+func (cfg *BTreeConfig) ApplyDefaults() {
+	if cfg.Order == 0 {
+		cfg.Order = 128
+	}
+	if cfg.Matches == 0 {
+		cfg.Matches = 2
+	}
+}
+
+func (cfg *BTreeConfig) NewMatchFinder() (mf MatchFinder, err error) {
+	cfg.ApplyDefaults()
+	if err = cfg.Verify(); err != nil {
+		return nil, err
+	}
+	bt := newBtree(cfg.Order, nil)
+	if err = bt.setMatches(cfg.Matches); err != nil {
+		return nil, err
+	}
+
+	return bt, nil
 }

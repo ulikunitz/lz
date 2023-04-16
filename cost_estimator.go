@@ -10,12 +10,19 @@ import "math/bits"
 type CostEstimator interface {
 	Cost(m, o uint32) uint64
 	Push(o uint32)
+	Reset()
 }
 
 // SimpleEstimator provides a very simple cost model for compression. It
 // supports offset repeats as in LZMA.
 type SimpleEstimator struct {
 	Rep [4]uint32
+}
+
+func (e *SimpleEstimator) Reset() {
+	for i := range e.Rep {
+		e.Rep[i] = 0
+	}
 }
 
 // Push writes the offset o into the history.

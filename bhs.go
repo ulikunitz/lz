@@ -121,7 +121,7 @@ func (s *backwardHashSequencer) Reset(data []byte) error {
 // ReadFrom.
 func (s *backwardHashSequencer) Shrink() {
 	delta := uint32(s.SeqBuffer.shrink())
-	s.hash.adapt(delta)
+	s.hash.Adapt(delta)
 }
 
 func (s *backwardHashSequencer) hashSegment(a, b int) {

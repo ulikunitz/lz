@@ -428,6 +428,6 @@ func (s *doubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error)
 // ReadFrom.
 func (s *doubleHashSequencer) Shrink() {
 	delta := uint32(s.SeqBuffer.shrink())
-	s.h1.adapt(delta)
-	s.h2.adapt(delta)
+	s.h1.Adapt(delta)
+	s.h2.Adapt(delta)
 }

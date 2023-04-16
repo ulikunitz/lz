@@ -5,9 +5,11 @@
     "dictionaries": [],
     "words": [
         "kbyte",
+        "kibibyte",
         "Lempel",
         "LZMA",
-        "nonleaf"
+        "mebibyte",
+        "nonleaf",
     ],
     "ignoreWords": [
         "BDHS",

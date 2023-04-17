@@ -5,14 +5,14 @@
         "version": "0.2.0",
         "configurations": [
                 {
-                        "name": "Test Fuzz use case",
+                        "name": "Hash Sequencer Fuzz problem",
                         "type": "go",
                         "request": "launch",
                         "mode": "test",
-                        "program": "lz_test.go",
+                        "program": "hs_test.go",
                         "args": [
                                 "-test.run",
-                                "FuzzSequencer/e4842f964e984ad76d042e38f72fed9a742eebd263cc1128b35795a045d90969"
+                                "FuzzHashSequencer/f8effa171f92f0ec"
                         ]
                 }
         ]

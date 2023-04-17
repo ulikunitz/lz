@@ -203,7 +203,10 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		i = litIndex - 1
 	}
 
-	if flags&NoTrailingLiterals != 0 {
+	// len(blk.Sequences) > 0 checks that the literals are actually trailing
+	// a sequence. If there is no Sequence found, then we have to add all
+	// literals to make progress.
+	if flags&NoTrailingLiterals != 0 && len(blk.Sequences) > 0  {
 		i = litIndex
 	} else {
 		blk.Literals = append(blk.Literals, p[litIndex:]...)

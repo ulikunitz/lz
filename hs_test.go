@@ -9,6 +9,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestHashSequencerSimple(t *testing.T) {
@@ -82,18 +85,21 @@ func TestHashSequencerSimple(t *testing.T) {
 	t.Logf("g: %q", g)
 }
 
-/*
 func FuzzHashSequencer(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
 		cfg := HSConfig{
-			BufferConfig{
+			BufConfig{
 				WindowSize: 1024,
 				BlockSize:  512,
 			},
-			HashConfig{InputLen: 3},
+			HashConfig{
+				InputLen: inputLen,
+				HashBits: hashBits,
+			},
 		}
 		cfg.ApplyDefaults()
+		t.Logf("cfg.ApplyDefaults() %+v", cfg)
 		if err := cfg.Verify(); err != nil {
 			t.Skip()
 		}
@@ -133,7 +139,6 @@ func FuzzHashSequencer(f *testing.F) {
 		}
 	})
 }
-*/
 
 func TestWrapOldHashSequencer(t *testing.T) {
 	const (
@@ -302,14 +307,15 @@ func TestLargeParameters(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("test is slow")
 	}
-	const enwik7 = "../testdata/enwik7"
+	const enwik7 = "testdata/enwik7"
 
 	var tests = []struct {
 		filename string
 		size     int64
 		cfg      HSConfig
 	}{
-		{enwik7, 9 << 30, HSConfig{
+		// 1 << 30 is a Gigabyte
+		{enwik7, 1 << 30, HSConfig{
 			BufConfig{
 				WindowSize: 8 << 20,
 				BlockSize:  128 * _KiB,

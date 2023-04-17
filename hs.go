@@ -65,6 +65,7 @@ func (s *hashSequencer) init(cfg HSConfig) error {
 	return nil
 }
 
+// Update updates the data slice including the offsets related to its start.
 func (s *hashSequencer) Update(data []byte, delta int) {
 	switch {
 	case delta > 0:

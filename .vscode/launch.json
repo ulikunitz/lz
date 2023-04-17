@@ -12,7 +12,7 @@
                         "program": "hs_test.go",
                         "args": [
                                 "-test.run",
-                                "FuzzHashSequencer/f8effa171f92f0ec"
+                                "FuzzHashSequencer/6a6fbcba1646f301"
                         ]
                 }
         ]

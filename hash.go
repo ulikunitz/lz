@@ -163,6 +163,9 @@ func (f *hashFinder) Update(p []byte, delta int) {
 
 // ProcessSegment adds the hashes between position a and b into the hash.
 func (f *hashFinder) ProcessSegment(a, b int) {
+	if a < 0 {
+		a = 0
+	}
 	c := len(f.data) - f.inputLen + 1
 	if c < b {
 		b = c

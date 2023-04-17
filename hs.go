@@ -76,7 +76,7 @@ func (s *hashSequencer) Update(data []byte, delta int) {
 	s.hashFinder.Update(data, delta)
 }
 
-// Config returns the HSConfig.
+// Config returns the [HSConfig].
 func (s *hashSequencer) Config() SeqConfig {
 	return &s.HSConfig
 }
@@ -207,7 +207,7 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	// len(blk.Sequences) > 0 checks that the literals are actually trailing
 	// a sequence. If there is no Sequence found, then we have to add all
 	// literals to make progress.
-	if flags&NoTrailingLiterals != 0 && len(blk.Sequences) > 0  {
+	if flags&NoTrailingLiterals != 0 && len(blk.Sequences) > 0 {
 		i = litIndex
 	} else {
 		blk.Literals = append(blk.Literals, p[litIndex:]...)

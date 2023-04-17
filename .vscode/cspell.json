@@ -10,6 +10,7 @@
         "LZMA",
         "mebibyte",
         "nonleaf",
+        "Zstandard"
     ],
     "ignoreWords": [
         "BDHS",

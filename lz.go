@@ -1,6 +1,9 @@
 // Package lz provides encoders and decoders for LZ77 sequences. A sequence, as
-// described in the zstd specification, describes a number of literal bytes and
-// a match.
+// described in the [Zstandard specification], consists of a literal copy
+// command followed by a match copy command. The literal copy command is
+// described by the length in literal bytes to be copied and the match command
+// consists of the distance of the match to copy and the length of the match in
+// bytes.
 //
 // A [Sequencer] is an encoder that converts a byte stream into blocks of
 // sequences. A [Decoder] converts the block of sequences into the original
@@ -12,6 +15,8 @@
 //
 // The [Decoder] slides the decompression window through a larger buffer
 // implemented by [DecBuffer].
+//
+// [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
 package lz
 
 import (

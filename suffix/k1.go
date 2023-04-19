@@ -1,4 +1,9 @@
 // Package suffix provides a suffix sort algorithm.
+//
+// It is based on the DivSufSort algorithm as described in the
+// [Dismantling DivSufSort] paper.
+//
+// [DivSufSort]: https://arxiv.org/pdf/1710.01896.pdf
 package suffix
 
 import (

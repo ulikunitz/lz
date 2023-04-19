@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -49,15 +48,16 @@ func getData(file string) (data []byte, err error) {
 		return nil, err
 	}
 	defer f.Close()
-	return ioutil.ReadAll(io.LimitReader(f, 1000000))
+	return io.ReadAll(io.LimitReader(f, 1000000))
 }
 
 func shorter(s []byte) string {
 	if len(s) > 16 {
 		return fmt.Sprintf("%s...", s[:16])
 	}
-	return fmt.Sprintf("%s", s)
+	return string(s)
 }
+
 
 func TestEnwik6(t *testing.T) {
 	cfg := config{

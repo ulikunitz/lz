@@ -57,8 +57,8 @@ func getLE64(p []byte) uint64 {
 	}
 }
 
-// matchLen computes the length of the common prefix between p and q.
-func matchLen(p, q []byte) int {
+// lcp computes the length of the longest common prefix between p and q.
+func lcp(p, q []byte) int {
 	if len(q) > len(p) {
 		p, q = q, p
 	}
@@ -70,21 +70,30 @@ func matchLen(p, q []byte) int {
 		if k < 8 {
 			return n
 		}
-		p = p[8:]
 		q = q[8:]
+		p = p[8:]
 	}
-	if len(q) > 0 {
-		x := getLE64(q) ^ getLE64(p)
-		k := bits.TrailingZeros64(x) >> 3
-		if k > len(q) {
-			k = len(q)
-		}
+	if len(q) >= 4 {
+		x := _getLE32(p) ^ _getLE32(q)
+		k := bits.TrailingZeros32(x) >> 3
 		n += k
+		if k < 4 {
+			return n
+		}
+		q = q[4:]
+		p = p[4:]
+	}
+	for i, b := range q {
+		if p[i] != b {
+			break
+		}
+		n++
 	}
 	return n
 }
 
-func backwardMatchLen(p, q []byte) int {
+// lcs computes the longest common suffix
+func lcs(p, q []byte) int {
 	if len(q) > len(p) {
 		p, q = q, p
 	}

@@ -6,10 +6,12 @@
     "words": [
         "kbyte",
         "kibibyte",
+        "lcp",
         "Lempel",
         "LZMA",
         "mebibyte",
         "nonleaf",
+        "staticcheck",
         "Zstandard"
     ],
     "ignoreWords": [
@@ -19,6 +21,7 @@
         "Ssorter",
         "Trsort",
         "ababababababababac",
+        "ababbab",
         "abbaabbaabbaabba",
         "abcfoofoobar",
         "arhello",
@@ -39,6 +42,7 @@
         "lzold",
         "pdata",
         "proot",
+        "sainv",
         "serr",
         "ssort",
         "testdata",

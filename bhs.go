@@ -176,7 +176,7 @@ func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err erro
 			if back > j {
 				back = j
 			}
-			m := backwardMatchLen(p[j-back:j], p[:i])
+			m := lcs(p[j-back:j], p[:i])
 			i -= m
 			k += m
 		}

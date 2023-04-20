@@ -1,12 +1,18 @@
 # TODO lz module
 
 ## updates
+* Repair all existing sequencers using the new interface
+* Add optimizing finder to the list of interfaces. (Output of sorted
+  list (o,l) pairs with 1 <= ... < o[i] < o[i+1] < ...) and provided
+  mechanism to convert simple hash finders to them
+* Write GreedyGenericSequencer which uses always the longest match
+* Write OptimalGenericSequencer using optimizing hash finders
+* Test them
 * Make a bTreeHash finder
-* Make bTree also a match finder and implement the bTree functions in terms of
-  bPath manipulations instead of recursive functions
-* Write general sequencer that uses multiple match finders, is backward looking
-  and supports also a repeater.
-* We can now experiment using the general sequencer.
+* Test it
+* Add SuffixArrayFinder as optimizing match finder using the prefix
+  match sorter approach
+* Test the stuff
 
 ## v0.2.0
 

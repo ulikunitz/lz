@@ -4,6 +4,8 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "Grebnov",
+        "Ilya",
         "kbyte",
         "kibibyte",
         "lcp",
@@ -39,6 +41,7 @@
         "hsum",
         "iverson",
         "keybuf",
+        "lcs",
         "lzold",
         "pdata",
         "proot",

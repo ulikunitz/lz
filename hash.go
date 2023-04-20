@@ -299,7 +299,7 @@ func (f *doubleHashFinder) ProcessSegment(a, b int) {
 	if b2 < 0 {
 		b2 = 0
 	}
-	
+
 	for i := a; i < b2; i++ {
 		x := _getLE64(_p[i:])
 		e := hashEntry{

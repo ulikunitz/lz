@@ -73,7 +73,6 @@ func (s *doubleHashSequencer) init(cfg DHSConfig) error {
 	return nil
 }
 
-// Reset puts the DoubleHashSequencer in its initial state.
 func (s *doubleHashSequencer) Update(data []byte, delta int) {
 	switch {
 	case delta > 0:

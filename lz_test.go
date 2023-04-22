@@ -89,3 +89,24 @@ func FuzzDHS(f *testing.F) {
 		testSequencer(t, cfg, p)
 	})
 }
+
+func FuzzBDHS(f *testing.F) {
+	f.Add(3, 5, 4, 6, []byte("=====foofoobarfoobar bartender===="))
+	f.Fuzz(func(t *testing.T,
+		inputLen1, hashBits1 int,
+		inputLen2, hashBits2 int,
+		p []byte) {
+
+		cfg := &BDHSConfig{
+			BufConfig{
+				WindowSize: 1024,
+				BlockSize:  512,
+			},
+			DHConfig{
+				H1cfg: HashConfig{inputLen1, hashBits1},
+				H2cfg: HashConfig{inputLen2, hashBits2},
+			},
+		}
+		testSequencer(t, cfg, p)
+	})
+}

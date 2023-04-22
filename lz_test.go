@@ -110,3 +110,29 @@ func FuzzBDHS(f *testing.F) {
 		testSequencer(t, cfg, p)
 	})
 }
+
+func FuzzBUHS(f *testing.F) {
+	f.Add(3, 5, 8, []byte("=====foofoobarfoobar bartender===="))
+	f.Fuzz(func(t *testing.T,
+		inputLen, hashBits, bucketSize int,
+		p []byte) {
+
+		cfg := &BUHSConfig{
+			BufConfig{
+				WindowSize: 1024,
+				BlockSize:  512,
+			},
+			BUHConfig{
+				InputLen:   inputLen,
+				HashBits:   hashBits,
+				BucketSize: bucketSize,
+			},
+		}
+		cfg.ApplyDefaults()
+		// We need to limit the memory consumption for Fuzzing.
+		if cfg.HashBits > 21 {
+			t.Skip()
+		}
+		testSequencer(t, cfg, p)
+	})
+}

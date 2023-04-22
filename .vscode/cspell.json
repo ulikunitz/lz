@@ -44,6 +44,8 @@
         "hsum",
         "iverson",
         "keybuf",
+        "kmax",
+        "kmin",
         "lcs",
         "lzold",
         "pdata",

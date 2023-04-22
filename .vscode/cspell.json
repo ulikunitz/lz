@@ -4,6 +4,7 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "fuzzer",
         "fuzzers",
         "Grebnov",
         "Ilya",
@@ -21,6 +22,7 @@
         "BDHS",
         "BUHS",
         "GSAS",
+        "OSAS",
         "Ssorter",
         "Trsort",
         "ababababababababac",
@@ -42,6 +44,7 @@
         "gsum",
         "hbits",
         "hsum",
+        "ilcp",
         "iverson",
         "keybuf",
         "kmax",

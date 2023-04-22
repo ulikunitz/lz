@@ -6,23 +6,10 @@ import (
 	"math/bits"
 )
 
-// LCPExt computes the LCP table using the original text t, the suffix array sa
-// and the inverse of it sainv.
-func LCPExt(t []byte, sa []int32, sainv []int32, lcp []int32) {
-	if len(t) > math.MaxInt32 {
-		panic(fmt.Errorf("suffix: len(t)=%d > MaxInt32", len(t)))
-	}
-	if !(len(t) == len(sa) && len(t) == len(lcp) && len(t) == len(sainv)) {
-		panic(fmt.Errorf("suffix: all slices must have same lengths"))
-	}
-
-	_LCPExt(t, sa, sainv, lcp)
-}
-
-// _LCPExt provides actual functionality without the error checks.
+// _lcp provides actual functionality without the error checks.
 //
 // The algorithm used uses the phi function and the theorem regarding it.
-func _LCPExt(t []byte, sa []int32, sainv []int32, lcp []int32) {
+func _lcp(t []byte, sa []int32, sainv []int32, lcp []int32) {
 	l := int32(0)
 	for i, k := range sainv {
 		if k == 0 {
@@ -39,20 +26,37 @@ func _LCPExt(t []byte, sa []int32, sainv []int32, lcp []int32) {
 	}
 }
 
-// LCP computes the LCP table for t. Note the sainv array will be temporarily
-// computed.
-func LCP(t []byte, sa []int32, lcp []int32) {
+// InvertSA computes the inverse of the suffix array.
+func InvertSA(sa, sainv []int32) {
+	if len(sa) != len(sainv) {
+		panic(fmt.Errorf("suffix: len(sa)=%d != len(sainv)=%d",
+			len(sa), len(sainv)))
+	}
+	for j, i := range sa {
+		sainv[i] = int32(j)
+	}
+}
+
+// LCP computes the LCP table for t. If sa and sainv are nil, they will be
+// temporarily computed.
+func LCP(t []byte, sa, sainv, lcp []int32) {
 	if len(t) > math.MaxInt32 {
 		panic(fmt.Errorf("suffix: len(t)=%d > MaxInt32", len(t)))
 	}
-	if !(len(t) == len(sa) && len(t) == len(lcp)) {
-		panic(fmt.Errorf("suffix: all slices must have same lengths"))
+	if len(sa) != len(t) {
+		sa = make([]int32, len(t))
+		Sort(t, sa)
 	}
-	sainv := make([]int32, len(sa))
-	for i, j := range sa {
-		sainv[j] = int32(i)
+	if len(sainv) != len(sa) {
+		sainv = make([]int32, len(sa))
+		InvertSA(sa, sainv)
 	}
-	_LCPExt(t, sa, sainv, lcp)
+	if len(lcp) != len(t) {
+		panic(fmt.Errorf("suffix: len(lcp)=%d != len(t)=%d",
+			len(lcp), len(t)))
+	}
+
+	_lcp(t, sa, sainv, lcp)
 }
 
 // matchLen computes the length of the common prefix between p and q.

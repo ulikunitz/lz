@@ -24,7 +24,7 @@ func FuzzLCP(f *testing.F) {
 			}
 		}
 		lcp := make([]int32, len(p))
-		LCP(p, sa, lcp)
+		LCP(p, sa, nil, lcp)
 		for i, l := range lcp {
 			if i == 0 {
 				if l != 0 {

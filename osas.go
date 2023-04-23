@@ -221,9 +221,12 @@ func (s *optSuffixArraySequencer) computeEdges(data []byte) {
 	// and fill the edges entries using the predecessors. Note we never
 	// have to compute the edge length or access the original text.
 	f := func(m int, seg []int32) {
-		slices.SortStableFunc(seg, func(x, y int32) bool {
-			return x < y
-		})
+		/*
+			slices.SortStableFunc(seg, func(x, y int32) bool {
+				return x < y
+			})
+		*/
+		slices.Sort(seg)
 		for j := len(seg) - 1; j > 0; j-- {
 			i := seg[j]
 			// k is the index into the edges slice. If it is too

@@ -21,7 +21,9 @@
     "ignoreWords": [
         "BDHS",
         "BUHS",
+        "Buf",
         "GSAS",
+        "OSA",
         "OSAS",
         "SALCP",
         "Ssorter",

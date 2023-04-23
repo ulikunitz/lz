@@ -63,7 +63,7 @@ func FuzzBHS(f *testing.F) {
 				WindowSize: 1024,
 				BlockSize:  512,
 			},
-			HashConfig{
+			HConfig{
 				InputLen: inputLen,
 				HashBits: hashBits,
 			},
@@ -85,8 +85,8 @@ func FuzzDHS(f *testing.F) {
 				BlockSize:  512,
 			},
 			DHConfig{
-				H1: HashConfig{inputLen1, hashBits1},
-				H2: HashConfig{inputLen2, hashBits2},
+				H1: HConfig{inputLen1, hashBits1},
+				H2: HConfig{inputLen2, hashBits2},
 			},
 		}
 		testSequencer(t, cfg, p)
@@ -106,8 +106,8 @@ func FuzzBDHS(f *testing.F) {
 				BlockSize:  512,
 			},
 			DHConfig{
-				H1: HashConfig{inputLen1, hashBits1},
-				H2: HashConfig{inputLen2, hashBits2},
+				H1: HConfig{inputLen1, hashBits1},
+				H2: HConfig{inputLen2, hashBits2},
 			},
 		}
 		testSequencer(t, cfg, p)
@@ -212,13 +212,13 @@ func BenchmarkSequencers(b *testing.B) {
 			BufConfig: BufConfig{
 				WindowSize: 8 << 20,
 			},
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 3,
 				HashBits: 15,
 			},
 		}},
 		{"HashSequencer-4", &HSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 4,
 				HashBits: 15,
 			},
@@ -227,7 +227,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"HashSequencer-5", &HSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 5,
 				HashBits: 15,
 			},
@@ -236,7 +236,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"HashSequencer-8", &HSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 8,
 				HashBits: 15,
 			},
@@ -245,7 +245,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"BackwardHashSequencer-3", &BHSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 3,
 				HashBits: 15,
 			},
@@ -254,7 +254,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"BackwardHashSequencer-4", &BHSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 4,
 				HashBits: 15,
 			},
@@ -263,7 +263,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"BackwardHashSequencer-5", &BHSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 5,
 				HashBits: 15,
 			},
@@ -272,7 +272,7 @@ func BenchmarkSequencers(b *testing.B) {
 			},
 		}},
 		{"BackwardHashSequencer-8", &HSConfig{
-			HashConfig: HashConfig{
+			HConfig: HConfig{
 				InputLen: 8,
 				HashBits: 15,
 			},
@@ -282,10 +282,10 @@ func BenchmarkSequencers(b *testing.B) {
 		}},
 		{"DoubleHashSequencer-3,6", &DHSConfig{
 			DHConfig: DHConfig{
-				H1: HashConfig{
+				H1: HConfig{
 					InputLen: 3, HashBits: 15,
 				},
-				H2: HashConfig{
+				H2: HConfig{
 					InputLen: 6, HashBits: 18,
 				},
 			},
@@ -295,11 +295,11 @@ func BenchmarkSequencers(b *testing.B) {
 		}},
 		{"DoubleHashSequencer-4,6", &DHSConfig{
 			DHConfig: DHConfig{
-				H1: HashConfig{
+				H1: HConfig{
 					InputLen: 4,
 					HashBits: 15,
 				},
-				H2: HashConfig{
+				H2: HConfig{
 					InputLen: 6,
 					HashBits: 18,
 				},
@@ -310,11 +310,11 @@ func BenchmarkSequencers(b *testing.B) {
 		}},
 		{"BDHSequencer-3,6", &BDHSConfig{
 			DHConfig: DHConfig{
-				H1: HashConfig{
+				H1: HConfig{
 					InputLen: 3,
 					HashBits: 15,
 				},
-				H2: HashConfig{
+				H2: HConfig{
 					InputLen: 6,
 					HashBits: 18,
 				},
@@ -325,11 +325,11 @@ func BenchmarkSequencers(b *testing.B) {
 		}},
 		{"BDHSequencer-4,6", &BDHSConfig{
 			DHConfig: DHConfig{
-				H1: HashConfig{
+				H1: HConfig{
 					InputLen: 4,
 					HashBits: 15,
 				},
-				H2: HashConfig{
+				H2: HConfig{
 					InputLen: 6,
 					HashBits: 18,
 				},
@@ -438,7 +438,7 @@ func BenchmarkDecoders(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
 			hs, err := HSConfig{
-				HashConfig: HashConfig{InputLen: 3},
+				HConfig: HConfig{InputLen: 3},
 				BufConfig: BufConfig{
 					WindowSize: bm.winSize,
 				},

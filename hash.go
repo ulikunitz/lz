@@ -82,15 +82,15 @@ func (h *hash) shiftOffsets(delta uint32) {
 	}
 }
 
-// HashConfig provides the configuration for the hash match finder.
-type HashConfig struct {
+// HConfig provides the configuration for the hash match finder.
+type HConfig struct {
 	InputLen int
 	HashBits int
 }
 
 // ApplyDefaults sets the defaults of the HashConfig. The default input length
 // is 3 and the hash bits are 18.
-func (cfg *HashConfig) ApplyDefaults() {
+func (cfg *HConfig) ApplyDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -100,7 +100,7 @@ func (cfg *HashConfig) ApplyDefaults() {
 }
 
 // Verify checks the configuration parameters.
-func (cfg *HashConfig) Verify() error {
+func (cfg *HConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in range [2,8]")
 	}
@@ -116,7 +116,7 @@ func (cfg *HashConfig) Verify() error {
 }
 
 // NewMatchFinder initializes a new match finder.
-func (cfg *HashConfig) NewMatchFinder() (mf MatchFinder, err error) {
+func (cfg *HConfig) NewMatchFinder() (mf MatchFinder, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -199,8 +199,8 @@ func (f *hashFinder) AppendMatchOffsets(m []uint32, i int) []uint32 {
 }
 
 type DHConfig struct {
-	H1 HashConfig
-	H2 HashConfig
+	H1 HConfig
+	H2 HConfig
 }
 
 func (cfg *DHConfig) ApplyDefaults() {

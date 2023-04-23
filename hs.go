@@ -19,13 +19,13 @@ type hashSequencer struct {
 // but it provides it to other code that have to handle the buffer.
 type HSConfig struct {
 	BufConfig
-	HashConfig
+	HConfig
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) ApplyDefaults() {
 	cfg.BufConfig.ApplyDefaults()
-	cfg.HashConfig.ApplyDefaults()
+	cfg.HConfig.ApplyDefaults()
 }
 
 // Verify checks the config for correctness.
@@ -33,7 +33,7 @@ func (cfg *HSConfig) Verify() error {
 	if err := cfg.BufConfig.Verify(); err != nil {
 		return err
 	}
-	if err := cfg.HashConfig.Verify(); err != nil {
+	if err := cfg.HConfig.Verify(); err != nil {
 		return err
 	}
 	return nil

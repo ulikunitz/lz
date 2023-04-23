@@ -20,7 +20,7 @@ func TestHashSequencerSimple(t *testing.T) {
 			WindowSize: 1024,
 			BlockSize:  512,
 		},
-		HashConfig{
+		HConfig{
 			InputLen: 3,
 		},
 	})
@@ -90,7 +90,7 @@ func FuzzHashSequencer(f *testing.F) {
 				WindowSize: 1024,
 				BlockSize:  512,
 			},
-			HashConfig{
+			HConfig{
 				InputLen: inputLen,
 				HashBits: hashBits,
 			},
@@ -111,7 +111,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 			WindowSize: windowSize,
 			BlockSize:  blockSize,
 		},
-		HashConfig{
+		HConfig{
 			InputLen: 3,
 		},
 	}
@@ -172,7 +172,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 			BufferSize: 2 * windowSize,
 			BlockSize:  blockSize,
 		},
-		HashConfig{InputLen: 3},
+		HConfig{InputLen: 3},
 	}
 	ws, err := cfg.NewSequencer()
 	if err != nil {
@@ -279,7 +279,7 @@ func TestLargeParameters(t *testing.T) {
 				WindowSize: 8 << 20,
 				BlockSize:  128 * _KiB,
 			},
-			HashConfig{
+			HConfig{
 				InputLen: 3,
 			},
 		}},

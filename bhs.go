@@ -7,7 +7,7 @@ import (
 // BHSConfig provides the parameters for the backward hash sequencer.
 type BHSConfig struct {
 	BufConfig
-	HashConfig
+	HConfig
 }
 
 // NewSequencer create a new backward hash sequencer.
@@ -22,7 +22,7 @@ func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *BHSConfig) ApplyDefaults() {
 	cfg.BufConfig.ApplyDefaults()
-	cfg.HashConfig.ApplyDefaults()
+	cfg.HConfig.ApplyDefaults()
 }
 
 // Verify checks the config for correctness.
@@ -30,7 +30,7 @@ func (cfg *BHSConfig) Verify() error {
 	if err := cfg.BufConfig.Verify(); err != nil {
 		return err
 	}
-	if err := cfg.HashConfig.Verify(); err != nil {
+	if err := cfg.HConfig.Verify(); err != nil {
 		return err
 	}
 	return nil

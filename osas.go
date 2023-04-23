@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"sort"
+	"strings"
 
 	"github.com/ulikunitz/lz/suffix"
 	"golang.org/x/exp/slices"
@@ -98,9 +100,10 @@ type optSuffixArraySequencer struct {
 	data []byte
 	w    int
 
-	edges  [][]edge
-	start  int
-	nEdges int
+	edgeBuf []edge
+	edges   [][]edge
+	start   int
+	nEdges  int
 
 	tmp []edge
 
@@ -131,7 +134,31 @@ func reverse[T any](s []T) {
 }
 */
 
-func (s *optSuffixArraySequencer) computeMatches(data []byte) {
+const edgeStats = false
+
+func computeEdgeStats(edges [][]edge) string {
+	lengths := make([]int, len(edges))
+	for i, e := range edges {
+		lengths[i] = len(e)
+	}
+	sort.Slice(lengths, func(i, j int) bool {
+		return lengths[i] < lengths[j]
+	})
+	var sb strings.Builder
+	for i, p := range []int{0, 25, 50, 75, 90, 95, 99, 100} {
+		if i > 0 {
+			fmt.Fprint(&sb, ", ")
+		}
+		k := p * len(lengths) / 100
+		if k >= len(lengths) {
+			k = len(lengths) - 1
+		}
+		fmt.Fprintf(&sb, "%2d%% %d", p, lengths[k])
+	}
+	return sb.String()
+}
+
+func (s *optSuffixArraySequencer) computeEdges(data []byte) {
 	if len(data) > math.MaxInt32 {
 		panic(fmt.Errorf("lz: len(data)=%d too large", len(data)))
 	}
@@ -146,8 +173,19 @@ func (s *optSuffixArraySequencer) computeMatches(data []byte) {
 	} else {
 		s.edges = make([][]edge, k)
 	}
-	for i, u := range s.edges {
-		s.edges[i] = u[:0]
+	k *= 4
+	if k < cap(s.edgeBuf) {
+		s.edgeBuf = s.edgeBuf[:k]
+	} else {
+		s.edgeBuf = make([]edge, k)
+	}
+
+	// We need to make the access to the edges slices cache friendly.
+	// Statistics showed that 95% the edges entry will not have more than 4
+	// entries.
+	for i := range s.edges {
+		k := i * 4
+		s.edges[i] = s.edgeBuf[k : k : k+4]
 	}
 	s.nEdges = 0
 
@@ -210,15 +248,21 @@ func (s *optSuffixArraySequencer) computeMatches(data []byte) {
 	}
 	suffix.Segments(sa, lcp, s.MinMatchLen, int(maxLen), f)
 
-	// save memory and make access to the edges array more cache friendly.
-	tmp := make([]edge, s.nEdges)
-	j := 0
-	for i, e := range s.edges {
-		k := j + len(e)
-		s.edges[i] = tmp[j:k:k]
-		j = k
-		copy(s.edges[i], e)
+	if edgeStats {
+		fmt.Println(computeEdgeStats(s.edges))
 	}
+
+	/*
+		// save memory and make access to the edges array more cache friendly.
+		tmp := make([]edge, s.nEdges)
+		j := 0
+		for i, e := range s.edges {
+			k := j + len(e)
+			s.edges[i] = tmp[j:k:k]
+			j = k
+			copy(s.edges[i], e)
+		}
+	*/
 }
 
 func (s *optSuffixArraySequencer) Update(data []byte, delta int) {
@@ -229,7 +273,7 @@ func (s *optSuffixArraySequencer) Update(data []byte, delta int) {
 		s.w = 0
 	}
 
-	s.computeMatches(data)
+	s.computeEdges(data)
 }
 
 // shortestPath appends the shortest path in reversed order

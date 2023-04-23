@@ -120,6 +120,7 @@ func (s *optSuffixArraySequencer) Config() SeqConfig {
 	return &s.OSASConfig
 }
 
+/* TODO: remove
 func reverse[T any](s []T) {
 	i, j := 0, len(s)-1
 	for i < j {
@@ -128,6 +129,7 @@ func reverse[T any](s []T) {
 		j--
 	}
 }
+*/
 
 func (s *optSuffixArraySequencer) computeMatches(data []byte) {
 	if len(data) > math.MaxInt32 {
@@ -197,27 +199,25 @@ func (s *optSuffixArraySequencer) computeMatches(data []byte) {
 				continue
 			}
 			p := &s.edges[k]
-			q := *p
-			if len(q) > 0 {
-				if u := q[len(q)-1]; u.o <= o {
+			if len(*p) > 0 {
+				if (*p)[len(*p)-1].o <= o {
 					continue
 				}
 			}
 			s.nEdges++
-			*p = append(q, edge{m: uint32(m), o: o})
+			*p = append(*p, edge{m: uint32(m), o: o})
 		}
 	}
 	suffix.Segments(sa, lcp, s.MinMatchLen, int(maxLen), f)
 
+	// save memory and make access to the edges array more cache friendly.
 	tmp := make([]edge, s.nEdges)
 	j := 0
 	for i, e := range s.edges {
 		k := j + len(e)
-		d := tmp[j:k:k]
+		s.edges[i] = tmp[j:k:k]
 		j = k
-		copy(d, e)
-		reverse(d)
-		s.edges[i] = d
+		copy(s.edges[i], e)
 	}
 }
 
@@ -253,16 +253,17 @@ func (s *optSuffixArraySequencer) shortestPath(p []edge, n int) []edge {
 	for i, q := range edges {
 		ci := d[i].c
 		maxLen := uint32(n - i)
-		for _, e := range q {
-			max := e.m
+		for k := len(q) - 1; k >= 0; k-- {
+			max := q[k].m
 			if max > maxLen {
 				max = maxLen
 			}
+			o := q[k].o
 			for m := uint32(s.MinMatchLen); m <= max; m++ {
-				c := ci + s.Cost(m, e.o)
+				c := ci + s.Cost(m, o)
 				j := i + int(m)
 				if c < d[j].c {
-					d[j] = opt{m: m, o: e.o, c: c}
+					d[j] = opt{m: m, o: o, c: c}
 				}
 			}
 		}

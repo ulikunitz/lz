@@ -5,36 +5,42 @@ import (
 	"math"
 )
 
-func segments(sa, lcp []int32, m int32, maxLen int32, f func(m int, s []int32)) {
-	i := 0
-	next := maxLen + 1
-	new := false
-	for j := 1; j <= len(lcp); j++ {
-		if j < len(lcp) {
-			n := lcp[j]
+func scanLCP(sa, lcp []int32, minLen, maxLen int32, f func(m int, s []int32)) {
+	type item struct {
+		n int32
+		j int32
+	}
+	stack := make([]item, 1, 16)
+	// stack[1] = item{0, 0} -- make function in line above set item[0] to
+	// zero implicitly
+scan:
+	for j := int32(1); ; j++ {
+		var n int32
+		if j < int32(len(lcp)) {
+			n = lcp[j]
+			if n > maxLen {
+				n = maxLen
+			}
+		} else {
+			n = -1
+		}
+		for {
+			top := stack[len(stack)-1]
 			switch {
-			case n > m:
-				if n < next {
-					next = n
-				}
-				continue
-			case n == m:
-				new = true
-				continue
+			case n > top.n:
+				stack = append(stack, item{n, j - 1})
+				continue scan
+			case n == top.n:
+				continue scan
+			}
+			if top.n >= minLen {
+				f(int(top.n), sa[top.j:j])
+			}
+			stack = stack[:len(stack)-1]
+			if len(stack) == 0 {
+				break scan
 			}
 		}
-		if j-i >= 2 {
-			if next <= maxLen {
-				// call scanLCP recursively
-				segments(sa[i:j], lcp[i:j], next, maxLen, f)
-			}
-			if m == maxLen || new {
-				// Inform caller
-				f(int(m), sa[i:j])
-			}
-			new = false
-		}
-		i = j
 	}
 }
 

@@ -168,14 +168,13 @@ type hashFinder struct {
 // data has been moved delta bytes down in the slice. If delta is zero data has
 // been added.
 func (f *hashFinder) Update(p []byte, delta int) {
-	switch {
-	case delta < 0:
+	if delta < 0 || len(p) == 0 {
 		f.hash.reset()
-	case delta > 0:
+	}
+	if delta > 0 {
 		f.hash.shiftOffsets(uint32(delta))
 	}
 	if len(p) == 0 {
-		f.hash.reset()
 		f.data = f.data[:0]
 		return
 	}
@@ -324,17 +323,15 @@ type doubleHashFinder struct {
 }
 
 func (f *doubleHashFinder) Update(p []byte, delta int) {
-	switch {
-	case delta < 0:
+	if delta < 0 || len(p) == 0 {
 		f.h1.reset()
 		f.h2.reset()
-	case delta > 0:
+	}
+	if delta > 0 {
 		f.h1.shiftOffsets(uint32(delta))
 		f.h2.shiftOffsets(uint32(delta))
 	}
 	if len(p) == 0 {
-		f.h1.reset()
-		f.h2.reset()
 		f.data = f.data[:0]
 		return
 	}

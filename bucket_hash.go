@@ -187,14 +187,13 @@ type buhFinder struct {
 }
 
 func (f *buhFinder) Update(p []byte, delta int) {
-	switch {
-	case delta < 0:
+	if delta < 0 || len(p) == 0 {
 		f.bucketHash.reset()
-	case delta > 0:
+	}
+	if delta > 0 {
 		f.bucketHash.shiftOffsets(uint32(delta))
 	}
 	if len(p) == 0 {
-		f.bucketHash.reset()
 		f.data = f.data[:0]
 		return
 	}

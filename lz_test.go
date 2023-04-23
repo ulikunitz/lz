@@ -363,6 +363,15 @@ func BenchmarkSequencers(b *testing.B) {
 				WindowSize: 8 << 20,
 			},
 		}},
+		{"OSASequencer", &OSASConfig{
+			MinMatchLen: 2,
+			MaxMatchLen: 273,
+			Cost:        XZCost,
+			BufConfig: BufConfig{
+				WindowSize: 512 << 10,
+				BufferSize: 512 << 10,
+			},
+		}},
 	}
 
 	for _, bm := range benchmarks {

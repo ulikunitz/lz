@@ -193,8 +193,11 @@ func (cfg *BufConfig) Verify() error {
 //	WindowSize: BufferSize
 //	BlockSize:  128 KiB
 func (cfg *BufConfig) ApplyDefaults() {
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * _MiB
+	}
 	if cfg.BufferSize == 0 {
-		cfg.BufferSize = 8 * _MiB
+		cfg.BufferSize = cfg.WindowSize
 	}
 	if cfg.ShrinkSize == 0 {
 		if cfg.BufferSize < 64*_KiB {
@@ -202,9 +205,6 @@ func (cfg *BufConfig) ApplyDefaults() {
 		} else {
 			cfg.ShrinkSize = 32 * _KiB
 		}
-	}
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = cfg.BufferSize
 	}
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * _KiB

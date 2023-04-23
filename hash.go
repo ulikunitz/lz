@@ -199,24 +199,24 @@ func (f *hashFinder) AppendMatchOffsets(m []uint32, i int) []uint32 {
 }
 
 type DHConfig struct {
-	H1cfg HashConfig
-	H2cfg HashConfig
+	H1 HashConfig
+	H2 HashConfig
 }
 
 func (cfg *DHConfig) ApplyDefaults() {
-	cfg.H1cfg.ApplyDefaults()
-	cfg.H2cfg.ApplyDefaults()
+	cfg.H1.ApplyDefaults()
+	cfg.H2.ApplyDefaults()
 }
 
 func (cfg *DHConfig) Verify() error {
 	var err error
-	if err = cfg.H1cfg.Verify(); err != nil {
+	if err = cfg.H1.Verify(); err != nil {
 		return err
 	}
-	if err = cfg.H2cfg.Verify(); err != nil {
+	if err = cfg.H2.Verify(); err != nil {
 		return err
 	}
-	il1, il2 := cfg.H1cfg.InputLen, cfg.H2cfg.InputLen
+	il1, il2 := cfg.H1.InputLen, cfg.H2.InputLen
 	if !(il1 < il2) {
 		return fmt.Errorf("lz: inputLen1=%d must be < inputLen2=%d",
 			il1, il2)
@@ -231,11 +231,11 @@ func (cfg *DHConfig) NewMatchFinder() (mf MatchFinder, err error) {
 		return nil, err
 	}
 	f := new(doubleHashFinder)
-	err = f.h1.init(cfg.H1cfg.InputLen, cfg.H1cfg.HashBits)
+	err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits)
 	if err != nil {
 		return nil, err
 	}
-	err = f.h2.init(cfg.H2cfg.InputLen, cfg.H2cfg.HashBits)
+	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
 	if err != nil {
 		return nil, err
 	}

@@ -60,12 +60,12 @@ func (s *backwardDoubleHashSequencer) init(cfg BDHSConfig) error {
 	}
 
 	f := &s.doubleHashFinder
-	err = f.h1.init(cfg.H1cfg.InputLen, cfg.H1cfg.HashBits)
+	err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits)
 	if err != nil {
 		return err
 	}
 
-	err = f.h2.init(cfg.H2cfg.InputLen, cfg.H2cfg.HashBits)
+	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
 	if err != nil {
 		return err
 	}

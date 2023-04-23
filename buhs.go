@@ -12,23 +12,35 @@ type bucketHashSequencer struct {
 
 // BUHSConfig provides the configuration parameters for the bucket hash sequencer.
 type BUHSConfig struct {
-	BufConfig
-	BUHConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+
+	InputLen   int
+	HashBits   int
+	BucketSize int
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *BUHSConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
-	cfg.BUHConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
+	b, _ := buhCfg(cfg)
+	b.ApplyDefaults()
+	setBUHCfg(cfg, b)
 }
 
 // Verify checks the config for correctness.
 func (cfg *BUHSConfig) Verify() error {
 	var err error
-	if err = cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err = bc.Verify(); err != nil {
 		return err
 	}
-	if err = cfg.BUHConfig.Verify(); err != nil {
+	b, _ := buhCfg(cfg)
+	if err = b.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -52,7 +64,8 @@ func (s *bucketHashSequencer) init(cfg BUHSConfig) error {
 		return err
 	}
 
-	if err = s.buhFinder.init(&cfg.BUHConfig); err != nil {
+	b, _ := buhCfg(&cfg)
+	if err = s.buhFinder.init(&b); err != nil {
 		return err
 	}
 

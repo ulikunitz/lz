@@ -6,8 +6,13 @@ import (
 
 // BHSConfig provides the parameters for the backward hash sequencer.
 type BHSConfig struct {
-	BufConfig
-	HConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+
+	InputLen int
+	HashBits int
 }
 
 // NewSequencer create a new backward hash sequencer.
@@ -21,16 +26,22 @@ func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *BHSConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
-	cfg.HConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
+	h, _ := hashCfg(cfg)
+	h.ApplyDefaults()
+	setHashCfg(cfg, h)
 }
 
 // Verify checks the config for correctness.
 func (cfg *BHSConfig) Verify() error {
-	if err := cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err := bc.Verify(); err != nil {
 		return err
 	}
-	if err := cfg.HConfig.Verify(); err != nil {
+	h, _ := hashCfg(cfg)
+	if err := h.Verify(); err != nil {
 		return err
 	}
 	return nil

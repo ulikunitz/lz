@@ -18,22 +18,33 @@ type hashSequencer struct {
 // HashSequencer. Sequencer doesn't use ShrinkSize and and BufferSize itself,
 // but it provides it to other code that have to handle the buffer.
 type HSConfig struct {
-	BufConfig
-	HConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+
+	InputLen int
+	HashBits int
 }
 
 // ApplyDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
-	cfg.HConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
+	h, _ := hashCfg(cfg)
+	h.ApplyDefaults()
+	setHashCfg(cfg, h)
 }
 
 // Verify checks the config for correctness.
 func (cfg *HSConfig) Verify() error {
-	if err := cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err := bc.Verify(); err != nil {
 		return err
 	}
-	if err := cfg.HConfig.Verify(); err != nil {
+	h, _ := hashCfg(cfg)
+	if err := h.Verify(); err != nil {
 		return err
 	}
 	return nil

@@ -16,13 +16,9 @@ func TestHashSequencerSimple(t *testing.T) {
 
 	var s hashSequencer
 	err := s.init(HSConfig{
-		BufConfig{
-			WindowSize: 1024,
-			BlockSize:  512,
-		},
-		HConfig{
-			InputLen: 3,
-		},
+		WindowSize: 1024,
+		BlockSize:  512,
+		InputLen:   3,
 	})
 
 	if err != nil {
@@ -86,14 +82,10 @@ func FuzzHashSequencer(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
 		cfg := &HSConfig{
-			BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
-			HConfig{
-				InputLen: inputLen,
-				HashBits: hashBits,
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
+			InputLen:   inputLen,
+			HashBits:   hashBits,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -107,13 +99,9 @@ func TestWrapOldHashSequencer(t *testing.T) {
 	)
 
 	cfg := HSConfig{
-		BufConfig{
-			WindowSize: windowSize,
-			BlockSize:  blockSize,
-		},
-		HConfig{
-			InputLen: 3,
-		},
+		WindowSize: windowSize,
+		BlockSize:  blockSize,
+		InputLen:   3,
 	}
 	ws, err := cfg.NewSequencer()
 	if err != nil {
@@ -166,13 +154,11 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	r := io.TeeReader(f, h1)
 
 	cfg := HSConfig{
-		BufConfig{
-			ShrinkSize: windowSize + 100,
-			WindowSize: windowSize,
-			BufferSize: 2 * windowSize,
-			BlockSize:  blockSize,
-		},
-		HConfig{InputLen: 3},
+		ShrinkSize: windowSize + 100,
+		WindowSize: windowSize,
+		BufferSize: 2 * windowSize,
+		BlockSize:  blockSize,
+		InputLen:   3,
 	}
 	ws, err := cfg.NewSequencer()
 	if err != nil {
@@ -275,13 +261,9 @@ func TestLargeParameters(t *testing.T) {
 	}{
 		// 1 << 30 is a Gigabyte
 		{enwik7, 1 << 30, HSConfig{
-			BufConfig{
-				WindowSize: 8 << 20,
-				BlockSize:  128 * _KiB,
-			},
-			HConfig{
-				InputLen: 3,
-			},
+			WindowSize: 8 << 20,
+			BlockSize:  128 * _KiB,
+			InputLen:   3,
 		}},
 	}
 

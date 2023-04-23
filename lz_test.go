@@ -18,7 +18,7 @@ func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
 	if err := cfg.Verify(); err != nil {
 		t.Skip()
 	}
-	bcfg := cfg.BufferConfig()
+	bcfg := BufferConfig(cfg)
 
 	seq, err := cfg.NewSequencer()
 	if err != nil {
@@ -59,14 +59,10 @@ func FuzzBHS(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
 		cfg := &BHSConfig{
-			BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
-			HConfig{
-				InputLen: inputLen,
-				HashBits: hashBits,
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
+			InputLen:   inputLen,
+			HashBits:   hashBits,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -80,14 +76,12 @@ func FuzzDHS(f *testing.F) {
 		p []byte) {
 
 		cfg := &DHSConfig{
-			BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
-			DHConfig{
-				H1: HConfig{inputLen1, hashBits1},
-				H2: HConfig{inputLen2, hashBits2},
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
+			InputLen1:  inputLen1,
+			HashBits1:  hashBits1,
+			InputLen2:  inputLen2,
+			HashBits2:  hashBits2,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -101,14 +95,12 @@ func FuzzBDHS(f *testing.F) {
 		p []byte) {
 
 		cfg := &BDHSConfig{
-			BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
-			DHConfig{
-				H1: HConfig{inputLen1, hashBits1},
-				H2: HConfig{inputLen2, hashBits2},
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
+			InputLen1:  inputLen1,
+			InputLen2:  inputLen2,
+			HashBits1:  hashBits1,
+			HashBits2:  hashBits2,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -121,15 +113,11 @@ func FuzzBUHS(f *testing.F) {
 		p []byte) {
 
 		cfg := &BUHSConfig{
-			BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
-			BUHConfig{
-				InputLen:   inputLen,
-				HashBits:   hashBits,
-				BucketSize: bucketSize,
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
+			InputLen:   inputLen,
+			HashBits:   hashBits,
+			BucketSize: bucketSize,
 		}
 		cfg.ApplyDefaults()
 		// We need to limit the memory consumption for Fuzzing.
@@ -144,10 +132,8 @@ func FuzzGSAS(f *testing.F) {
 	f.Add([]byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, p []byte) {
 		cfg := &GSASConfig{
-			BufConfig: BufConfig{
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
+			WindowSize: 1024,
+			BlockSize:  512,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -158,11 +144,9 @@ func FuzzOSAS(f *testing.F) {
 	f.Add([]byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, p []byte) {
 		cfg := &OSASConfig{
-			BufConfig: BufConfig{
-				BufferSize: 1024,
-				WindowSize: 1024,
-				BlockSize:  512,
-			},
+			BufferSize: 1024,
+			WindowSize: 1024,
+			BlockSize:  512,
 		}
 		testSequencer(t, cfg, p)
 	})
@@ -209,168 +193,94 @@ func BenchmarkSequencers(b *testing.B) {
 		cfg  SeqConfig
 	}{
 		{"HashSequencer-3", &HSConfig{
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
-			HConfig: HConfig{
-				InputLen: 3,
-				HashBits: 15,
-			},
+			WindowSize: 8 << 20,
+			InputLen:   3,
+			HashBits:   15,
 		}},
 		{"HashSequencer-4", &HSConfig{
-			HConfig: HConfig{
-				InputLen: 4,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   4,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"HashSequencer-5", &HSConfig{
-			HConfig: HConfig{
-				InputLen: 5,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   5,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"HashSequencer-8", &HSConfig{
-			HConfig: HConfig{
-				InputLen: 8,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   8,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"BackwardHashSequencer-3", &BHSConfig{
-			HConfig: HConfig{
-				InputLen: 3,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   3,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"BackwardHashSequencer-4", &BHSConfig{
-			HConfig: HConfig{
-				InputLen: 4,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   4,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"BackwardHashSequencer-5", &BHSConfig{
-			HConfig: HConfig{
-				InputLen: 5,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   5,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
-		{"BackwardHashSequencer-8", &HSConfig{
-			HConfig: HConfig{
-				InputLen: 8,
-				HashBits: 15,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+		{"BackwardHashSequencer-8", &BHSConfig{
+			InputLen:   8,
+			HashBits:   15,
+			WindowSize: 8 << 20,
 		}},
 		{"DoubleHashSequencer-3,6", &DHSConfig{
-			DHConfig: DHConfig{
-				H1: HConfig{
-					InputLen: 3, HashBits: 15,
-				},
-				H2: HConfig{
-					InputLen: 6, HashBits: 18,
-				},
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen1:  2,
+			HashBits1:  15,
+			InputLen2:  6,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
 		}},
 		{"DoubleHashSequencer-4,6", &DHSConfig{
-			DHConfig: DHConfig{
-				H1: HConfig{
-					InputLen: 4,
-					HashBits: 15,
-				},
-				H2: HConfig{
-					InputLen: 6,
-					HashBits: 18,
-				},
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen1:  4,
+			HashBits1:  15,
+			InputLen2:  6,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
 		}},
 		{"BDHSequencer-3,6", &BDHSConfig{
-			DHConfig: DHConfig{
-				H1: HConfig{
-					InputLen: 3,
-					HashBits: 15,
-				},
-				H2: HConfig{
-					InputLen: 6,
-					HashBits: 18,
-				},
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen1:  3,
+			HashBits1:  15,
+			InputLen2:  6,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
 		}},
 		{"BDHSequencer-4,6", &BDHSConfig{
-			DHConfig: DHConfig{
-				H1: HConfig{
-					InputLen: 4,
-					HashBits: 15,
-				},
-				H2: HConfig{
-					InputLen: 6,
-					HashBits: 18,
-				},
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen1:  4,
+			HashBits1:  15,
+			InputLen2:  6,
+			HashBits2:  18,
+			WindowSize: 8 << 20,
 		}},
 		{"GSASequencer", &GSASConfig{
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			WindowSize: 8 << 20,
 		}},
 		{"BUHSequencer-3-12", &BUHSConfig{
-			BUHConfig: BUHConfig{
-				InputLen:   3,
-				HashBits:   18,
-				BucketSize: 12,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   3,
+			HashBits:   18,
+			BucketSize: 12,
+			WindowSize: 8 << 20,
 		}},
 		{"BUHSequencer-3-100", &BUHSConfig{
-			BUHConfig: BUHConfig{
-				InputLen:   3,
-				HashBits:   18,
-				BucketSize: 100,
-			},
-			BufConfig: BufConfig{
-				WindowSize: 8 << 20,
-			},
+			InputLen:   3,
+			HashBits:   18,
+			BucketSize: 100,
+			WindowSize: 8 << 20,
 		}},
 		{"OSASequencer", &OSASConfig{
 			MinMatchLen: 2,
 			MaxMatchLen: 273,
 			Cost:        XZCost,
-			BufConfig: BufConfig{
-				WindowSize: 512 << 10,
-				BufferSize: 512 << 10,
-			},
+			WindowSize:  512 << 10,
+			BufferSize:  512 << 10,
 		}},
 	}
 
@@ -438,10 +348,8 @@ func BenchmarkDecoders(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
 			hs, err := HSConfig{
-				HConfig: HConfig{InputLen: 3},
-				BufConfig: BufConfig{
-					WindowSize: bm.winSize,
-				},
+				InputLen:   3,
+				WindowSize: bm.winSize,
 			}.NewSequencer()
 
 			if err != nil {

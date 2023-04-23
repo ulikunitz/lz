@@ -1,7 +1,9 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 )
 
 type bucketEntry struct {
@@ -35,13 +37,43 @@ func (bh *bucketHash) add(h, pos, val uint32) {
 	*pi = byte(i)
 }
 
-type BUHConfig struct {
+type buhConfig struct {
 	InputLen   int
 	HashBits   int
 	BucketSize int
 }
 
-func (cfg *BUHConfig) ApplyDefaults() {
+var errNoBuhConfig = errors.New("lz: no BUH configuration")
+
+func buhCfg(cfg SeqConfig) (b buhConfig, err error) {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	f := hasVal(v, "InputLen")
+	f = f && hasVal(v, "HashBits")
+	f = f && hasVal(v, "BucketSize")
+	if !f {
+		return buhConfig{}, errNoBuhConfig
+	}
+	b.InputLen = iVal(v, "InputLen")
+	b.HashBits = iVal(v, "HashBits")
+	b.BucketSize = iVal(v, "BucketSize")
+	return b, nil
+}
+
+func setBUHCfg(cfg SeqConfig, b buhConfig) error {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	f := hasVal(v, "InputLen")
+	f = f && hasVal(v, "HashBits")
+	f = f && hasVal(v, "BucketSize")
+	if !f {
+		return errNoBuhConfig
+	}
+	setIVal(v, "InputLen", b.InputLen)
+	setIVal(v, "HashBits", b.HashBits)
+	setIVal(v, "BucketSize", b.HashBits)
+	return nil
+}
+
+func (cfg *buhConfig) ApplyDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -53,7 +85,7 @@ func (cfg *BUHConfig) ApplyDefaults() {
 	}
 }
 
-func (cfg *BUHConfig) Verify() error {
+func (cfg *buhConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
@@ -75,13 +107,13 @@ func (cfg *BUHConfig) Verify() error {
 	return nil
 }
 
-func (cfg *BUHConfig) NewMatchFinder() (mf MatchFinder, err error) {
+func (cfg *buhConfig) NewMatchFinder() (mf MatchFinder, err error) {
 	f := new(buhFinder)
 	err = f.bucketHash.init(cfg)
 	return f, err
 }
 
-func (f *bucketHash) init(cfg *BUHConfig) error {
+func (f *bucketHash) init(cfg *buhConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {

@@ -6,17 +6,26 @@ import (
 
 // DHSConfig provides the configuration parameters for the DoubleHashSequencer.
 type DHSConfig struct {
-	BufConfig
-	DHConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize int
+
+	InputLen1 int
+	HashBits1 int
+	InputLen2 int
+	HashBits2 int
 }
 
 // Verify checks the configuration for errors.
 func (cfg *DHSConfig) Verify() error {
 	var err error
-	if err = cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err = bc.Verify(); err != nil {
 		return err
 	}
-	if err = cfg.DHConfig.Verify(); err != nil {
+	d, _ := dhCfg(cfg)
+	if err = d.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -25,8 +34,12 @@ func (cfg *DHSConfig) Verify() error {
 // ApplyDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *DHSConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
-	cfg.DHConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
+	d, _ := dhCfg(cfg)
+	d.ApplyDefaults()
+	setDHCfg(cfg, d)
 }
 
 // NewSequencer creates a new DoubleHashSequencer.
@@ -60,11 +73,11 @@ func (s *doubleHashSequencer) init(cfg DHSConfig) error {
 	}
 
 	f := &s.doubleHashFinder
-	err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits)
+	err = f.h1.init(cfg.InputLen1, cfg.HashBits1)
 	if err != nil {
 		return err
 	}
-	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
+	err = f.h2.init(cfg.InputLen2, cfg.HashBits2)
 	if err != nil {
 		return err
 	}

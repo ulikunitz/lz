@@ -9,9 +9,9 @@ import (
 // doesn't need to take care of filling the Sequencer with additional data. The
 // returned sequencer returns EOF if no further data is available.
 func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
-	cfg := seq.Config().BufferConfig()
+	cfg := BC(seq)
 	s := &WrappedSequencer{
-		BufConfig: seq.Config().BufferConfig(),
+		BufConfig: cfg,
 		r:         r,
 		s:         seq,
 		data:      make([]byte, cfg.BufferSize, cfg.BufferSize+7),

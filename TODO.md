@@ -2,7 +2,8 @@
 
 ## updates
 
-- We are fine.
+- Make all sequencer configs flat
+- Don't export the finders.
 
 ## v0.3.0
 

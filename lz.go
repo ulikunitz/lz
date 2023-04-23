@@ -22,6 +22,7 @@ package lz
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 // Kilobytes and Megabyte defined as the more precise kibibyte and mebibyte.
@@ -82,9 +83,6 @@ type Sequencer interface {
 	// need to find a new mechanism for the configuration of buffer sizes
 	// and shrink sizes.
 	Config() SeqConfig
-
-	// BufferConfig returns the buffer configuration.
-	BufferConfig() BufConfig
 }
 
 // BufConfig describes the various sizes relevant for the buffer. Note that
@@ -100,12 +98,44 @@ type BufConfig struct {
 	BlockSize  int
 }
 
+func iVal(v reflect.Value, name string) int {
+	return int(v.FieldByName(name).Int())
+}
+
+// BufferConfig reads the BufConfig from the sequencer configuration.
+func BufferConfig(x SeqConfig) BufConfig {
+	v := reflect.Indirect(reflect.ValueOf(x))
+	bc := BufConfig{
+		ShrinkSize: iVal(v, "ShrinkSize"),
+		BufferSize: iVal(v, "BufferSize"),
+		WindowSize: iVal(v, "WindowSize"),
+		BlockSize:  iVal(v, "BlockSize"),
+	}
+	return bc
+}
+
+func setIVal(v reflect.Value, name string, i int) {
+	v.FieldByName(name).SetInt(int64(i))
+}
+
+func SetBufferConfig(x SeqConfig, bc BufConfig) {
+	v := reflect.Indirect(reflect.ValueOf(x))
+	setIVal(v, "ShrinkSize", bc.ShrinkSize)
+	setIVal(v, "BufferSize", bc.BufferSize)
+	setIVal(v, "WindowSize", bc.WindowSize)
+	setIVal(v, "BlockSize", bc.BlockSize)
+}
+
+// BC gets the buffer configuration for the sequencer.
+func BC(seq Sequencer) BufConfig {
+	return BufferConfig(seq.Config())
+}
+
 // SeqConfig generates  new sequencer instances. Note that the sequencer doesn't
 // use ShrinkSize and BufferSize directly but we added it here, so it can be
 // used for the WriteSequencer which provides a WriteCloser interface.
 type SeqConfig interface {
 	NewSequencer() (s Sequencer, err error)
-	BufferConfig() BufConfig
 	ApplyDefaults()
 	Verify() error
 }
@@ -184,4 +214,21 @@ func (cfg *BufConfig) ApplyDefaults() {
 // BufConfig returns the buffer configuration.
 func (cfg *BufConfig) BufferConfig() BufConfig {
 	return *cfg
+}
+
+// A matchFinder is used to find potential matches.
+type MatchFinder interface {
+	// Update informs the match finder to data changes in the data slice. If
+	// delta is less than zero than complete new data is provided. If the
+	// delta is positive data has been moved delta bytes down in the slice.
+	// If delta is zero data has been added.
+	Update(data []byte, delta int)
+
+	// Process segment puts all hashes into the has table unless there is
+	// not enough enough data at the end.
+	ProcessSegment(a, b int)
+
+	// AppendMatchOffsets looks for potential matches and adds the position
+	// i to the finder.
+	AppendMatchOffsets(m []uint32, i int) []uint32
 }

@@ -7,17 +7,26 @@ import (
 // BDHSConfig provides the configuration parameters for the backward-looking
 // double Hash Sequencer.
 type BDHSConfig struct {
-	BufConfig
-	DHConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+
+	InputLen1 int
+	HashBits1 int
+	InputLen2 int
+	HashBits2 int
 }
 
 // Verify checks the configuration for errors.
 func (cfg *BDHSConfig) Verify() error {
+	bc := BufferConfig(cfg)
 	var err error
-	if err = cfg.BufConfig.Verify(); err != nil {
+	if err = bc.Verify(); err != nil {
 		return err
 	}
-	if err = cfg.DHConfig.Verify(); err != nil {
+	d, _ := dhCfg(cfg)
+	if err = d.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -26,8 +35,12 @@ func (cfg *BDHSConfig) Verify() error {
 // ApplyDefaults sets for the zero fields in the configuration to the default
 // values.
 func (cfg *BDHSConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
-	cfg.DHConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
+	d, _ := dhCfg(cfg)
+	d.ApplyDefaults()
+	setDHCfg(cfg, d)
 }
 
 // NewSequencer creates a new BackwardDoubleHashSequencer.
@@ -60,12 +73,12 @@ func (s *backwardDoubleHashSequencer) init(cfg BDHSConfig) error {
 	}
 
 	f := &s.doubleHashFinder
-	err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits)
+	err = f.h1.init(cfg.InputLen1, cfg.HashBits1)
 	if err != nil {
 		return err
 	}
 
-	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
+	err = f.h2.init(cfg.InputLen2, cfg.HashBits2)
 	if err != nil {
 		return err
 	}

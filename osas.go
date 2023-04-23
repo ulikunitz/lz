@@ -37,7 +37,10 @@ func XZCost(m, o uint32) uint64 {
 }
 
 type OSASConfig struct {
-	BufConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
 
 	MinMatchLen int
 	MaxMatchLen int
@@ -46,12 +49,14 @@ type OSASConfig struct {
 }
 
 func (cfg *OSASConfig) ApplyDefaults() {
-	if cfg.BufferSize == 0 {
-		cfg.BufConfig.ApplyDefaults()
-		cfg.BufferSize = cfg.WindowSize
+	bc := BufferConfig(cfg)
+	if bc.BufferSize == 0 {
+		bc.ApplyDefaults()
+		bc.BufferSize = bc.WindowSize
 	} else {
-		cfg.BufConfig.ApplyDefaults()
+		bc.ApplyDefaults()
 	}
+	SetBufferConfig(cfg, bc)
 
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
@@ -67,7 +72,8 @@ func (cfg *OSASConfig) ApplyDefaults() {
 
 func (cfg *OSASConfig) Verify() error {
 	var err error
-	if err = cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err = bc.Verify(); err != nil {
 		return err
 	}
 

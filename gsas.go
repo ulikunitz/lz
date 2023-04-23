@@ -10,14 +10,19 @@ import (
 // GSASConfig defines the configuration parameter for the greedy suffix array
 // sequencer.
 type GSASConfig struct {
-	BufConfig
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+
 	// minimum match len
 	MinMatchLen int
 }
 
 // Verify checks the configuration for inconsistencies.
 func (cfg *GSASConfig) Verify() error {
-	if err := cfg.BufConfig.Verify(); err != nil {
+	bc := BufferConfig(cfg)
+	if err := bc.Verify(); err != nil {
 		return err
 	}
 	if !(2 <= cfg.MinMatchLen) {
@@ -43,7 +48,9 @@ func (cfg *GSASConfig) Verify() error {
 // ApplyDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
 func (cfg *GSASConfig) ApplyDefaults() {
-	cfg.BufConfig.ApplyDefaults()
+	bc := BufferConfig(cfg)
+	bc.ApplyDefaults()
+	SetBufferConfig(cfg, bc)
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
 	}

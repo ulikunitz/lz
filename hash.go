@@ -1,7 +1,9 @@
 package lz
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 )
 
 // prime is used by [hashValue].
@@ -82,15 +84,44 @@ func (h *hash) shiftOffsets(delta uint32) {
 	}
 }
 
-// HConfig provides the configuration for the hash match finder.
-type HConfig struct {
+// hashConfig provides the configuration for the hash match finder.
+type hashConfig struct {
 	InputLen int
 	HashBits int
 }
 
+func hasVal(v reflect.Value, name string) bool {
+	_, ok := v.Type().FieldByName(name)
+	return ok
+}
+
+var errNoHash = errors.New("lz: cfg doesn't support a single hash")
+
+func hashCfg(cfg SeqConfig) (hcfg hashConfig, err error) {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
+		return hashConfig{}, errNoHash
+	}
+	hcfg = hashConfig{
+		InputLen: iVal(v, "InputLen"),
+		HashBits: iVal(v, "HashBits"),
+	}
+	return hcfg, nil
+}
+
+func setHashCfg(cfg SeqConfig, hcfg hashConfig) error {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
+		return errNoHash
+	}
+	setIVal(v, "InputLen", hcfg.InputLen)
+	setIVal(v, "HashBits", hcfg.HashBits)
+	return nil
+}
+
 // ApplyDefaults sets the defaults of the HashConfig. The default input length
 // is 3 and the hash bits are 18.
-func (cfg *HConfig) ApplyDefaults() {
+func (cfg *hashConfig) ApplyDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -100,7 +131,7 @@ func (cfg *HConfig) ApplyDefaults() {
 }
 
 // Verify checks the configuration parameters.
-func (cfg *HConfig) Verify() error {
+func (cfg *hashConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in range [2,8]")
 	}
@@ -116,7 +147,7 @@ func (cfg *HConfig) Verify() error {
 }
 
 // NewMatchFinder initializes a new match finder.
-func (cfg *HConfig) NewMatchFinder() (mf MatchFinder, err error) {
+func (cfg *hashConfig) NewMatchFinder() (mf MatchFinder, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -198,17 +229,60 @@ func (f *hashFinder) AppendMatchOffsets(m []uint32, i int) []uint32 {
 	return m
 }
 
-type DHConfig struct {
-	H1 HConfig
-	H2 HConfig
+type dhConfig struct {
+	H1 hashConfig
+	H2 hashConfig
 }
 
-func (cfg *DHConfig) ApplyDefaults() {
+var errNoDoubleHash = errors.New(
+	"lz: sequencer config doesn't support double hash")
+
+func dhCfg(cfg SeqConfig) (c dhConfig, err error) {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	var f bool
+	f = hasVal(v, "InputLen1")
+	f = f && hasVal(v, "InputLen2")
+	f = f && hasVal(v, "HashBits1")
+	f = f && hasVal(v, "HashBits2")
+	if !f {
+		return dhConfig{}, errNoDoubleHash
+	}
+	c = dhConfig{
+		H1: hashConfig{
+			InputLen: iVal(v, "InputLen1"),
+			HashBits: iVal(v, "HashBits1"),
+		},
+		H2: hashConfig{
+			InputLen: iVal(v, "InputLen2"),
+			HashBits: iVal(v, "HashBits2"),
+		},
+	}
+	return c, nil
+}
+
+func setDHCfg(cfg SeqConfig, c dhConfig) error {
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	var f bool
+	f = hasVal(v, "InputLen1")
+	f = f && hasVal(v, "InputLen2")
+	f = f && hasVal(v, "HashBits1")
+	f = f && hasVal(v, "HashBits2")
+	if !f {
+		return errNoDoubleHash
+	}
+	setIVal(v, "InputLen1", c.H1.InputLen)
+	setIVal(v, "HashBits1", c.H1.HashBits)
+	setIVal(v, "InputLen2", c.H2.InputLen)
+	setIVal(v, "HashBits2", c.H2.HashBits)
+	return nil
+}
+
+func (cfg *dhConfig) ApplyDefaults() {
 	cfg.H1.ApplyDefaults()
 	cfg.H2.ApplyDefaults()
 }
 
-func (cfg *DHConfig) Verify() error {
+func (cfg *dhConfig) Verify() error {
 	var err error
 	if err = cfg.H1.Verify(); err != nil {
 		return err
@@ -225,7 +299,7 @@ func (cfg *DHConfig) Verify() error {
 	return nil
 }
 
-func (cfg *DHConfig) NewMatchFinder() (mf MatchFinder, err error) {
+func (cfg *dhConfig) NewMatchFinder() (mf MatchFinder, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err

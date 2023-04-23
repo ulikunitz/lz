@@ -82,6 +82,9 @@ type Sequencer interface {
 	// need to find a new mechanism for the configuration of buffer sizes
 	// and shrink sizes.
 	Config() SeqConfig
+
+	// BufferConfig returns the buffer configuration.
+	BufferConfig() BufConfig
 }
 
 // BufConfig describes the various sizes relevant for the buffer. Note that

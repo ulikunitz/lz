@@ -153,6 +153,21 @@ func FuzzGSAS(f *testing.F) {
 	})
 }
 
+func FuzzOSAS(f *testing.F) {
+	f.Add([]byte("abbababb"))
+	f.Add([]byte("=====foofoobarfoobar bartender===="))
+	f.Fuzz(func(t *testing.T, p []byte) {
+		cfg := &OSASConfig{
+			BufConfig: BufConfig{
+				BufferSize: 1024,
+				WindowSize: 1024,
+				BlockSize:  512,
+			},
+		}
+		testSequencer(t, cfg, p)
+	})
+}
+
 func newTestSequencer(tb testing.TB, cfg SeqConfig) Sequencer {
 	s, err := cfg.NewSequencer()
 	if err != nil {

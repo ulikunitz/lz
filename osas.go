@@ -232,6 +232,11 @@ func (s *optSuffixArraySequencer) computeEdges(data []byte) {
 				return x < y
 			})
 		*/
+		/*
+			slices.SortFunc(seg, func(x, y int32) bool {
+				return x < y
+			})
+		*/
 		slices.Sort(seg)
 		for j := len(seg) - 1; j > 0; j-- {
 			i := seg[j]

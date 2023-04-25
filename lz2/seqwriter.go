@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 import (
 	"errors"
@@ -21,7 +21,8 @@ type SeqWriter struct {
 	// w is the position of the window head in data slice.
 	w int
 
-	seq Sequencer
+	seq       Sequencer
+	updateLen int
 
 	BufConfig
 }
@@ -56,7 +57,8 @@ func (w *SeqWriter) Init(seq Sequencer, data []byte) error {
 		BufConfig: bc,
 	}
 	w.data = ensureMargin(w.data)
-	seq.Update(data, -1)
+	w.seq.Update(w.data, -1)
+	w.updateLen = len(w.data)
 	return nil
 }
 
@@ -92,6 +94,7 @@ func (w *SeqWriter) Reset(data []byte) error {
 		panic("unexpected capacity")
 	}
 	w.seq.Update(w.data, -1)
+	w.updateLen = len(w.data)
 	return nil
 }
 
@@ -133,6 +136,7 @@ func (w *SeqWriter) Shrink() int {
 	w.start += int64(delta)
 	w.w = w.ShrinkSize
 	w.seq.Update(w.data, delta)
+	w.updateLen = len(w.data)
 	return delta
 }
 
@@ -163,7 +167,6 @@ func (w *SeqWriter) Write(p []byte) (n int, err error) {
 	} else {
 		w.data = append(w.data, p...)
 	}
-	w.seq.Update(w.data, 0)
 	return len(p), err
 }
 
@@ -187,13 +190,11 @@ func (w *SeqWriter) ReadFrom(r io.Reader) (n int64, err error) {
 				if err == io.EOF {
 					err = nil
 				}
-				w.seq.Update(w.data, 0)
 				return n, err
 			}
 			p = p[k:]
 		}
 		if len(w.data) == w.BufferSize {
-			w.seq.Update(w.data, 0)
 			return n, ErrFullBuffer
 		}
 		k := 2 * cap(w.data)
@@ -210,6 +211,10 @@ func (w *SeqWriter) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (w *SeqWriter) Sequence(blk *Block, flags int) (n int, err error) {
+	if len(w.data) != w.updateLen {
+		w.seq.Update(w.data, 0)
+		w.updateLen = len(w.data)
+	}
 	n, err = w.seq.Sequence(blk, flags)
 	w.w += n
 	return n, err

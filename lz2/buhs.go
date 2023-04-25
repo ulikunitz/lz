@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 // bucketHashSequencer allows the creation of sequence blocks using a simple hash
 // table.

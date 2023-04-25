@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 import (
 	"fmt"

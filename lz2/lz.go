@@ -17,7 +17,7 @@
 // implemented by [DecBuffer].
 //
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
-package lz
+package lz2
 
 import (
 	"errors"

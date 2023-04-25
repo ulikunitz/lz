@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestWindow_Write(t *testing.T) {
-	const file = "testdata/enwik7"
+	const file = "../testdata/enwik7"
 	data, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)
@@ -46,7 +46,7 @@ func TestWindow_Write(t *testing.T) {
 }
 
 func TestWindow_ReadFrom(t *testing.T) {
-	const file = "testdata/enwik7"
+	const file = "../testdata/enwik7"
 	f, err := os.Open(file)
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", file, err)
@@ -91,7 +91,7 @@ func TestWindow_ReadFrom(t *testing.T) {
 }
 
 func TestWindow_shrink(t *testing.T) {
-	const file = "testdata/enwik7"
+	const file = "../testdata/enwik7"
 	data, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)

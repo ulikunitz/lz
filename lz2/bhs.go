@@ -1,23 +1,11 @@
-package lz
+package lz2
 
 import (
 	"math/bits"
 )
 
-// hashSequencer allows the creation of sequence blocks using a simple hash
-// table.
-type hashSequencer struct {
-	hashFinder
-
-	w int
-
-	HSConfig
-}
-
-// HSConfig provides the configuration parameters for the
-// HashSequencer. Sequencer doesn't use ShrinkSize and and BufferSize itself,
-// but it provides it to other code that have to handle the buffer.
-type HSConfig struct {
+// BHSConfig provides the parameters for the backward hash sequencer.
+type BHSConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -27,8 +15,17 @@ type HSConfig struct {
 	HashBits int
 }
 
+// NewSequencer create a new backward hash sequencer.
+func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
+	bhs := new(backwardHashSequencer)
+	if err = bhs.init(cfg); err != nil {
+		return nil, err
+	}
+	return bhs, nil
+}
+
 // ApplyDefaults sets values that are zero to their defaults values.
-func (cfg *HSConfig) ApplyDefaults() {
+func (cfg *BHSConfig) ApplyDefaults() {
 	bc := BufferConfig(cfg)
 	bc.ApplyDefaults()
 	SetBufferConfig(cfg, bc)
@@ -38,7 +35,7 @@ func (cfg *HSConfig) ApplyDefaults() {
 }
 
 // Verify checks the config for correctness.
-func (cfg *HSConfig) Verify() error {
+func (cfg *BHSConfig) Verify() error {
 	bc := BufferConfig(cfg)
 	if err := bc.Verify(); err != nil {
 		return err
@@ -50,18 +47,19 @@ func (cfg *HSConfig) Verify() error {
 	return nil
 }
 
-// NewSequencer creates a new hash sequencer.
-func (cfg HSConfig) NewSequencer() (s Sequencer, err error) {
-	hs := new(hashSequencer)
-	if err = hs.init(cfg); err != nil {
-		return nil, err
-	}
-	return hs, nil
+// backwardHashSequencer allows the creation of sequence blocks using a simple
+// hash table. It extends found matches by looking backward in the input stream.
+type backwardHashSequencer struct {
+	hashFinder
+
+	w int
+
+	BHSConfig
 }
 
-// init initializes the hash sequencer. It returns an error if there is an issue
-// with the configuration parameters.
-func (s *hashSequencer) init(cfg HSConfig) error {
+// init initializes the backward hash sequencer. It returns an error if there is
+// an issue with the configuration parameters.
+func (s *backwardHashSequencer) init(cfg BHSConfig) error {
 	cfg.ApplyDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -72,12 +70,12 @@ func (s *hashSequencer) init(cfg HSConfig) error {
 		return err
 	}
 
-	s.HSConfig = cfg
+	s.BHSConfig = cfg
 	return nil
 }
 
 // Update updates the data slice including the offsets related to its start.
-func (s *hashSequencer) Update(data []byte, delta int) {
+func (s *backwardHashSequencer) Update(data []byte, delta int) {
 	switch {
 	case delta > 0:
 		s.w = doz(s.w, delta)
@@ -87,19 +85,18 @@ func (s *hashSequencer) Update(data []byte, delta int) {
 	s.hashFinder.Update(data, delta)
 }
 
-// Config returns the [HSConfig].
-func (s *hashSequencer) Config() SeqConfig {
-	return &s.HSConfig
+// Config returns the [BHSConfig].
+func (s *backwardHashSequencer) Config() SeqConfig {
+	return &s.BHSConfig
 }
 
-// Sequence converts the next block to sequences. The contents of the blk
-// variable will be overwritten. The method returns the number of bytes
-// sequenced and any error encountered. It return ErrEmptyBuffer if there is no
-// further data available.
+// Sequence converts the next block of k bytes to a sequences. The block will be
+// overwritten. The method returns the number of bytes sequenced and any error
+// encountered. It return ErrEmptyBuffer if there is no further data available.
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	n = len(s.data) - s.w
 	if n > s.BlockSize {
 		n = s.BlockSize
@@ -110,10 +107,9 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			return 0, ErrNoData
 		}
 		t := s.w + n
-		s.ProcessSegment(s.w-s.hash.inputLen+1, t)
+		s.ProcessSegment(s.w-s.inputLen+1, t)
 		s.w = t
 		return n, nil
-
 	}
 
 	blk.Sequences = blk.Sequences[:0]
@@ -129,11 +125,10 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	inputEnd := len(p) - s.inputLen + 1
 	i := s.w
 	litIndex := i
-	var minMatchLen int
-	if s.inputLen < 3 {
+
+	minMatchLen := 3
+	if s.inputLen < minMatchLen {
 		minMatchLen = s.inputLen
-	} else {
-		minMatchLen = 3
 	}
 
 	// Ensure that we can use _getLE64 all the time.
@@ -159,8 +154,8 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
-		if k > len(p)-i {
-			k = len(p) - i
+		if k > len(p)-int(i) {
+			k = len(p) - int(i)
 		}
 		if k < minMatchLen {
 			continue
@@ -188,21 +183,26 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 			}
 		match:
 		}
-
+		if back := i - litIndex; back > 0 {
+			if back > j {
+				back = j
+			}
+			m := lcs(p[j-back:j], p[:i])
+			i -= m
+			k += m
+		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{
-				LitLen:   uint32(len(q)),
 				MatchLen: uint32(k),
+				LitLen:   uint32(len(q)),
 				Offset:   uint32(o),
 			})
 		blk.Literals = append(blk.Literals, q...)
 		litIndex = i + k
-		var b int
+		b := litIndex
 		if litIndex > inputEnd {
 			b = inputEnd
-		} else {
-			b = litIndex
 		}
 		for j = i + 1; j < b; j++ {
 			x := _getLE64(_p[j:]) & s.mask
@@ -215,9 +215,6 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 		i = litIndex - 1
 	}
 
-	// len(blk.Sequences) > 0 checks that the literals are actually trailing
-	// a sequence. If there is no Sequence found, then we have to add all
-	// literals to make progress.
 	if flags&NoTrailingLiterals != 0 && len(blk.Sequences) > 0 {
 		i = litIndex
 	} else {

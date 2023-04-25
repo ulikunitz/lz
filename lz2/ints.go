@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 const (
 	intSize   = 32 << (^uint(0) >> 63)

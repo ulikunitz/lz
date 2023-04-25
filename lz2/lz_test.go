@@ -1,4 +1,4 @@
-package lz
+package lz2
 
 import (
 	"bytes"
@@ -187,7 +187,7 @@ func blockCost(blk *Block) int64 {
 }
 
 func BenchmarkSequencers(b *testing.B) {
-	const enwik7 = "testdata/enwik7"
+	const enwik7 = "../testdata/enwik7"
 	benchmarks := []struct {
 		name string
 		cfg  SeqConfig
@@ -329,7 +329,7 @@ func BenchmarkSequencers(b *testing.B) {
 }
 
 func BenchmarkDecoders(b *testing.B) {
-	const enwik7 = "testdata/enwik7"
+	const enwik7 = "../testdata/enwik7"
 	benchmarks := []struct {
 		name    string
 		winSize int

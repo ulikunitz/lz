@@ -9,12 +9,32 @@ import (
 // SeqBuffer provides a base for Sequencer implementation. Since the package
 // allows implementations outside of the package. All members are public.
 type SeqBuffer struct {
+	// actual buffer data
 	data []byte
-	w    int
 
+	// w position of the head of the window in data.
+	w int
+
+	// off start of the data slice, counts all data written and discarded
+	// from the buffer.
 	off int64
 
 	cfg BufConfig
+}
+
+// Init initializes the buffer and sets its data field to data. The function
+// sets the defaults for the buffer configuration if required and verifies it.
+// Errors will be reported. The data field must be less than the buffer size
+// otherwise an error will be reported.
+func (s *SeqBuffer) Init(cfg BufConfig, data []byte) error {
+	cfg.SetDefaults()
+	var err error
+	if err = cfg.Verify(); err != nil {
+		return err
+	}
+	s.cfg = cfg
+	err = s.Reset(data)
+	return err
 }
 
 // BufferConfig returns the configuration of the buffer.
@@ -66,7 +86,7 @@ func (b *SeqBuffer) Reset(data []byte) error {
 }
 
 // Shrink will move the window head to the shrink size if it is larger. The
-// amount of data removed from the buffer, named delta, will be returned.
+// amount of data discarded from the buffer, named delta, will be returned.
 func (b *SeqBuffer) Shrink() int {
 	delta := b.w - b.cfg.ShrinkSize
 	if delta <= 0 {
@@ -79,25 +99,25 @@ func (b *SeqBuffer) Shrink() int {
 	return delta
 }
 
+// grow will allocate more buffer data that will have enough space for t bytes
+// or BufferSize bytes plus 7 bytes margin to support the hash sequencers.
+// Usually the size allocate will roughly more than twice the requested size to
+// avoid repeated allocations.
 func (b *SeqBuffer) grow(t int) {
-	if t+7 < cap(b.data) {
+	if t+7 <= cap(b.data) {
 		return
 	}
-	if t > b.cfg.BufferSize {
-		t = b.cfg.BufferSize
-	}
-	var c int
-	if t < 512 {
+
+	c := 2 * t
+	if 0 <= c && c < 1024 {
 		c = 1024
 	} else {
-		c = 2 * cap(b.data)
-		if t > c {
-			c = 2 * t
-		}
+		c = ((c + 1<<10 - 1) >> 10) << 10
 	}
-	if c > b.cfg.BufferSize/2 || c < 0 {
+	if c >= b.cfg.BufferSize || c < 0 {
 		c = b.cfg.BufferSize + 7
 	}
+	// Allocate the buffer.
 	p := b.data
 	b.data = make([]byte, len(b.data), c)
 	copy(b.data, p)
@@ -121,6 +141,8 @@ func (b *SeqBuffer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// ReadFrom reads the data from reader into the buffer. If there is an error it
+// will be reported. If the buffer is full, [ErrFullBuffer] will be reported.
 func (b *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	const chunkSize = 32 << 10
 	n = int64(len(b.data))
@@ -150,18 +172,35 @@ var (
 	ErrEndOfBuffer = errors.New("lz: end of buffer")
 )
 
+// ReadAt reads data from the buffer at position off. If off is is outside the
+// buffer ErrOutOfBuffer will be reported. If there is not enough data to fill p
+// ErrEndOfBuffer will be reported. See [SeqBuffer.PeekAt] for avoiding the
+// copy.
 func (b *SeqBuffer) ReadAt(p []byte, off int64) (n int, err error) {
-	i := off - b.off
-	if !(0 <= i && i < int64(len(b.data))) {
-		return 0, ErrOutOfBuffer
-	}
-	n = copy(p, b.data[i:])
-	if n < len(p) {
-		err = ErrEndOfBuffer
-	}
+	q, err := b.PeekAt(len(p), off)
+	n = copy(p, q)
 	return n, err
 }
 
+// PeekAt returns part of the internal data slice starting at total offset off.
+// The total offset takes all data written to the buffer into account. If the
+// off parameter is outside the current buffer ErrOutOfBuffer will be returned.
+// If less than n bytes of data can be provided ErrEndOfBuffer will be returned.
+func (b *SeqBuffer) PeekAt(n int, off int64) (p []byte, err error) {
+	i := off - b.off
+	if !(0 <= i && i < int64(len(b.data))) {
+		return nil, ErrOutOfBuffer
+	}
+	p = b.data[i:]
+	if len(p) < n {
+		err = ErrEndOfBuffer
+	}
+	return p, err
+}
+
+// ByteAt returns the byte at total offset off, if it can be provided. If off
+// points to the end of the buffer, [ErrEndOfBuffer] will be returned otherwise
+// [ErrOutOfBuffer].
 func (b *SeqBuffer) ByteAt(off int64) (c byte, err error) {
 	i := off - b.off
 	if !(0 <= i && i <= int64(len(b.data))) {

@@ -52,6 +52,11 @@ type Seq struct {
 	Aux      uint32
 }
 
+// Len returns the complete length of the sequence.
+func (s Seq) Len() int64 {
+	return int64(s.MatchLen) + int64(s.LitLen)
+}
+
 // Block stores sequences and literals. Note that the sequences stores in the
 // Sequences slice might not consume the whole Literals slice. They must be
 // added to the decoded text after all the sequences have been decoded and their
@@ -59,6 +64,17 @@ type Seq struct {
 type Block struct {
 	Sequences []Seq
 	Literals  []byte
+}
+
+// Len computes the length of the block in bytes. It assumes that the sum of the
+// literal lengths in the sequences doesn't exceed that length of the Literals
+// byte slice.
+func (b *Block) Len() int64 {
+	n := int64(len(b.Literals))
+	for _, s := range b.Sequences {
+		n += int64(s.MatchLen)
+	}
+	return n
 }
 
 // Flags for the sequence function stored in the block structure.
@@ -80,7 +96,7 @@ var ErrFullBuffer = errors.New("lz: buffer is full")
 // functions provided by SeqBuffer.
 type Sequencer interface {
 	Sequence(blk *Block, flags int) (n int, err error)
-	Reset(data []byte)
+	Reset(data []byte) error
 	Shrink() int
 	SeqConfig() SeqConfig
 	BufferConfig() BufConfig
@@ -88,6 +104,16 @@ type Sequencer interface {
 	ReadFrom(r io.Reader) (n int64, err error)
 	ReadAt(p []byte, off int64) (n int, err error)
 	ByteAt(off int64) (c byte, err error)
+}
+
+// SeqConfig generates  new sequencer instances. Note that the sequencer doesn't
+// use ShrinkSize and BufferSize directly but we added it here, so it can be
+// used for the WriteSequencer which provides a WriteCloser interface.
+type SeqConfig interface {
+	NewSequencer() (s Sequencer, err error)
+	BufConfig() BufConfig
+	SetDefaults()
+	Verify() error
 }
 
 // BufConfig describes the various sizes relevant for the buffer. Note that
@@ -102,6 +128,8 @@ type BufConfig struct {
 	WindowSize int
 	BlockSize  int
 }
+
+func (cfg *BufConfig) BufferConfig() BufConfig { return *cfg }
 
 func iVal(v reflect.Value, name string) int {
 	return int(v.FieldByName(name).Int())
@@ -131,31 +159,7 @@ func setBufferConfig(x SeqConfig, bc BufConfig) {
 	setIVal(v, "BlockSize", bc.BlockSize)
 }
 
-// SeqConfig generates  new sequencer instances. Note that the sequencer doesn't
-// use ShrinkSize and BufferSize directly but we added it here, so it can be
-// used for the WriteSequencer which provides a WriteCloser interface.
-type SeqConfig interface {
-	NewSequence() (s Sequencer, err error)
-	BufferConfig() BufConfig
-}
-
 // Methods to the types defined above.
-
-// Len returns the complete length of the sequence.
-func (s Seq) Len() int64 {
-	return int64(s.MatchLen) + int64(s.LitLen)
-}
-
-// Len computes the length of the block in bytes. It assumes that the sum of the
-// literal lengths in the sequences doesn't exceed that length of the Literals
-// byte slice.
-func (b *Block) Len() int64 {
-	n := int64(len(b.Literals))
-	for _, s := range b.Sequences {
-		n += int64(s.MatchLen)
-	}
-	return n
-}
 
 // Verify checks the buffer configuration. Note that window size and block size
 // are independent of the rest of the other sizes only the shrink size must be
@@ -209,9 +213,4 @@ func (cfg *BufConfig) SetDefaults() {
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * kiB
 	}
-}
-
-// BufConfig returns the buffer configuration.
-func (cfg *BufConfig) BufferConfig() BufConfig {
-	return *cfg
 }

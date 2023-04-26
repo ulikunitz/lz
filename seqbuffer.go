@@ -10,16 +10,16 @@ import (
 // allows implementations outside of the package. All members are public.
 type SeqBuffer struct {
 	// actual buffer data
-	data []byte
+	Data []byte
 
 	// w position of the head of the window in data.
-	w int
+	W int
 
 	// off start of the data slice, counts all data written and discarded
 	// from the buffer.
-	off int64
+	Off int64
 
-	cfg BufConfig
+	BufConfig
 }
 
 // Init initializes the buffer. The function
@@ -32,56 +32,42 @@ func (s *SeqBuffer) Init(cfg BufConfig) error {
 		return err
 	}
 	*s = SeqBuffer{
-		data: s.data[:0],
-		cfg:  cfg,
+		Data:      s.Data[:0],
+		BufConfig: cfg,
 	}
 	return err
 }
 
-// BufferConfig returns the configuration of the buffer.
-func (b *SeqBuffer) BufferConfig() BufConfig { return b.cfg }
-
-// Bytes returns the content of the buffer.
-func (b *SeqBuffer) Bytes() []byte { return b.data }
-
-// W returns the position of the window head in the slice returned by
-// [SeqBuffer.Bytes].
-func (b *SeqBuffer) W() int { return b.w }
-
-// SetW sets the new w. It must be larger or equal the current w and less than
-// or equal the length of the buffer data. The method panics if that is not the
-// case.
-func (b *SeqBuffer) SetW(w int) {
-	if !(b.w <= w && w <= len(b.data)) {
-		panic(fmt.Errorf("lz: w=%d outside of range [%d..%d]",
-			w, b.w, len(b.data)))
-	}
-	b.w = w
-}
+func (b *SeqBuffer) BufferConfig() BufConfig { return b.BufConfig }
 
 // Resets the buffer to the the new data. The data slice requires a margin of 7
 // bytes for the hash sequencers to be used directly. If there is no margin the
 // data will be copied into a slice with enough capacity.
 func (b *SeqBuffer) Reset(data []byte) error {
-	if len(data) > b.cfg.BufferSize {
+	if len(data) > b.BufferSize {
 		return fmt.Errorf("lz: len(data)=%d larger than BufferSize=%d",
-			len(data), b.cfg.BufferSize)
+			len(data), b.BufferSize)
 	}
 
-	b.w = 0
-	b.off = 0
+	b.W = 0
+	b.Off = 0
+
+	if len(data) == 0 {
+		b.Data = b.Data[:0]
+		return nil
+	}
 
 	// Ensure the margin required for the hash sequencers.
 	margin := len(data) + 7
 	if margin > cap(data) {
-		if margin > cap(b.data) {
-			b.data = make([]byte, len(data), margin)
+		if margin > cap(b.Data) {
+			b.Data = make([]byte, len(data), margin)
 		} else {
-			b.data = b.data[:len(data)]
+			b.Data = b.Data[:len(data)]
 		}
-		copy(b.data, data)
+		copy(b.Data, data)
 	} else {
-		b.data = data
+		b.Data = data
 	}
 
 	return nil
@@ -90,14 +76,14 @@ func (b *SeqBuffer) Reset(data []byte) error {
 // Shrink will move the window head to the shrink size if it is larger. The
 // amount of data discarded from the buffer, named delta, will be returned.
 func (b *SeqBuffer) Shrink() int {
-	delta := b.w - b.cfg.ShrinkSize
+	delta := b.W - b.ShrinkSize
 	if delta <= 0 {
 		return 0
 	}
-	n := copy(b.data, b.data[delta:])
-	b.data = b.data[:n]
-	b.w = b.cfg.ShrinkSize
-	b.off += int64(delta)
+	n := copy(b.Data, b.Data[delta:])
+	b.Data = b.Data[:n]
+	b.W = b.ShrinkSize
+	b.Off += int64(delta)
 	return delta
 }
 
@@ -106,7 +92,7 @@ func (b *SeqBuffer) Shrink() int {
 // Usually the size allocate will roughly more than twice the requested size to
 // avoid repeated allocations.
 func (b *SeqBuffer) grow(t int) {
-	if t+7 <= cap(b.data) {
+	if t+7 <= cap(b.Data) {
 		return
 	}
 
@@ -116,30 +102,30 @@ func (b *SeqBuffer) grow(t int) {
 	} else {
 		c = ((c + 1<<10 - 1) >> 10) << 10
 	}
-	if c >= b.cfg.BufferSize+7 || c < 0 {
-		c = b.cfg.BufferSize + 7
+	if c >= b.BufferSize+7 || c < 0 {
+		c = b.BufferSize + 7
 	}
 	// Allocate the buffer.
-	p := b.data
-	b.data = make([]byte, len(b.data), c)
-	copy(b.data, p)
+	p := b.Data
+	b.Data = make([]byte, len(b.Data), c)
+	copy(b.Data, p)
 }
 
 // Write writes data into the buffer. If not the complete p slice can be copied
 // into the buffer, Write will return [ErrFullBuffer].
 func (b *SeqBuffer) Write(p []byte) (n int, err error) {
-	available := b.cfg.BufferSize - len(b.data)
+	available := b.BufferSize - len(b.Data)
 	if available < len(p) {
 		p = p[:available]
 		err = ErrFullBuffer
 	}
 	n = len(p)
 
-	t := len(b.data) + n
-	if t+7 > cap(b.data) {
+	t := len(b.Data) + n
+	if t+7 > cap(b.Data) {
 		b.grow(t)
 	}
-	b.data = append(b.data, p...)
+	b.Data = append(b.Data, p...)
 	return n, err
 }
 
@@ -147,25 +133,25 @@ func (b *SeqBuffer) Write(p []byte) (n int, err error) {
 // will be reported. If the buffer is full, [ErrFullBuffer] will be reported.
 func (b *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	const chunkSize = 32 << 10
-	n = int64(len(b.data))
+	n = int64(len(b.Data))
 	for {
-		if len(b.data) >= b.cfg.BufferSize {
+		if len(b.Data) >= b.BufferSize {
 			err = ErrFullBuffer
 			break
 		}
-		t := min(len(b.data)+chunkSize, b.cfg.BufferSize)
-		if t+7 > cap(b.data) {
+		t := min(len(b.Data)+chunkSize, b.BufferSize)
+		if t+7 > cap(b.Data) {
 			b.grow(t)
 		}
-		p := b.data[len(b.data) : cap(b.data)-7]
+		p := b.Data[len(b.Data) : cap(b.Data)-7]
 		var k int
 		k, err = r.Read(p)
-		b.data = b.data[:len(b.data)+k]
+		b.Data = b.Data[:len(b.Data)+k]
 		if err != nil {
 			break
 		}
 	}
-	return int64(len(b.data)) - n, err
+	return int64(len(b.Data)) - n, err
 }
 
 // Errors returned by [SeqBuffer.ReadAt]
@@ -189,11 +175,11 @@ func (b *SeqBuffer) ReadAt(p []byte, off int64) (n int, err error) {
 // off parameter is outside the current buffer ErrOutOfBuffer will be returned.
 // If less than n bytes of data can be provided ErrEndOfBuffer will be returned.
 func (b *SeqBuffer) PeekAt(n int, off int64) (p []byte, err error) {
-	i := off - b.off
-	if !(0 <= i && i < int64(len(b.data))) {
+	i := off - b.Off
+	if !(0 <= i && i < int64(len(b.Data))) {
 		return nil, ErrOutOfBuffer
 	}
-	p = b.data[i:]
+	p = b.Data[i:]
 	if len(p) < n {
 		err = ErrEndOfBuffer
 	}
@@ -204,12 +190,12 @@ func (b *SeqBuffer) PeekAt(n int, off int64) (p []byte, err error) {
 // points to the end of the buffer, [ErrEndOfBuffer] will be returned otherwise
 // [ErrOutOfBuffer].
 func (b *SeqBuffer) ByteAt(off int64) (c byte, err error) {
-	i := off - b.off
-	if !(0 <= i && i <= int64(len(b.data))) {
-		if i == int64(len(b.data)) {
+	i := off - b.Off
+	if !(0 <= i && i <= int64(len(b.Data))) {
+		if i == int64(len(b.Data)) {
 			return 0, ErrEndOfBuffer
 		}
 		return 0, ErrOutOfBuffer
 	}
-	return b.data[i], nil
+	return b.Data[i], nil
 }

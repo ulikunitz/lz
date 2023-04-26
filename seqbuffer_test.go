@@ -29,14 +29,14 @@ func TestWindow_Write(t *testing.T) {
 		t.Fatalf("w.Write(data) wrote %d bytes; want %d",
 			n, winSize)
 	}
-	if len(w.data) != winSize {
-		t.Fatalf("len(w.data) is %d; want %d", len(w.data), winSize)
+	if len(w.Data) != winSize {
+		t.Fatalf("len(w.Data) is %d; want %d", len(w.Data), winSize)
 	}
-	if cap(w.data) < winSize+7 {
-		t.Fatalf("cap(w.data) is %d; want >= %d", cap(w.data), winSize+7)
+	if cap(w.Data) < winSize+7 {
+		t.Fatalf("cap(w.Data) is %d; want >= %d", cap(w.Data), winSize+7)
 	}
-	if !bytes.Equal(w.data, data[:winSize]) {
-		t.Fatalf("w.data doesn't equal data[:winSize]")
+	if !bytes.Equal(w.Data, data[:winSize]) {
+		t.Fatalf("w.Data doesn't equal data[:winSize]")
 	}
 }
 
@@ -64,19 +64,19 @@ func TestWindow_ReadFrom(t *testing.T) {
 		t.Fatalf("w.ReadFrom(f) read %d bytes; want %d",
 			n, winSize)
 	}
-	if len(w.data) != winSize {
-		t.Fatalf("len(w.data) is %d; want %d", len(w.data), winSize)
+	if len(w.Data) != winSize {
+		t.Fatalf("len(w.Data) is %d; want %d", len(w.Data), winSize)
 	}
-	if cap(w.data) != winSize+7 {
-		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize+7)
+	if cap(w.Data) != winSize+7 {
+		t.Fatalf("cap(w.Data) is %d; want %d", cap(w.Data), winSize+7)
 	}
 	f.Close()
 	data, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatalf("os.ReadFile(f)")
 	}
-	if !bytes.Equal(w.data, data[:winSize]) {
-		t.Fatalf("w.data doesn't equal data[:winSize]")
+	if !bytes.Equal(w.Data, data[:winSize]) {
+		t.Fatalf("w.Data doesn't equal data[:winSize]")
 	}
 }
 
@@ -102,21 +102,21 @@ func TestWindow_shrink(t *testing.T) {
 			err, ErrFullBuffer)
 	}
 
-	w.w = winSize
+	w.W = winSize
 
 	w.Shrink()
-	if w.w != shrinkSize {
-		t.Fatalf("w.shrink() returned %d; want %d", w.w, shrinkSize)
+	if w.W != shrinkSize {
+		t.Fatalf("w.shrink() returned %d; want %d", w.W, shrinkSize)
 	}
 
-	if len(w.data) != shrinkSize {
-		t.Fatalf("len(w.data) is %d; want %d", len(w.data), shrinkSize)
+	if len(w.Data) != shrinkSize {
+		t.Fatalf("len(w.Data) is %d; want %d", len(w.Data), shrinkSize)
 	}
-	if w.w != shrinkSize {
-		t.Fatalf("w.w is %d; want %d", len(w.data), shrinkSize)
+	if w.W != shrinkSize {
+		t.Fatalf("w.W is %d; want %d", len(w.Data), shrinkSize)
 	}
 	wantOff := int64(winSize - shrinkSize)
-	if w.off != wantOff {
-		t.Fatalf("w.off is %d; want %d", w.off, wantOff)
+	if w.Off != wantOff {
+		t.Fatalf("w.Off is %d; want %d", w.Off, wantOff)
 	}
 }

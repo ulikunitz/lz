@@ -17,7 +17,7 @@ func TestWindow_Write(t *testing.T) {
 	cfg := BufConfig{
 		WindowSize: winSize,
 	}
-	if err = w.Init(cfg, nil); err != nil {
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	n, err := w.Write(data)
@@ -32,8 +32,8 @@ func TestWindow_Write(t *testing.T) {
 	if len(w.data) != winSize {
 		t.Fatalf("len(w.data) is %d; want %d", len(w.data), winSize)
 	}
-	if cap(w.data) != winSize+7 {
-		t.Fatalf("cap(w.data) is %d; want %d", cap(w.data), winSize+7)
+	if cap(w.data) < winSize+7 {
+		t.Fatalf("cap(w.data) is %d; want >= %d", cap(w.data), winSize+7)
 	}
 	if !bytes.Equal(w.data, data[:winSize]) {
 		t.Fatalf("w.data doesn't equal data[:winSize]")
@@ -52,7 +52,7 @@ func TestWindow_ReadFrom(t *testing.T) {
 	cfg := BufConfig{
 		WindowSize: winSize,
 	}
-	if err = w.Init(cfg, nil); err != nil {
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	n, err := w.ReadFrom(f)
@@ -93,7 +93,7 @@ func TestWindow_shrink(t *testing.T) {
 		WindowSize: winSize,
 		ShrinkSize: shrinkSize,
 	}
-	if err = w.Init(cfg, nil); err != nil {
+	if err = w.Init(cfg); err != nil {
 		t.Fatalf("w.Init(%d) error %s", winSize, err)
 	}
 	_, err = w.Write(data)

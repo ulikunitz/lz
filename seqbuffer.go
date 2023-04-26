@@ -22,18 +22,19 @@ type SeqBuffer struct {
 	cfg BufConfig
 }
 
-// Init initializes the buffer and sets its data field to data. The function
+// Init initializes the buffer. The function
 // sets the defaults for the buffer configuration if required and verifies it.
-// Errors will be reported. The data field must be less than the buffer size
-// otherwise an error will be reported.
-func (s *SeqBuffer) Init(cfg BufConfig, data []byte) error {
+// Errors will be reported.
+func (s *SeqBuffer) Init(cfg BufConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	s.cfg = cfg
-	err = s.Reset(data)
+	*s = SeqBuffer{
+		data: s.data[:0],
+		cfg:  cfg,
+	}
 	return err
 }
 
@@ -58,8 +59,9 @@ func (b *SeqBuffer) SetW(w int) {
 	b.w = w
 }
 
-// Resets the buffer to the the new data. Note that the buffer will try to use p
-// as internal data slice if possible to avoid copying.
+// Resets the buffer to the the new data. The data slice requires a margin of 7
+// bytes for the hash sequencers to be used directly. If there is no margin the
+// data will be copied into a slice with enough capacity.
 func (b *SeqBuffer) Reset(data []byte) error {
 	if len(data) > b.cfg.BufferSize {
 		return fmt.Errorf("lz: len(data)=%d larger than BufferSize=%d",
@@ -111,12 +113,10 @@ func (b *SeqBuffer) grow(t int) {
 	c := 2 * t
 	if 0 <= c && c < 1024 {
 		c = 1024
+	} else {
+		c = ((c + 1<<10 - 1) >> 10) << 10
 	}
 	if c >= b.cfg.BufferSize+7 || c < 0 {
-		c = b.cfg.BufferSize + 7
-	}
-	c = ((c + 1<<10 - 1) >> 10) << 10
-	if c < 0 {
 		c = b.cfg.BufferSize + 7
 	}
 	// Allocate the buffer.

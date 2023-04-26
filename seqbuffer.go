@@ -113,7 +113,7 @@ func (b *SeqBuffer) grow(t int) {
 		c = 1024
 	}
 	if c >= b.cfg.BufferSize+7 || c < 0 {
-		c = b.cfg.BufferSize+7
+		c = b.cfg.BufferSize + 7
 	}
 	c = ((c + 1<<10 - 1) >> 10) << 10
 	if c < 0 {
@@ -149,6 +149,10 @@ func (b *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 	const chunkSize = 32 << 10
 	n = int64(len(b.data))
 	for {
+		if len(b.data) >= b.cfg.BufferSize {
+			err = ErrFullBuffer
+			break
+		}
 		t := min(len(b.data)+chunkSize, b.cfg.BufferSize)
 		if t+7 > cap(b.data) {
 			b.grow(t)
@@ -158,10 +162,6 @@ func (b *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 		k, err = r.Read(p)
 		b.data = b.data[:len(b.data)+k]
 		if err != nil {
-			break
-		}
-		if len(b.data) >= b.cfg.BufferSize {
-			err = ErrFullBuffer
 			break
 		}
 	}

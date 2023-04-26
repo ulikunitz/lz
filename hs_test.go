@@ -3,6 +3,7 @@ package lz
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -329,5 +330,39 @@ func TestLargeParameters(t *testing.T) {
 					s1, s2)
 			}
 		})
+	}
+}
+
+func TestHS_JSON(t *testing.T) {
+	a := HSConfig{
+		WindowSize: 1024,
+		InputLen:   4,
+	}
+
+	p, err := json.MarshalIndent(&a, "", "  ")
+	if err != nil {
+		t.Fatalf("json.MarshalIndent error %s", err)
+	}
+	t.Logf("json:\n%s", p)
+	b := HSConfig{}
+	err = json.Unmarshal(p, &b)
+	if err != nil {
+		t.Fatalf("json.Unmarshal error %s", err)
+	}
+	if b != a {
+		t.Fatalf("json.Unmarshal returned %+v; want %+v", b, a)
+	}
+
+	s, err := ParseJSON(p)
+	if err != nil {
+		t.Fatalf("ParseJSON error %s", err)
+	}
+	c, ok := s.(*HSConfig)
+	if !ok {
+		t.Fatalf("ParseJSON returned %+v, no HSConfig", s)
+	}
+
+	if *c != a {
+		t.Fatalf("ParseJSON returned %+v; want %+v", c, a)
 	}
 }

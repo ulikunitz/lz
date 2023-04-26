@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"encoding/json"
 	"math/bits"
 )
 
@@ -23,6 +24,27 @@ type HSConfig struct {
 
 	InputLen int
 	HashBits int
+}
+
+func (cfg *HSConfig) MarshalJSON() (p []byte, err error) {
+	s := struct {
+		Name       string
+		ShrinkSize int `json:",omitempty"`
+		BufferSize int `json:",omitempty"`
+		WindowSize int `json:",omitempty"`
+		BlockSize  int `json:",omitempty"`
+		InputLen   int `json:",omitempty"`
+		HashBits   int `json:",omitempty"`
+	}{
+		Name:       "HS",
+		ShrinkSize: cfg.ShrinkSize,
+		BufferSize: cfg.BufferSize,
+		WindowSize: cfg.WindowSize,
+		BlockSize:  cfg.BlockSize,
+		InputLen:   cfg.InputLen,
+		HashBits:   cfg.HashBits,
+	}
+	return json.Marshal(&s)
 }
 
 func (cfg *HSConfig) BufConfig() BufConfig {

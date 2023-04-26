@@ -29,6 +29,7 @@
 package lz
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -212,5 +213,24 @@ func (cfg *BufConfig) SetDefaults() {
 	}
 	if cfg.BlockSize == 0 {
 		cfg.BlockSize = 128 * kiB
+	}
+}
+
+// ParseJSON parses a JSON structure 
+func ParseJSON(p []byte) (s SeqConfig, err error) {
+	var v struct{ Name string }
+	if err = json.Unmarshal(p, &v); err != nil {
+		return nil, err
+	}
+
+	switch v.Name {
+	case "HS":
+		var hscfg HSConfig
+		if err = json.Unmarshal(p, &hscfg); err != nil {
+			return nil, err
+		}
+		return &hscfg, nil
+	default:
+		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Name)
 	}
 }

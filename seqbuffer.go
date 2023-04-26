@@ -111,10 +111,12 @@ func (b *SeqBuffer) grow(t int) {
 	c := 2 * t
 	if 0 <= c && c < 1024 {
 		c = 1024
-	} else {
-		c = ((c + 1<<10 - 1) >> 10) << 10
 	}
-	if c >= b.cfg.BufferSize || c < 0 {
+	if c >= b.cfg.BufferSize+7 || c < 0 {
+		c = b.cfg.BufferSize+7
+	}
+	c = ((c + 1<<10 - 1) >> 10) << 10
+	if c < 0 {
 		c = b.cfg.BufferSize + 7
 	}
 	// Allocate the buffer.

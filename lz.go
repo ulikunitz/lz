@@ -136,8 +136,7 @@ func setBufferConfig(x SeqConfig, bc BufConfig) {
 // used for the WriteSequencer which provides a WriteCloser interface.
 type SeqConfig interface {
 	NewSequence() (s Sequencer, err error)
-	SetDefaults()
-	Verify() error
+	BufferConfig() BufConfig
 }
 
 // Methods to the types defined above.

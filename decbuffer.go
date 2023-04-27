@@ -75,24 +75,24 @@ func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(k), err
 }
 
-func (b *DecBuffer) shrink() {
+func (b *DecBuffer) shrink() int {
 	delta := doz(len(b.Data), b.WindowSize)
 	if b.R < delta {
 		delta = b.R
 	}
 	if delta == 0 {
-		return
+		return 0
 	}
 	k := copy(b.Data, b.Data[delta:])
 	b.Data = b.Data[:k]
 	b.R -= delta
+	return delta
 }
 
 func (b *DecBuffer) WriteByte(c byte) error {
 	n := b.BufferSize - len(b.Data)
 	if n <= 0 {
-		b.shrink()
-		n = b.BufferSize - len(b.Data)
+		n += b.shrink()
 		if n <= 0 {
 			return ErrFullBuffer
 		}
@@ -105,8 +105,7 @@ func (b *DecBuffer) WriteByte(c byte) error {
 func (b *DecBuffer) Write(p []byte) (n int, err error) {
 	n = b.BufferSize - len(b.Data)
 	if n < len(p) {
-		b.shrink()
-		n = b.BufferSize - len(b.Data)
+		n += b.shrink()
 		if n < len(p) {
 			return 0, ErrFullBuffer
 		}
@@ -130,8 +129,7 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	}
 	a := b.BufferSize - len(b.Data)
 	if int64(a) < int64(m) {
-		b.shrink()
-		a = b.BufferSize - len(b.Data)
+		a += b.shrink()
 		if int64(a) < int64(m) {
 			return 0, ErrFullBuffer
 		}
@@ -188,8 +186,7 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 		}
 		n = b.BufferSize - len(b.Data)
 		if n < m {
-			b.shrink()
-			n = b.BufferSize - len(b.Data)
+			n += b.shrink()
 			if n < m {
 				err = ErrFullBuffer
 				goto end
@@ -215,8 +212,7 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	m = len(blk.Literals)
 	n = b.BufferSize - len(b.Data)
 	if n < m {
-		b.shrink()
-		n = b.BufferSize - len(b.Data)
+		n += b.shrink()
 		if n < m {
 			err = ErrFullBuffer
 			goto end

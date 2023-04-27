@@ -172,19 +172,19 @@ func (cfg *BufConfig) Verify() error {
 		maxSize = maxInt - 7
 	}
 	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxSize) {
-		return fmt.Errorf("lz.BufferConfig.Verify: BufferSize=%d out of range [%d,%d]",
+		return fmt.Errorf("lz.BufferConfig: BufferSize=%d out of range [%d..%d]",
 			cfg.BufferSize, 1, maxSize)
 	}
 	if !(0 <= cfg.ShrinkSize && cfg.ShrinkSize <= cfg.BufferSize) {
-		return fmt.Errorf("lz.BufferConfig.Verify: ShrinkSize=%d out of range [0,BufferSize=%d]",
+		return fmt.Errorf("lz.BufferConfig: ShrinkSize=%d out of range [0..BufferSize=%d]",
 			cfg.ShrinkSize, cfg.BufferSize)
 	}
 	if !(0 <= cfg.WindowSize && int64(cfg.WindowSize) <= maxSize) {
-		return fmt.Errorf("lz.BufferConfig.Verify: WindowSize=%d out of range [%d,%d]",
+		return fmt.Errorf("lz.BufferConfig: WindowSize=%d out of range [%d..%d]",
 			cfg.WindowSize, 0, maxSize)
 	}
 	if !(1 <= cfg.BlockSize && int64(cfg.BlockSize) <= maxSize) {
-		return fmt.Errorf("lz.BufferConfig.Verify: cfg.BLockSize=%d out of range [%d,%d]",
+		return fmt.Errorf("lz.BufferConfig: cfg.BLockSize=%d out of range [%d..%d]",
 			cfg.BlockSize, 1, maxSize)
 	}
 	return nil
@@ -216,7 +216,7 @@ func (cfg *BufConfig) SetDefaults() {
 	}
 }
 
-// ParseJSON parses a JSON structure 
+// ParseJSON parses a JSON structure
 func ParseJSON(p []byte) (s SeqConfig, err error) {
 	var v struct{ Name string }
 	if err = json.Unmarshal(p, &v); err != nil {

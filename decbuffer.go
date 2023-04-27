@@ -5,149 +5,141 @@ import (
 	"io"
 )
 
-// DecBuffer provides a simple buffer to decode sequences. The max field gives a
-// target that can be exceeded once.
-type DecBuffer struct {
-	data []byte
-
-	start int64
-
-	r int
-
-	windowSize int
-	max        int
+type DecConfig struct {
+	WindowSize int
+	BufferSize int
 }
 
-// Init initialized the buffer. The window size must be larger than 1 and max
-// must be larger then the windowSize.
-func (buf *DecBuffer) Init(windowSize, max int) error {
-	if windowSize < 1 {
-		return fmt.Errorf("lz: windowSize must be >1")
+func (cfg *DecConfig) SetDefaults() {
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * miB
 	}
-	if max <= windowSize {
-		return fmt.Errorf("lz: max must be > windowSize")
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = 2 * cfg.WindowSize
 	}
+}
 
-	if cap(buf.data) < max {
-		buf.data = make([]byte, 0, max)
+func (cfg *DecConfig) Verify() error {
+	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxUint32) {
+		return fmt.Errorf(
+			"lz.DecConfig: BufferSize=%d out of range [%d..%d]",
+			cfg.BufferSize, 1, int64(maxUint32))
 	}
-	*buf = DecBuffer{
-		data:       buf.data[:0],
-		windowSize: windowSize,
-		max:        max,
+	if !(0 <= cfg.WindowSize && cfg.WindowSize < cfg.BufferSize) {
+		return fmt.Errorf(
+			"lz.DecConfig: WindowSize=%d out of range [%d..BufferSize=%d)",
+			cfg.WindowSize, 0, cfg.BufferSize)
 	}
-
 	return nil
 }
 
-// Pos returns the file position of the window head.
-func (buf *DecBuffer) Pos() int64 {
-	return buf.start + int64(len(buf.data))
+type DecBuffer struct {
+	Data []byte
+	R    int
+	// Off records the total offset and marks the end of the Data slice,
+	// which is also the end of the dictionary window.
+	Off int64
+
+	DecConfig
 }
 
-// ByteAtEnd reads the byte with offset i from the end. If it it points outside
-// the window the value returned is 0.
-func (buf *DecBuffer) ByteAtEnd(i int) byte {
-	if !(0 < i && i <= buf.winLen()) {
-		return 0
+func (b *DecBuffer) Init(cfg DecConfig) error {
+	cfg.SetDefaults()
+	var err error
+	if err = cfg.Verify(); err != nil {
+		return err
 	}
-	return buf.data[len(buf.data)-i]
-}
-
-// Reset puts the buffer into its initial state.
-func (buf *DecBuffer) Reset() {
-	buf.start = 0
-	buf.data = buf.data[:0]
-	buf.r = 0
-}
-
-func (buf *DecBuffer) available() int { return buf.max - len(buf.data) }
-
-func (buf *DecBuffer) shrinkable() int {
-	r := len(buf.data) - buf.windowSize
-	if buf.r < r {
-		r = buf.r
+	*b = DecBuffer{
+		Data:      b.Data[:0],
+		DecConfig: cfg,
 	}
-	if r < 0 {
-		r = 0
-	}
-	return r
+	return nil
 }
 
-// Available provides the amount of data that can be written into the buffer.
-func (buf *DecBuffer) Available() int { return buf.shrinkable() + buf.available() }
-
-// Len returns the number of bytes in the unread portion of the buffer.
-func (buf *DecBuffer) Len() int { return len(buf.data) - buf.r }
-
-func (buf *DecBuffer) winLen() int {
-	n := len(buf.data)
-	if n > buf.windowSize {
-		n = buf.windowSize
+func (b *DecBuffer) Reset() {
+	*b = DecBuffer{
+		Data:      b.Data[:0],
+		DecConfig: b.DecConfig,
 	}
-	return n
 }
 
-// Read reads data from the buffer. The function never returns an error.
-func (buf *DecBuffer) Read(p []byte) (n int, err error) {
-	n = copy(p, buf.data[buf.r:])
-	buf.r += n
+func (b *DecBuffer) Read(p []byte) (n int, err error) {
+	n = copy(p, b.Data[b.R:])
+	b.R += n
 	return n, nil
 }
 
-// WriteTo writes all data to read into the writer. It only returns an error if
-// the Write fails.
-func (buf *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
-	p := buf.data[buf.r:]
-	k, err := w.Write(p)
-	buf.r += k
+func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
+	k, err := w.Write(b.Data[b.R:])
+	b.R += k
 	return int64(k), err
 }
 
-// shrink moves the window to the front of the buffer if n bytes will be made
-// available. Otherwise ErrFullBuffer will be returned.
-func (buf *DecBuffer) shrink(n int64) error {
-	r := buf.shrinkable()
-	if int64(buf.available())+int64(r) < n {
-		return ErrFullBuffer
+func (b *DecBuffer) shrink() {
+	delta := doz(len(b.Data), b.WindowSize)
+	if b.R < delta {
+		delta = b.R
 	}
-	if r <= 0 {
-		return nil
+	if delta == 0 {
+		return
 	}
-	buf.start += int64(r)
-	k := copy(buf.data, buf.data[r:])
-	buf.data = buf.data[:k]
-	buf.r -= r
+	k := copy(b.Data, b.Data[delta:])
+	b.Data = b.Data[:k]
+	b.R -= delta
+}
+
+func (b *DecBuffer) WriteByte(c byte) error {
+	n := b.BufferSize - len(b.Data)
+	if n <= 0 {
+		b.shrink()
+		n = b.BufferSize - len(b.Data)
+		if n <= 0 {
+			return ErrFullBuffer
+		}
+	}
+	b.Data = append(b.Data, c)
+	b.Off++
 	return nil
 }
 
-// Write writes the provided byte slice into the buffer and extends the window
-// accordingly.
-func (buf *DecBuffer) Write(p []byte) (n int, err error) {
-	if buf.available() < len(p) {
-		if err = buf.shrink(int64(len(p))); err != nil {
-			return 0, err
+func (b *DecBuffer) Write(p []byte) (n int, err error) {
+	n = b.BufferSize - len(b.Data)
+	if n < len(p) {
+		b.shrink()
+		n = b.BufferSize - len(b.Data)
+		if n < len(p) {
+			return 0, ErrFullBuffer
 		}
 	}
-	buf.data = append(buf.data, p...)
-	return len(p), err
+	n = len(p)
+	b.Data = append(b.Data, p...)
+	b.Off += int64(n)
+	return n, nil
 }
 
-// WriteByte writes a single byte to the buffer and extends the window.
-func (buf *DecBuffer) WriteByte(c byte) error {
-	if buf.available() < 1 {
-		if err := buf.shrink(int64(1)); err != nil {
-			return err
+func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
+	if !(1 <= o && int64(o) <= int64(b.WindowSize)) {
+		return 0, fmt.Errorf(
+			"lz.DecBuffer.WriteMatch: o=%d is outside range [%d..b.WindowSize=%d]",
+			o, 1, b.WindowSize)
+	}
+	if int64(m) > int64(b.BufferSize) {
+		return 0, fmt.Errorf(
+			"lz.DecBuffer.WriterMatch: m=%d is larger than BufferSize=%d",
+			m, b.BufferSize)
+	}
+	a := b.BufferSize - len(b.Data)
+	if int64(a) < int64(m) {
+		b.shrink()
+		a = b.BufferSize - len(b.Data)
+		if int64(a) < int64(m) {
+			return 0, ErrFullBuffer
 		}
 	}
-	buf.data = append(buf.data, c)
-	return nil
-}
-
-func (buf *DecBuffer) copyMatch(n, off int) {
+	n = int(m)
+	off := int(o)
 	for n > off {
-		buf.data = append(buf.data,
-			buf.data[len(buf.data)-off:]...)
+		b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
 		n -= off
 		if n <= off {
 			break
@@ -155,83 +147,60 @@ func (buf *DecBuffer) copyMatch(n, off int) {
 		off *= 2
 	}
 	// n <= off
-	k := len(buf.data) - off
-	buf.data = append(buf.data, buf.data[k:k+n]...)
+	k := len(b.Data) - off
+	b.Data = append(b.Data, b.Data[k:k+n]...)
+	b.Off += int64(m)
+	return n, nil
 }
 
-// WriteMatch writes a match into the buffer and extends the window by the
-// match.
-func (buf *DecBuffer) WriteMatch(n, offset int) error {
-	if offset <= 0 {
-		return fmt.Errorf("lz: offset=%d; must be > 0", offset)
-	}
-	if n < 0 {
-		return fmt.Errorf("lz: n=%d; must be > 0", n)
-	}
-	if n > buf.available() {
-		if err := buf.shrink(int64(n)); err != nil {
-			return err
-		}
-	}
-	if k := buf.winLen(); offset > k {
-		return fmt.Errorf("lz: offset=%d; should be <= window (%d)",
-			offset, k)
-	}
-	buf.copyMatch(n, offset)
-	return nil
-}
-
-// WriteBlock writes a whole list of sequences, each sequence will be written
-// atomically. The functions returns the number of sequences k written, the
-// number of literals l consumed and the number of bytes n generated.
-func (buf *DecBuffer) WriteBlock(blk Block) (k, l, n int, err error) {
-	a := len(buf.data)
+func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
+	ld := len(b.Data)
 	ll := len(blk.Literals)
-	var s Seq
+	var (
+		s Seq
+		m int
+	)
 	for k, s = range blk.Sequences {
 		if int64(s.LitLen) > int64(len(blk.Literals)) {
-			n = len(buf.data) - a
-			l = ll - len(blk.Literals)
-			return k, l, n, fmt.Errorf(
-				"lz: LitLen=%d too large; must <=%d",
+			err = fmt.Errorf(
+				"lz: LitLen=%d > len(blk.Literals)=%d",
 				s.LitLen, len(blk.Literals))
+			goto end
 		}
-		winSize := len(buf.data) + int(s.LitLen)
-		if winSize > buf.windowSize {
-			winSize = buf.windowSize
+		if !(1 <= s.Offset && int64(s.Offset) <= int64(b.WindowSize)) {
+			err = fmt.Errorf(
+				"lz: Offset=%d is outside range [%d..b.WindowSize=%d]",
+				s.Offset, 1, b.WindowSize)
+			goto end
 		}
-		off := int(s.Offset)
-		if off == 0 && s.MatchLen > 0 {
-			l = ll - len(blk.Literals)
-			n = len(buf.data) - a
-			return k, l, n, fmt.Errorf("off must be > 0")
-
+		if int64(s.MatchLen) > int64(b.BufferSize) {
+			err = fmt.Errorf(
+				"lz.DecBuffer: MatchLen=%d is larger than BufferSize=%d",
+				s.MatchLen, b.BufferSize)
+			goto end
 		}
-		if off > winSize {
-			l = ll - len(blk.Literals)
-			n = len(buf.data) - a
-			return k, l, n, fmt.Errorf("off must be <= window size")
+		m = int(s.LitLen + s.MatchLen)
+		if m < 0 {
+			err = fmt.Errorf(
+				"lz.DecBuffer: length  of sequence %+v is too high",
+				s)
+			goto end
 		}
-		_len := s.Len()
-		if _len > int64(buf.available()) {
-			if _len > int64(buf.windowSize) {
-				l = ll - len(blk.Literals)
-				n = len(buf.data) - a
-				return k, l, n, fmt.Errorf(
-					"seq length > windowSize")
+		n = b.BufferSize - len(b.Data)
+		if n < m {
+			b.shrink()
+			n = b.BufferSize - len(b.Data)
+			if n < m {
+				err = ErrFullBuffer
+				goto end
 			}
-			if err = buf.shrink(_len); err != nil {
-				l = ll - len(blk.Literals)
-				n = len(buf.data) - a
-				return k, l, n, ErrFullBuffer
-			}
 		}
-		buf.data = append(buf.data, blk.Literals[:s.LitLen]...)
+		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
-		m := int(s.MatchLen)
+		m = int(s.MatchLen)
+		off := int(s.Offset)
 		for m > off {
-			buf.data = append(buf.data,
-				buf.data[len(buf.data)-off:]...)
+			b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
 			m -= off
 			if m <= off {
 				break
@@ -239,132 +208,102 @@ func (buf *DecBuffer) WriteBlock(blk Block) (k, l, n int, err error) {
 			off *= 2
 		}
 		// m <= off
-		d := len(buf.data) - off
-		buf.data = append(buf.data, buf.data[d:d+m]...)
+		d := len(b.Data) - off
+		b.Data = append(b.Data, b.Data[d:d+m]...)
 	}
-	buf.data = append(buf.data, blk.Literals...)
-	n = len(buf.data) - a
-	return len(blk.Sequences), ll, n, nil
+	k = len(blk.Sequences)
+	m = len(blk.Literals)
+	n = b.BufferSize - len(b.Data)
+	if n < m {
+		b.shrink()
+		n = b.BufferSize - len(b.Data)
+		if n < m {
+			err = ErrFullBuffer
+			goto end
+		}
+	}
+	b.Data = append(b.Data, blk.Literals...)
+	blk.Literals = blk.Literals[:0]
+end:
+	n = len(b.Data) - ld
+	b.Off += int64(n)
+	l = ll - len(blk.Literals)
+	return n, k, l, err
 }
 
-// DConfig contains the configuration for a simple Decoder. It provides the
-// window size and the MaxSize of the buffer.
-type DConfig struct {
-	WindowSize int
-	MaxSize    int
-}
-
-// Verify checks the configuration and returns any errors.
-func (cfg *DConfig) Verify() error {
-	if cfg.WindowSize < 1 {
-		return fmt.Errorf("lz: windowSize=%d must be >=1",
-			cfg.WindowSize)
-	}
-	if cfg.MaxSize <= cfg.WindowSize {
-		return fmt.Errorf("lz: MaxSize=%d must be > WindowSize=%d",
-			cfg.MaxSize, cfg.WindowSize)
-	}
-	return nil
-}
-
-// ApplyDefaults applies the defaults for the configuration.
-func (cfg *DConfig) ApplyDefaults() {
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 * 1024 * 1024
-	}
-	if cfg.MaxSize == 0 {
-		cfg.MaxSize = 2 * cfg.WindowSize
-	}
-}
-
-// A Decoder decodes sequences and writes data into the writer.
 type Decoder struct {
 	buf DecBuffer
 	w   io.Writer
 }
 
-// NewDecoder allocates and initializes a decoder. If the windowSize is
-// not positive an error will be returned.
-func NewDecoder(w io.Writer, cfg DConfig) (*Decoder, error) {
+func NewDecoder(w io.Writer, cfg DecConfig) (*Decoder, error) {
 	d := new(Decoder)
 	err := d.Init(w, cfg)
 	return d, err
 }
 
-// Init initializes the decoder. Internal buffers will be reused if they are
-// large enough.
-func (d *Decoder) Init(w io.Writer, cfg DConfig) error {
-	cfg.ApplyDefaults()
-	if err := cfg.Verify(); err != nil {
-		return err
-	}
-	if err := d.buf.Init(cfg.WindowSize, cfg.MaxSize); err != nil {
+func (d *Decoder) Init(w io.Writer, cfg DecConfig) error {
+	var err error
+	if err = d.buf.Init(cfg); err != nil {
 		return err
 	}
 	d.w = w
 	return nil
 }
 
-// Reset resets the decoder to its initial state.
 func (d *Decoder) Reset(w io.Writer) {
 	d.buf.Reset()
 	d.w = w
 }
 
-// Flush writes all decoded data to the underlying writer.
 func (d *Decoder) Flush() error {
 	_, err := d.buf.WriteTo(d.w)
 	return err
 }
 
-// Write writes data directly into the decoder.
+func (d *Decoder) WriteByte(c byte) error {
+	var err error
+	for {
+		err = d.buf.WriteByte(c)
+		if err != ErrFullBuffer {
+			return err
+		}
+		_, err = d.buf.WriteTo(d.w)
+		if err != nil {
+			return err
+		}
+	}
+}
+
 func (d *Decoder) Write(p []byte) (n int, err error) {
-	n, err = d.buf.Write(p)
-	if err != ErrFullBuffer {
-		return n, err
+	for {
+		k, err := d.buf.Write(p)
+		n += k
+		if err != ErrFullBuffer {
+			return n, err
+		}
+		_, err = d.buf.WriteTo(d.w)
+		if err != nil {
+			return n, err
+		}
+		p = p[k:]
 	}
-	p = p[n:]
-
-	if err = d.Flush(); err != nil {
-		return n, err
-	}
-
-	var k int
-	k, err = d.buf.Write(p)
-	n += k
-	return n, err
 }
 
-// WriteMatch writes a single match into the decoder.
-func (d *Decoder) WriteMatch(n int, offset int) error {
-	err := d.buf.WriteMatch(n, offset)
-	if err != ErrFullBuffer {
-		return err
+func (d *Decoder) WriteBlock(blk Block) (n, k, l int, err error) {
+	for {
+		nn, kk, ll, err := d.buf.WriteBlock(blk)
+		n += nn
+		k += kk
+		l += ll
+		if err != ErrFullBuffer {
+			return n, k, l, err
+		}
+		_, err = d.buf.WriteTo(d.w)
+		if err != nil {
+			return n, k, l, err
+		}
+		blk.Sequences = blk.Sequences[kk:]
+		blk.Literals = blk.Literals[ll:]
 	}
-
-	if err = d.Flush(); err != nil {
-		return err
-	}
-
-	return d.buf.WriteMatch(n, offset)
-}
-
-// WriteBlock writes a complete block into the decoder.
-func (d *Decoder) WriteBlock(blk Block) (k, l, n int, err error) {
-	k, l, n, err = d.buf.WriteBlock(blk)
-	if err != ErrFullBuffer {
-		return k, l, n, err
-	}
-
-	if err = d.Flush(); err != nil {
-		return k, l, n, err
-	}
-
-	blk.Sequences = blk.Sequences[k:]
-	blk.Literals = blk.Literals[l:]
-	k2, l2, n2, err := d.buf.WriteBlock(blk)
-	k += k2
-	l += l2
-	n += n2
-	return k, l, n, err
 }

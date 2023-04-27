@@ -25,7 +25,7 @@ func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
 
 	var buffer bytes.Buffer
 	var decoder Decoder
-	err = decoder.Init(&buffer, DConfig{WindowSize: bcfg.WindowSize})
+	err = decoder.Init(&buffer, DecConfig{WindowSize: bcfg.WindowSize})
 	if err != nil {
 		t.Fatalf("decoder.Init error %s", err)
 	}
@@ -374,7 +374,7 @@ func BenchmarkDecoders(b *testing.B) {
 			}
 			hw := sha256.New()
 
-			d, err = NewDecoder(hw, DConfig{
+			d, err = NewDecoder(hw, DecConfig{
 				WindowSize: bm.winSize,
 				MaxSize:    bm.maxSize,
 			})

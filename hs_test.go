@@ -51,10 +51,10 @@ func TestHashSequencerSimple(t *testing.T) {
 
 	var buf bytes.Buffer
 	var d Decoder
-	if err := d.Init(&buf, DConfig{WindowSize: 1024}); err != nil {
+	if err := d.Init(&buf, DecConfig{WindowSize: 1024}); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
-	k, l, m, err := d.WriteBlock(blk)
+	m, k, l, err := d.WriteBlock(blk)
 	if err != nil {
 		t.Fatalf("dw.WriteBlock(blk) error %s", err)
 	}
@@ -114,7 +114,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 
 	var builder strings.Builder
 	var decoder Decoder
-	decoder.Init(&builder, DConfig{WindowSize: windowSize})
+	decoder.Init(&builder, DecConfig{WindowSize: windowSize})
 
 	var blk Block
 	for {
@@ -171,7 +171,7 @@ func TestHashSequencerEnwik7(t *testing.T) {
 
 	h2 := sha256.New()
 	var decoder Decoder
-	if err = decoder.Init(h2, DConfig{WindowSize: windowSize}); err != nil {
+	if err = decoder.Init(h2, DecConfig{WindowSize: windowSize}); err != nil {
 		t.Fatalf("decoder.Init() error %s", err)
 	}
 
@@ -293,7 +293,7 @@ func TestLargeParameters(t *testing.T) {
 			s := Wrap(io.TeeReader(r, h1), ws)
 
 			var d Decoder
-			d.Init(h2, DConfig{WindowSize: tc.cfg.WindowSize})
+			d.Init(h2, DecConfig{WindowSize: tc.cfg.WindowSize})
 
 			var blk Block
 			var n int64

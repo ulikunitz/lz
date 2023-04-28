@@ -136,17 +136,14 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	}
 	n = int(m)
 	off := int(o)
+	j := len(b.Data) - off
 	for n > off {
-		b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
+		b.Data = append(b.Data, b.Data[j:]...)
 		n -= off
-		if n <= off {
-			break
-		}
-		off *= 2
+		off <<= 1
 	}
 	// n <= off
-	k := len(b.Data) - off
-	b.Data = append(b.Data, b.Data[k:k+n]...)
+	b.Data = append(b.Data, b.Data[j:j+n]...)
 	b.Off += int64(m)
 	return n, nil
 }
@@ -165,26 +162,21 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				s.LitLen, len(blk.Literals))
 			goto end
 		}
-		if !(1 <= s.Offset && int64(s.Offset) <= int64(b.WindowSize)) {
+		winLen := min(len(b.Data)+int(s.LitLen), b.WindowSize)
+		if !(1 <= s.Offset && int64(s.Offset) <= int64(winLen)) {
 			err = fmt.Errorf(
-				"lz: Offset=%d is outside range [%d..b.WindowSize=%d]",
-				s.Offset, 1, b.WindowSize)
-			goto end
-		}
-		if int64(s.MatchLen) > int64(b.BufferSize) {
-			err = fmt.Errorf(
-				"lz.DecBuffer: MatchLen=%d is larger than BufferSize=%d",
-				s.MatchLen, b.BufferSize)
+				"lz: Offset=%d is outside range [%d..%d]",
+				s.Offset, 1, winLen)
 			goto end
 		}
 		m = int(s.LitLen + s.MatchLen)
-		if m < 0 {
+		n = b.BufferSize - len(b.Data)
+		if !(0 <= m && m <= b.BufferSize) {
 			err = fmt.Errorf(
-				"lz.DecBuffer: length  of sequence %+v is too high",
-				s)
+				"lz.DecBuffer: length  of sequence %+v is out of range [%d..%d]",
+				s, 0, b.BufferSize)
 			goto end
 		}
-		n = b.BufferSize - len(b.Data)
 		if n < m {
 			n += b.shrink()
 			if n < m {
@@ -196,17 +188,14 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 		blk.Literals = blk.Literals[s.LitLen:]
 		m = int(s.MatchLen)
 		off := int(s.Offset)
+		j := len(b.Data) - off
 		for m > off {
-			b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
+			b.Data = append(b.Data, b.Data[j:]...)
 			m -= off
-			if m <= off {
-				break
-			}
-			off *= 2
+			off <<= 1
 		}
 		// m <= off
-		d := len(b.Data) - off
-		b.Data = append(b.Data, b.Data[d:d+m]...)
+		b.Data = append(b.Data, b.Data[j:j+m]...)
 	}
 	k = len(blk.Sequences)
 	m = len(blk.Literals)

@@ -160,10 +160,8 @@ func (f *hashFinder) init(cfg hashConfig, bcfg BufConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	if err = f.hash.init(cfg.InputLen, cfg.HashBits); err != nil {
-		return err
-	}
-	return nil
+	err = f.hash.init(cfg.InputLen, cfg.HashBits)
+	return err
 }
 
 func (f *hashFinder) Reset(data []byte) error {
@@ -294,10 +292,8 @@ func (f *doubleHashFinder) init(cfg dhConfig, bcfg BufConfig) error {
 	if err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits); err != nil {
 		return err
 	}
-	if err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits); err != nil {
-		return err
-	}
-	return nil
+	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
+	return err
 }
 
 func (f *doubleHashFinder) Shrink() int {

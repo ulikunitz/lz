@@ -130,6 +130,8 @@ type BufConfig struct {
 	BlockSize  int
 }
 
+// BufferConfig returns itself, which will be used by the structures embedding
+// the value.
 func (cfg *BufConfig) BufferConfig() BufConfig { return *cfg }
 
 func iVal(v reflect.Value, name string) int {

@@ -25,24 +25,22 @@ type SeqBuffer struct {
 // Init initializes the buffer. The function
 // sets the defaults for the buffer configuration if required and verifies it.
 // Errors will be reported.
-func (s *SeqBuffer) Init(cfg BufConfig) error {
+func (b *SeqBuffer) Init(cfg BufConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	*s = SeqBuffer{
-		Data:      s.Data[:0],
+	*b = SeqBuffer{
+		Data:      b.Data[:0],
 		BufConfig: cfg,
 	}
 	return err
 }
 
-func (b *SeqBuffer) BufferConfig() BufConfig { return b.BufConfig }
-
-// Resets the buffer to the the new data. The data slice requires a margin of 7
-// bytes for the hash sequencers to be used directly. If there is no margin the
-// data will be copied into a slice with enough capacity.
+// Reset initializes the buffer with new data. The data slice requires a margin
+// of 7 bytes for the hash sequencers to be used directly. If there is no margin
+// the data will be copied into a slice with enough capacity.
 func (b *SeqBuffer) Reset(data []byte) error {
 	if len(data) > b.BufferSize {
 		return fmt.Errorf("lz: len(data)=%d larger than BufferSize=%d",

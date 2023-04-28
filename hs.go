@@ -26,6 +26,8 @@ type HSConfig struct {
 	HashBits int
 }
 
+// MarshalJSON creates the JSON string for the configuration. Note that it adds
+// a property Name with value "HS" to the structure.
 func (cfg *HSConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Name       string
@@ -47,12 +49,13 @@ func (cfg *HSConfig) MarshalJSON() (p []byte, err error) {
 	return json.Marshal(&s)
 }
 
+// BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *HSConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
-// ApplyDefaults sets values that are zero to their defaults values.
+// SetDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
@@ -65,14 +68,13 @@ func (cfg *HSConfig) SetDefaults() {
 // Verify checks the config for correctness.
 func (cfg *HSConfig) Verify() error {
 	bc := bufferConfig(cfg)
-	if err := bc.Verify(); err != nil {
+	var err error
+	if err = bc.Verify(); err != nil {
 		return err
 	}
 	h, _ := hashCfg(cfg)
-	if err := h.Verify(); err != nil {
-		return err
-	}
-	return nil
+	err = h.Verify()
+	return err
 }
 
 // NewSequencer creates a new hash sequencer.

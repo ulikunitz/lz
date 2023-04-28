@@ -1,5 +1,8 @@
 {
         "search.exclude": {
                 "**/testdata": true
-        }
+        },
+        "go.lintFlags": [
+                "-config=${workspaceFolder}/.vscode/revive.toml"
+        ]
 }

@@ -250,6 +250,12 @@ func ParseJSON(p []byte) (s SeqConfig, err error) {
 			return nil, err
 		}
 		return &bdhsCfg, nil
+	case "BUHS":
+		var buhsCfg BUHSConfig
+		if err = json.Unmarshal(p, &buhsCfg); err != nil {
+			return nil, err
+		}
+		return &buhsCfg, nil
 	default:
 		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Name)
 	}

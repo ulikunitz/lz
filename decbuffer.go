@@ -115,14 +115,35 @@ func (b *DecBuffer) shrink() int {
 	return delta
 }
 
+func (b *DecBuffer) grow(g int) {
+	if g <= cap(b.Data) {
+		return
+	}
+	c := 2 * g
+	if 0 <= c && c < 1024 {
+		c = 1024
+	} else {
+		c = ((c + 1<<10 - 1) >> 10) << 10
+	}
+	if c >= b.BufferSize || c < 0 {
+		c = b.BufferSize
+	}
+	// Allocate the buffer.
+	p := b.Data
+	b.Data = make([]byte, len(b.Data), c)
+	copy(b.Data, p)
+}
+
 // WriteByte writes a single byte into the buffer.
 func (b *DecBuffer) WriteByte(c byte) error {
-	n := b.BufferSize - len(b.Data)
-	if n <= 0 {
-		n += b.shrink()
-		if n <= 0 {
+	g := len(b.Data) + 1
+	if g > b.BufferSize {
+		if g -= b.shrink(); g > b.BufferSize {
 			return ErrFullBuffer
 		}
+	}
+	if g > cap(b.Data) {
+		b.grow(g)
 	}
 	b.Data = append(b.Data, c)
 	b.Off++
@@ -132,14 +153,17 @@ func (b *DecBuffer) WriteByte(c byte) error {
 // Write puts the slice into the buffer. The method will write the slice only
 // fully or will return 0, [ErrFullBuffer].
 func (b *DecBuffer) Write(p []byte) (n int, err error) {
-	n = b.BufferSize - len(b.Data)
-	if n < len(p) {
-		n += b.shrink()
-		if n < len(p) {
+	n = len(p)
+	g := len(b.Data) + n
+	if g > b.BufferSize {
+		if g -= b.shrink(); g > b.BufferSize {
 			return 0, ErrFullBuffer
 		}
 	}
-	n = len(p)
+	if g > cap(b.Data) {
+		b.grow(g)
+	}
+
 	b.Data = append(b.Data, p...)
 	b.Off += int64(n)
 	return n, nil
@@ -158,14 +182,16 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 			"lz.DecBuffer.WriterMatch: m=%d is larger than BufferSize=%d",
 			m, b.BufferSize)
 	}
-	a := b.BufferSize - len(b.Data)
-	if int64(a) < int64(m) {
-		a += b.shrink()
-		if int64(a) < int64(m) {
+	n = int(m)
+	g := len(b.Data) + n
+	if g > b.BufferSize {
+		if g -= b.shrink(); g > b.BufferSize {
 			return 0, ErrFullBuffer
 		}
 	}
-	n = int(m)
+	if g > cap(b.Data) {
+		b.grow(g)
+	}
 	off := int(o)
 	j := len(b.Data) - off
 	for n > off {
@@ -189,10 +215,7 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	ld := len(b.Data)
 	ll := len(blk.Literals)
-	var (
-		s Seq
-		m int
-	)
+	var s Seq
 	for k, s = range blk.Sequences {
 		if int64(s.LitLen) > int64(len(blk.Literals)) {
 			err = fmt.Errorf(
@@ -207,42 +230,47 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				s.Offset, 1, winLen)
 			goto end
 		}
-		m = int(s.LitLen + s.MatchLen)
-		n = b.BufferSize - len(b.Data)
-		if !(0 <= m && m <= b.BufferSize) {
+		n = int(s.LitLen + s.MatchLen)
+		if !(0 <= n && n <= b.BufferSize) {
 			err = fmt.Errorf(
 				"lz.DecBuffer: length  of sequence %+v is out of range [%d..%d]",
 				s, 0, b.BufferSize)
 			goto end
 		}
-		if n < m {
-			n += b.shrink()
-			if n < m {
+		g := len(b.Data) + n
+		if g > b.BufferSize {
+			if g -= b.shrink(); g > b.BufferSize {
 				err = ErrFullBuffer
 				goto end
 			}
 		}
+		if g > cap(b.Data) {
+			b.grow(g)
+		}
 		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
-		m = int(s.MatchLen)
+		n = int(s.MatchLen)
 		off := int(s.Offset)
 		j := len(b.Data) - off
-		for m > off {
+		for n > off {
 			b.Data = append(b.Data, b.Data[j:]...)
-			m -= off
+			n -= off
 			off <<= 1
 		}
-		// m <= off
-		b.Data = append(b.Data, b.Data[j:j+m]...)
+		// n <= off
+		b.Data = append(b.Data, b.Data[j:j+n]...)
 	}
 	k = len(blk.Sequences)
-	m = len(blk.Literals)
-	n = b.BufferSize - len(b.Data)
-	if n < m {
-		n += b.shrink()
-		if n < m {
-			err = ErrFullBuffer
-			goto end
+	{ // block required to allow goto over it.
+		g := len(b.Data) + len(blk.Literals)
+		if g > b.BufferSize {
+			if g -= b.shrink(); g > b.BufferSize {
+				err = ErrFullBuffer
+				goto end
+			}
+		}
+		if g > cap(b.Data) {
+			b.grow(g)
 		}
 	}
 	b.Data = append(b.Data, blk.Literals...)

@@ -99,7 +99,8 @@ func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
 // that has been made available. Note that shrink will return 0 if it cannot
 // provide more space.
 //
-// The method is private because it is called by the various write methods automatically.
+// The method is private because it is called by the various write methods
+// automatically.
 func (b *DecBuffer) shrink() int {
 	delta := doz(len(b.Data), b.WindowSize)
 	if b.R < delta {

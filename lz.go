@@ -232,14 +232,24 @@ func ParseJSON(p []byte) (s SeqConfig, err error) {
 			return nil, err
 		}
 		return &hsCfg, nil
-		/*
-			case "BHS":
-				var bhsCfg BHSConfig
-				if err = json.Unmarshal(p, &bhsCfg); err != nil {
-					return nil, err
-				}
-				return &bhsCfg, nil
-		*/
+	case "BHS":
+		var bhsCfg BHSConfig
+		if err = json.Unmarshal(p, &bhsCfg); err != nil {
+			return nil, err
+		}
+		return &bhsCfg, nil
+	case "DHS":
+		var dhsCfg DHSConfig
+		if err = json.Unmarshal(p, &dhsCfg); err != nil {
+			return nil, err
+		}
+		return &dhsCfg, nil
+	case "BDHS":
+		var bdhsCfg BDHSConfig
+		if err = json.Unmarshal(p, &bdhsCfg); err != nil {
+			return nil, err
+		}
+		return &bdhsCfg, nil
 	default:
 		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Name)
 	}

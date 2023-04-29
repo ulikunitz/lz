@@ -52,7 +52,6 @@ func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
 	}
 }
 
-/*
 func FuzzBHS(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
@@ -66,6 +65,7 @@ func FuzzBHS(f *testing.F) {
 	})
 }
 
+/*
 func FuzzDHS(f *testing.F) {
 	f.Add(3, 5, 4, 6, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,

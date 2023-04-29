@@ -58,6 +58,7 @@
         "kmin",
         "lcs",
         "lzold",
+        "noinline",
         "pdata",
         "proot",
         "sainv",

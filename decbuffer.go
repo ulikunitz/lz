@@ -115,6 +115,7 @@ func (b *DecBuffer) shrink() int {
 	return delta
 }
 
+//go:noinline
 func (b *DecBuffer) grow(g int) {
 	if g <= cap(b.Data) {
 		return
@@ -223,7 +224,10 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				s.LitLen, len(blk.Literals))
 			goto end
 		}
-		winLen := min(len(b.Data)+int(s.LitLen), b.WindowSize)
+		winLen := len(b.Data) + int(s.LitLen)
+		if winLen > b.WindowSize {
+			winLen = b.WindowSize
+		}
 		if !(1 <= s.Offset && int64(s.Offset) <= int64(winLen)) {
 			err = fmt.Errorf(
 				"lz: Offset=%d is outside range [%d..%d]",
@@ -247,18 +251,20 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 		if g > cap(b.Data) {
 			b.grow(g)
 		}
-		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
+		i := len(b.Data)
+		b.Data = b.Data[:g]
+		i += copy(b.Data[i:], blk.Literals[:s.LitLen])
 		blk.Literals = blk.Literals[s.LitLen:]
 		n = int(s.MatchLen)
 		off := int(s.Offset)
-		j := len(b.Data) - off
+		j := i - off
 		for n > off {
-			b.Data = append(b.Data, b.Data[j:]...)
+			i += copy(b.Data[i:], b.Data[j:i])
 			n -= off
 			off <<= 1
 		}
 		// n <= off
-		b.Data = append(b.Data, b.Data[j:j+n]...)
+		copy(b.Data[i:], b.Data[j:j+n])
 	}
 	k = len(blk.Sequences)
 	{ // block required to allow goto over it.

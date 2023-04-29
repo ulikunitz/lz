@@ -2,7 +2,10 @@ package lz
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
+	"math/bits"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -136,7 +139,6 @@ func FuzzGSAS(f *testing.F) {
 	})
 }
 
-/*
 func FuzzOSAS(f *testing.F) {
 	f.Add([]byte("abbababb"))
 	f.Add([]byte("=====foofoobarfoobar bartender===="))
@@ -276,7 +278,7 @@ func BenchmarkSequencers(b *testing.B) {
 		{"OSASequencer", &OSASConfig{
 			MinMatchLen: 2,
 			MaxMatchLen: 273,
-			Cost:        XZCost,
+			Cost:        "XZCost",
 			WindowSize:  512 << 10,
 			BufferSize:  512 << 10,
 		}},
@@ -376,7 +378,7 @@ func BenchmarkDecoders(b *testing.B) {
 
 			d, err = NewDecoder(hw, DecConfig{
 				WindowSize: bm.winSize,
-				MaxSize:    bm.maxSize,
+				BufferSize: bm.maxSize,
 			})
 			if err != nil {
 				b.Fatalf("NewDecoder error %s", err)
@@ -408,4 +410,3 @@ func BenchmarkDecoders(b *testing.B) {
 		})
 	}
 }
-*/

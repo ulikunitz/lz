@@ -94,14 +94,9 @@ func (b *SeqBuffer) grow(t int) {
 		return
 	}
 
-	c := 2 * t
-	if 0 <= c && c < 1024 {
-		c = 1024
-	} else {
-		c = ((c + 1<<10 - 1) >> 10) << 10
-	}
-	if c >= b.BufferSize+7 || c < 0 {
-		c = b.BufferSize + 7
+	c := 2 * int64(t)
+	if c >= int64(b.BufferSize)+7 {
+		c = int64(b.BufferSize) + 7
 	}
 	// Allocate the buffer.
 	p := b.Data

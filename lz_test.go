@@ -84,7 +84,6 @@ func FuzzDHS(f *testing.F) {
 	})
 }
 
-/*
 func FuzzBDHS(f *testing.F) {
 	f.Add(3, 5, 4, 6, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,
@@ -104,6 +103,7 @@ func FuzzBDHS(f *testing.F) {
 	})
 }
 
+/*
 func FuzzBUHS(f *testing.F) {
 	f.Add(3, 5, 8, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,

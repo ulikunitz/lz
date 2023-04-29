@@ -256,6 +256,13 @@ func ParseJSON(p []byte) (s SeqConfig, err error) {
 			return nil, err
 		}
 		return &buhsCfg, nil
+	case "GSAS":
+		var gsasCfg GSASConfig
+		if err = json.Unmarshal(p, &gsasCfg); err != nil {
+			return nil, err
+		}
+		return &gsasCfg, nil
+
 	default:
 		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Name)
 	}

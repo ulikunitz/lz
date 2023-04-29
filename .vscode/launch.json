@@ -12,7 +12,7 @@
                         "program": "hs_test.go",
                         "args": [
                                 "-test.run",
-                                "FuzzHS/3f323c33c3d86ef4"
+                                "FuzzGSAS/76204f180cc0e3da"
                         ]
                 }
         ]

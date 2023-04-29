@@ -175,7 +175,7 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	// n <= off
 	b.Data = append(b.Data, b.Data[j:j+n]...)
 	b.Off += int64(m)
-	return n, nil
+	return int(m), nil
 }
 
 // WriteBlock writes sequences from the block into the buffer. A single sequence

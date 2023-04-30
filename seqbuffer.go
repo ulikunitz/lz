@@ -94,7 +94,12 @@ func (b *SeqBuffer) grow(t int) {
 		return
 	}
 
-	c := 2 * int64(t)
+	// We need always to calculate the margin.
+	c := 2*int64(t) + 7
+	// Don't do too many small allocations.
+	if c < 1024 {
+		c = 1024
+	}
 	if c >= int64(b.BufferSize)+7 {
 		c = int64(b.BufferSize) + 7
 	}

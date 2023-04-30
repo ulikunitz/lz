@@ -2,9 +2,6 @@
 
 ## updates
 
-- Make all sequencer configs flat
-- Don't export the finders.
-
 ## v0.3.0
 
 * Write documentation for each client and document defaults

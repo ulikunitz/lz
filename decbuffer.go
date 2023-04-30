@@ -71,6 +71,9 @@ func (b *DecBuffer) Init(cfg DecConfig) error {
 		Data:      b.Data[:0],
 		DecConfig: cfg,
 	}
+	if cap(b.Data) > b.BufferSize {
+		b.BufferSize = cap(b.Data)
+	}
 	return nil
 }
 
@@ -79,6 +82,9 @@ func (b *DecBuffer) Reset() {
 	*b = DecBuffer{
 		Data:      b.Data[:0],
 		DecConfig: b.DecConfig,
+	}
+	if cap(b.Data) > b.BufferSize {
+		b.BufferSize = cap(b.Data)
 	}
 }
 
@@ -111,7 +117,13 @@ func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
 //
 // The method is private because it is called by the various write methods
 // automatically.
-func (b *DecBuffer) shrink() int {
+func (b *DecBuffer) shrink(g int) int {
+	if b.BufferSize < cap(b.Data) {
+		b.BufferSize = cap(b.Data)
+		if g <= b.BufferSize {
+			return 0
+		}
+	}
 	delta := doz(len(b.Data), b.WindowSize)
 	if b.R < delta {
 		delta = b.R
@@ -129,7 +141,7 @@ func (b *DecBuffer) shrink() int {
 func (b *DecBuffer) WriteByte(c byte) error {
 	g := len(b.Data) + 1
 	if g > b.BufferSize {
-		if g -= b.shrink(); g > b.BufferSize {
+		if g -= b.shrink(g); g > b.BufferSize {
 			return ErrFullBuffer
 		}
 	}
@@ -144,7 +156,7 @@ func (b *DecBuffer) Write(p []byte) (n int, err error) {
 	n = len(p)
 	g := len(b.Data) + n
 	if g > b.BufferSize {
-		if g -= b.shrink(); g > b.BufferSize {
+		if g -= b.shrink(g); g > b.BufferSize {
 			return 0, ErrFullBuffer
 		}
 	}
@@ -169,7 +181,7 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	n = int(m)
 	g := len(b.Data) + n
 	if g > b.BufferSize {
-		if g -= b.shrink(); g > b.BufferSize {
+		if g -= b.shrink(g); g > b.BufferSize {
 			return 0, ErrFullBuffer
 		}
 	}
@@ -232,7 +244,7 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				err = errMatchLen
 				goto end
 			}
-			if a += b.shrink(); g > int64(a) {
+			if a += b.shrink(int(g)+len(b.Data)); g > int64(a) {
 				err = ErrFullBuffer
 				goto end
 			}
@@ -257,7 +269,7 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	{ // block required to allow goto over it.
 		g := len(b.Data) + len(blk.Literals)
 		if g > b.BufferSize {
-			if g -= b.shrink(); g > b.BufferSize {
+			if g -= b.shrink(g); g > b.BufferSize {
 				err = ErrFullBuffer
 				goto end
 			}

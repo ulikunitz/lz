@@ -133,7 +133,7 @@ func (cfg *hashConfig) SetDefaults() {
 // Verify checks the configuration parameters.
 func (cfg *hashConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
-		return fmt.Errorf("lz: InputLen must be in range [2,8]")
+		return fmt.Errorf("lz: InputLen must be in range [2..8]")
 	}
 	maxHashBits := 24
 	if t := 8 * cfg.InputLen; t < maxHashBits {
@@ -254,7 +254,13 @@ func setDHCfg(cfg SeqConfig, c dhConfig) error {
 
 func (cfg *dhConfig) SetDefaults() {
 	cfg.H1.SetDefaults()
-	cfg.H2.InputLen = 6
+	if cfg.H2.InputLen == 0 {
+		if cfg.H1.InputLen < 5 {
+			cfg.H2.InputLen = 6
+		} else {
+			cfg.H2.InputLen = 8
+		}
+	}
 	cfg.H2.SetDefaults()
 }
 

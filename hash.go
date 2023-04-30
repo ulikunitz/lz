@@ -254,6 +254,7 @@ func setDHCfg(cfg SeqConfig, c dhConfig) error {
 
 func (cfg *dhConfig) SetDefaults() {
 	cfg.H1.SetDefaults()
+	cfg.H2.InputLen = 6
 	cfg.H2.SetDefaults()
 }
 

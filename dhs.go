@@ -51,6 +51,12 @@ func (cfg *DHSConfig) BufConfig() BufConfig {
 	return bc
 }
 
+// SetBufConfig sets the buffer configuration parameters of the sequencer
+// configuration.
+func (cfg *DHSConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // Verify checks the configuration for errors.
 func (cfg *DHSConfig) Verify() error {
 	var err error

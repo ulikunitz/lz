@@ -55,6 +55,12 @@ func (cfg *OSASConfig) BufConfig() BufConfig {
 	return bufferConfig(cfg)
 }
 
+// SetBufConfig sets the buffer configuration parameters of the sequencer
+// configuration.
+func (cfg *OSASConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // SetDefaults sets the defaults for the zero values of the the OSAS
 // configuration.
 func (cfg *OSASConfig) SetDefaults() {

@@ -82,6 +82,15 @@ func (b *DecBuffer) Reset() {
 	}
 }
 
+// ByteAtEnd returns byte at end of the buffer
+func (b *DecBuffer) ByteAtEnd(off int) byte {
+	i := len(b.Data) - off
+	if !(0 <= i && i < len(b.Data)) {
+		return 0
+	}
+	return b.Data[i]
+}
+
 // Read reads decoded data from the buffer.
 func (b *DecBuffer) Read(p []byte) (n int, err error) {
 	n = copy(p, b.Data[b.R:])

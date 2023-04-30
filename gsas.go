@@ -47,6 +47,12 @@ func (cfg *GSASConfig) BufConfig() BufConfig {
 	return bc
 }
 
+// SetBufConfig sets the buffer configuration parameters of the sequencer
+// configuration.
+func (cfg *GSASConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // Verify checks the configuration for inconsistencies.
 func (cfg *GSASConfig) Verify() error {
 	bc := bufferConfig(cfg)

@@ -113,6 +113,7 @@ type Sequencer interface {
 type SeqConfig interface {
 	NewSequencer() (s Sequencer, err error)
 	BufConfig() BufConfig
+	SetBufConfig(bc BufConfig)
 	SetDefaults()
 	Verify() error
 }

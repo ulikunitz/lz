@@ -45,6 +45,12 @@ func (cfg *BHSConfig) BufConfig() BufConfig {
 	return bc
 }
 
+// SetBufConfig sets the buffer configuration parameters of the backward hash
+// sequencer configuration.
+func (cfg *BHSConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *BHSConfig) SetDefaults() {
 	bc := bufferConfig(cfg)

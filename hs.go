@@ -55,6 +55,12 @@ func (cfg *HSConfig) BufConfig() BufConfig {
 	return bc
 }
 
+// SetBufConfig sets the buffer configuration parameters of the sequencer
+// configuration.
+func (cfg *HSConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *HSConfig) SetDefaults() {
 	bc := bufferConfig(cfg)

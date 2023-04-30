@@ -52,6 +52,10 @@ func (cfg *BDHSConfig) BufConfig() BufConfig {
 	return bc
 }
 
+func (cfg *BDHSConfig) SetBufConfig(bc BufConfig) {
+	setBufferConfig(cfg, bc)
+}
+
 // Verify checks the configuration for errors.
 func (cfg *BDHSConfig) Verify() error {
 	var err error

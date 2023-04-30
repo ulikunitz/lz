@@ -168,23 +168,26 @@ func (b *DecBuffer) Write(p []byte) (n int, err error) {
 // WriteMatch puts the match at the end of the buffer. The match will only be
 // written completely or n=0 and [ErrFullBuffer] will be returned.
 func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
-	if !(1 <= o && int64(o) <= int64(b.WindowSize)) {
-		return 0, fmt.Errorf(
-			"lz.DecBuffer.WriteMatch: o=%d is outside range [%d..b.WindowSize=%d]",
-			o, 1, b.WindowSize)
+	if o == 0 && m > 0 {
+		return 0, errOffset
 	}
-	if int64(m) > int64(b.BufferSize) {
-		return 0, fmt.Errorf(
-			"lz.DecBuffer.WriterMatch: m=%d is larger than BufferSize=%d",
-			m, b.BufferSize)
+	winLen := len(b.Data)
+	if winLen > b.WindowSize {
+		winLen = b.WindowSize
 	}
-	n = int(m)
-	g := len(b.Data) + n
-	if g > b.BufferSize {
-		if g -= b.shrink(g); g > b.BufferSize {
+	if int64(o) > int64(winLen) {
+		return 0, errOffset
+	}
+	_m := int64(m)
+	if a := b.BufferSize - len(b.Data); _m > int64(a) {
+		if _m > int64(b.WindowSize) {
+			return 0, errMatchLen
+		}
+		if a += b.shrink(int(_m) + len(b.Data)); _m > int64(a) {
 			return 0, ErrFullBuffer
 		}
 	}
+	n = int(_m)
 	off := int(o)
 	for n > off {
 		b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
@@ -197,8 +200,8 @@ func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	// n <= off
 	j := len(b.Data) - off
 	b.Data = append(b.Data, b.Data[j:j+n]...)
-	b.Off += int64(m)
-	return int(m), nil
+	b.Off += _m
+	return int(_m), nil
 }
 
 var (
@@ -244,7 +247,7 @@ func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				err = errMatchLen
 				goto end
 			}
-			if a += b.shrink(int(g)+len(b.Data)); g > int64(a) {
+			if a += b.shrink(int(g) + len(b.Data)); g > int64(a) {
 				err = ErrFullBuffer
 				goto end
 			}

@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 
@@ -20,25 +19,15 @@ type GSASConfig struct {
 	MinMatchLen int
 }
 
+// UnmarshalJSON parses the JSON value and sets the fields of GSASConfig.
+func (cfg *GSASConfig) UnmarshalJSON(p []byte) error {
+	return unmarshalJSON(cfg, "GSAS", p)
+}
+
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Name with value "GSAS" to the structure.
+// a property Type with value "GSAS" to the structure.
 func (cfg *GSASConfig) MarshalJSON() (p []byte, err error) {
-	s := struct {
-		Name        string
-		ShrinkSize  int `json:",omitempty"`
-		BufferSize  int `json:",omitempty"`
-		WindowSize  int `json:",omitempty"`
-		BlockSize   int `json:",omitempty"`
-		MinMatchLen int `json:",omitempty"`
-	}{
-		Name:        "GSAS",
-		ShrinkSize:  cfg.ShrinkSize,
-		BufferSize:  cfg.BufferSize,
-		WindowSize:  cfg.WindowSize,
-		BlockSize:   cfg.BlockSize,
-		MinMatchLen: cfg.MinMatchLen,
-	}
-	return json.Marshal(&s)
+	return marshalJSON(cfg, "GSAS")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

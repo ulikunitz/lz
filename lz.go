@@ -119,10 +119,11 @@ type SeqConfig interface {
 }
 
 // BufConfig describes the various sizes relevant for the buffer. Note that
-// ShrinkSize should be significantly smaller than BufferSize at most 50%. The
-// WindowSize is independent of the BufferSize, but usually the BufferSize
-// should be larger or equal the WindowSize. A typical BlockSize for instance
-// for the ZStandard compression is 128 kByte and limits the largest match len.
+// ShrinkSize should be significantly smaller than BufferSize and at most 50% of
+// it. The WindowSize is independent of the BufferSize, but usually the
+// BufferSize should be larger or equal the WindowSize. The actual sequencing
+// happens in blocks. A typical BlockSize 128 kByte as used by ZStandard
+// specification.
 type BufConfig struct {
 	ShrinkSize int
 	BufferSize int
@@ -161,6 +162,64 @@ func setBufferConfig(x SeqConfig, bc BufConfig) {
 	setIVal(v, "BufferSize", bc.BufferSize)
 	setIVal(v, "WindowSize", bc.WindowSize)
 	setIVal(v, "BlockSize", bc.BlockSize)
+}
+
+// seqConfigUnion must contain all fields for all sequencers. Fields with the
+// same name must have the same type.
+type seqConfigUnion struct {
+	Type        string
+	ShrinkSize  int    `json:",omitempty"`
+	BufferSize  int    `json:",omitempty"`
+	WindowSize  int    `json:",omitempty"`
+	BlockSize   int    `json:",omitempty"`
+	InputLen    int    `json:",omitempty"`
+	HashBits    int    `json:",omitempty"`
+	InputLen1   int    `json:",omitempty"`
+	HashBits1   int    `json:",omitempty"`
+	InputLen2   int    `json:",omitempty"`
+	HashBits2   int    `json:",omitempty"`
+	MinMatchLen int    `json:",omitempty"`
+	MaxMatchLen int    `json:",omitempty"`
+	BucketSize  int    `json:",omitempty"`
+	Cost        string `json:",omitempty"`
+}
+
+func unmarshalJSON(cfg SeqConfig, type_ string, p []byte) error {
+	var err error
+	var s seqConfigUnion
+	if err = json.Unmarshal(p, &s); err != nil {
+		return err
+	}
+	if s.Type != type_ {
+		return fmt.Errorf("lz: Type property %q is not %q",
+			s.Type, type_)
+	}
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	vt := v.Type()
+	w := reflect.ValueOf(s)
+	n := v.NumField()
+	for i := 0; i < n; i++ {
+		name := vt.Field(i).Name
+		y := w.FieldByName(name)
+		v.Field(i).Set(y)
+	}
+	return nil
+}
+
+func marshalJSON(cfg SeqConfig, type_ string) (p []byte, err error) {
+	var s seqConfigUnion
+	s.Type = type_
+	v := reflect.Indirect(reflect.ValueOf(cfg))
+	vt := v.Type()
+	w := reflect.Indirect(reflect.ValueOf(&s))
+	n := v.NumField()
+	for i := 0; i < n; i++ {
+		name := vt.Field(i).Name
+		y := w.FieldByName(name)
+		y.Set(v.Field(i))
+	}
+	p, err = json.Marshal(&s)
+	return p, err
 }
 
 // Methods to the types defined above.
@@ -221,12 +280,12 @@ func (cfg *BufConfig) SetDefaults() {
 
 // ParseJSON parses a JSON structure
 func ParseJSON(p []byte) (s SeqConfig, err error) {
-	var v struct{ Name string }
+	var v struct{ Type string }
 	if err = json.Unmarshal(p, &v); err != nil {
 		return nil, err
 	}
 
-	switch v.Name {
+	switch v.Type {
 	case "HS":
 		var hsCfg HSConfig
 		if err = json.Unmarshal(p, &hsCfg); err != nil {
@@ -265,6 +324,6 @@ func ParseJSON(p []byte) (s SeqConfig, err error) {
 		return &gsasCfg, nil
 
 	default:
-		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Name)
+		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Type)
 	}
 }

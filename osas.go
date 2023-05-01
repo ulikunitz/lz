@@ -50,6 +50,17 @@ type OSASConfig struct {
 	Cost string
 }
 
+// UnmarshalJSON parses the JSON value and sets the fields of OSASConfig.
+func (cfg *OSASConfig) UnmarshalJSON(p []byte) error {
+	return unmarshalJSON(cfg, "OSAS", p)
+}
+
+// MarshalJSON creates the JSON string for the configuration. Note that it adds
+// a property Type with value "OSAS" to the structure.
+func (cfg *OSASConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "OSAS")
+}
+
 // BufConfig returns the [BufConfig] value for the OSAS configuration.
 func (cfg *OSASConfig) BufConfig() BufConfig {
 	return bufferConfig(cfg)

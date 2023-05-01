@@ -1,7 +1,5 @@
 package lz
 
-import "encoding/json"
-
 // bucketHashSequencer allows the creation of sequence blocks using a simple hash
 // table.
 type bucketHashSequencer struct {
@@ -22,29 +20,15 @@ type BUHSConfig struct {
 	BucketSize int
 }
 
+// UnmarshalJSON parses the JSON value and sets the fields of BUHSConfig.
+func (cfg *BUHSConfig) UnmarshalJSON(p []byte) error {
+	return unmarshalJSON(cfg, "BUHS", p)
+}
+
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Name with value "BUHS" to the structure.
+// a property Type with value "BUHS" to the structure.
 func (cfg *BUHSConfig) MarshalJSON() (p []byte, err error) {
-	s := struct {
-		Name       string
-		ShrinkSize int `json:",omitempty"`
-		BufferSize int `json:",omitempty"`
-		WindowSize int `json:",omitempty"`
-		BlockSize  int `json:",omitempty"`
-		InputLen   int `json:",omitempty"`
-		HashBits   int `json:",omitempty"`
-		BucketSize int `json:",omitempty"`
-	}{
-		Name:       "BUHS",
-		ShrinkSize: cfg.ShrinkSize,
-		BufferSize: cfg.BufferSize,
-		WindowSize: cfg.WindowSize,
-		BlockSize:  cfg.BlockSize,
-		InputLen:   cfg.InputLen,
-		HashBits:   cfg.HashBits,
-		BucketSize: cfg.BucketSize,
-	}
-	return json.Marshal(&s)
+	return marshalJSON(cfg, "BUHS")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

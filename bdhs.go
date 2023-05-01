@@ -1,7 +1,6 @@
 package lz
 
 import (
-	"encoding/json"
 	"math/bits"
 )
 
@@ -19,31 +18,15 @@ type BDHSConfig struct {
 	HashBits2 int
 }
 
+// UnmarshalJSON parses the JSON value and sets the fields of BDHSConfig.
+func (cfg *BDHSConfig) UnmarshalJSON(p []byte) error {
+	return unmarshalJSON(cfg, "BDHS", p)
+}
+
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Name with value "BDHS" to the structure.
+// a property Type with value "BDHS" to the structure.
 func (cfg *BDHSConfig) MarshalJSON() (p []byte, err error) {
-	s := struct {
-		Name       string
-		ShrinkSize int `json:",omitempty"`
-		BufferSize int `json:",omitempty"`
-		WindowSize int `json:",omitempty"`
-		BlockSize  int `json:",omitempty"`
-		InputLen1  int `json:",omitempty"`
-		HashBits1  int `json:",omitempty"`
-		InputLen2  int `json:",omitempty"`
-		HashBits2  int `json:",omitempty"`
-	}{
-		Name:       "BDHS",
-		ShrinkSize: cfg.ShrinkSize,
-		BufferSize: cfg.BufferSize,
-		WindowSize: cfg.WindowSize,
-		BlockSize:  cfg.BlockSize,
-		InputLen1:  cfg.InputLen1,
-		HashBits1:  cfg.HashBits1,
-		InputLen2:  cfg.InputLen2,
-		HashBits2:  cfg.HashBits2,
-	}
-	return json.Marshal(&s)
+	return marshalJSON(cfg, "BDHS")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

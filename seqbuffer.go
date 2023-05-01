@@ -154,7 +154,7 @@ func (b *SeqBuffer) ReadFrom(r io.Reader) (n int64, err error) {
 
 // Errors returned by [SeqBuffer.ReadAt]
 var (
-	ErrOutOfBuffer = errors.New("lz: offset out of buffer")
+	ErrOutOfBuffer = errors.New("lz: offset outside of buffer")
 	ErrEndOfBuffer = errors.New("lz: end of buffer")
 )
 

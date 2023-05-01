@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
+func testParser(t *testing.T, cfg ParserConfig, p []byte) {
 	cfg.SetDefaults()
 	t.Logf("cfg.SetDefaults() %+v", cfg)
 	if err := cfg.Verify(); err != nil {
@@ -20,26 +20,26 @@ func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
 	}
 	bcfg := cfg.BufConfig()
 
-	seq, err := cfg.NewSequencer()
+	seq, err := cfg.NewParser()
 	if err != nil {
-		t.Fatalf("cfg.NewSequencer() error %s", err)
+		t.Fatalf("cfg.NewParser() error %s", err)
 	}
 	s := Wrap(bytes.NewReader(p), seq)
 
 	var buffer bytes.Buffer
 	var decoder Decoder
-	err = decoder.Init(&buffer, DecConfig{WindowSize: bcfg.WindowSize})
+	err = decoder.Init(&buffer, DecoderConfig{WindowSize: bcfg.WindowSize})
 	if err != nil {
 		t.Fatalf("decoder.Init error %s", err)
 	}
 
 	var blk Block
 	for {
-		if _, err := s.Sequence(&blk, 0); err != nil {
+		if _, err := s.Parse(&blk, 0); err != nil {
 			if err == io.EOF {
 				break
 			}
-			t.Fatalf("s.Sequence error %s", err)
+			t.Fatalf("s.Parse error %s", err)
 		}
 		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
 			t.Fatalf("decoder.WriteBlock error %s", err)
@@ -55,27 +55,27 @@ func testSequencer(t *testing.T, cfg SeqConfig, p []byte) {
 	}
 }
 
-func FuzzBHS(f *testing.F) {
+func FuzzBHP(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
-		cfg := &BHSConfig{
+		cfg := &BHPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 			InputLen:   inputLen,
 			HashBits:   hashBits,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func FuzzDHS(f *testing.F) {
+func FuzzDHP(f *testing.F) {
 	f.Add(3, 5, 4, 6, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,
 		inputLen1, hashBits1 int,
 		inputLen2, hashBits2 int,
 		p []byte) {
 
-		cfg := &DHSConfig{
+		cfg := &DHPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 			InputLen1:  inputLen1,
@@ -83,18 +83,18 @@ func FuzzDHS(f *testing.F) {
 			InputLen2:  inputLen2,
 			HashBits2:  hashBits2,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func FuzzBDHS(f *testing.F) {
+func FuzzBDHP(f *testing.F) {
 	f.Add(3, 5, 4, 6, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,
 		inputLen1, hashBits1 int,
 		inputLen2, hashBits2 int,
 		p []byte) {
 
-		cfg := &BDHSConfig{
+		cfg := &BDHPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 			InputLen1:  inputLen1,
@@ -102,17 +102,17 @@ func FuzzBDHS(f *testing.F) {
 			HashBits1:  hashBits1,
 			HashBits2:  hashBits2,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func FuzzBUHS(f *testing.F) {
+func FuzzBUP(f *testing.F) {
 	f.Add(3, 5, 8, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T,
 		inputLen, hashBits, bucketSize int,
 		p []byte) {
 
-		cfg := &BUHSConfig{
+		cfg := &BUPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 			InputLen:   inputLen,
@@ -124,38 +124,38 @@ func FuzzBUHS(f *testing.F) {
 		if cfg.HashBits > 21 {
 			t.Skip()
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func FuzzGSAS(f *testing.F) {
+func FuzzGSAP(f *testing.F) {
 	f.Add([]byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, p []byte) {
-		cfg := &GSASConfig{
+		cfg := &GSAPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func FuzzOSAS(f *testing.F) {
+func FuzzOSAP(f *testing.F) {
 	f.Add([]byte("abbababb"))
 	f.Add([]byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, p []byte) {
-		cfg := &OSASConfig{
+		cfg := &OSAPConfig{
 			BufferSize: 1024,
 			WindowSize: 1024,
 			BlockSize:  512,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func newTestSequencer(tb testing.TB, cfg SeqConfig) Sequencer {
-	s, err := cfg.NewSequencer()
+func newTestParser(tb testing.TB, cfg ParserConfig) Parser {
+	s, err := cfg.NewParser()
 	if err != nil {
-		tb.Fatalf("%+v.NewSequencer() error %s",
+		tb.Fatalf("%+v.NewParser() error %s",
 			cfg, err)
 	}
 	return s
@@ -186,96 +186,96 @@ func blockCost(blk *Block) int64 {
 	return c
 }
 
-func BenchmarkSequencers(b *testing.B) {
+func BenchmarkParsers(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
 	benchmarks := []struct {
 		name string
-		cfg  SeqConfig
+		cfg  ParserConfig
 	}{
-		{"HashSequencer-3", &HSConfig{
+		{"HashParser-3", &HPConfig{
 			WindowSize: 8 << 20,
 			InputLen:   3,
 			HashBits:   15,
 		}},
-		{"HashSequencer-4", &HSConfig{
+		{"HashParser-4", &HPConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"HashSequencer-5", &HSConfig{
+		{"HashParser-5", &HPConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"HashSequencer-8", &HSConfig{
+		{"HashParser-8", &HPConfig{
 			InputLen:   8,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"BackwardHashSequencer-3", &BHSConfig{
+		{"BackwardHashParser-3", &BHPConfig{
 			InputLen:   3,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"BackwardHashSequencer-4", &BHSConfig{
+		{"BackwardHashParser-4", &BHPConfig{
 			InputLen:   4,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"BackwardHashSequencer-5", &BHSConfig{
+		{"BackwardHashParser-5", &BHPConfig{
 			InputLen:   5,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"BackwardHashSequencer-8", &BHSConfig{
+		{"BackwardHashParser-8", &BHPConfig{
 			InputLen:   8,
 			HashBits:   15,
 			WindowSize: 8 << 20,
 		}},
-		{"DoubleHashSequencer-3,6", &DHSConfig{
+		{"DoubleHashParser-3,6", &DHPConfig{
 			InputLen1:  2,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"DoubleHashSequencer-4,6", &DHSConfig{
+		{"DoubleHashParser-4,6", &DHPConfig{
 			InputLen1:  4,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"BDHSequencer-3,6", &BDHSConfig{
+		{"BDHPequencer-3,6", &BDHPConfig{
 			InputLen1:  3,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"BDHSequencer-4,6", &BDHSConfig{
+		{"BDHPequencer-4,6", &BDHPConfig{
 			InputLen1:  4,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"GSASequencer", &GSASConfig{
+		{"GSAPequencer", &GSAPConfig{
 			WindowSize: 8 << 20,
 		}},
-		{"BUHSequencer-3-12", &BUHSConfig{
+		{"BUPequencer-3-12", &BUPConfig{
 			InputLen:   3,
 			HashBits:   18,
 			BucketSize: 12,
 			WindowSize: 8 << 20,
 		}},
-		{"BUHSequencer-3-100", &BUHSConfig{
+		{"BUPequencer-3-100", &BUPConfig{
 			InputLen:   3,
 			HashBits:   18,
 			BucketSize: 100,
 			WindowSize: 8 << 20,
 		}},
-		{"OSASequencer", &OSASConfig{
+		{"OSAPequencer", &OSAPConfig{
 			MinMatchLen: 2,
 			MaxMatchLen: 273,
 			Cost:        "XZCost",
@@ -286,7 +286,7 @@ func BenchmarkSequencers(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			ws := newTestSequencer(b, bm.cfg)
+			ws := newTestParser(b, bm.cfg)
 			data, err := os.ReadFile(enwik7)
 			if err != nil {
 				b.Fatalf("io.ReadFile(%q) error %s", enwik7,
@@ -300,7 +300,7 @@ func BenchmarkSequencers(b *testing.B) {
 				var blk Block
 			loop:
 				for {
-					_, err := r.Sequence(&blk, 0)
+					_, err := r.Parse(&blk, 0)
 					b.StopTimer()
 					cost += blockCost(&blk)
 					b.StartTimer()
@@ -310,7 +310,7 @@ func BenchmarkSequencers(b *testing.B) {
 					case io.EOF:
 						break loop
 					default:
-						b.Fatalf("r.Sequence(&blk) error %s", err)
+						b.Fatalf("r.Parse(&blk) error %s", err)
 					}
 				}
 				b.StopTimer()
@@ -347,23 +347,23 @@ func BenchmarkDecoders(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
-			hs, err := HSConfig{
+			hs, err := HPConfig{
 				InputLen:   3,
 				WindowSize: bm.winSize,
-			}.NewSequencer()
+			}.NewParser()
 
 			if err != nil {
-				b.Fatalf("NewHashSequencer error %s", err)
+				b.Fatalf("NewHashParser error %s", err)
 			}
 			s := Wrap(bytes.NewReader(data), hs)
 			for {
 				var blk Block
-				_, err = s.Sequence(&blk, 0)
+				_, err = s.Parse(&blk, 0)
 				if err != nil {
 					if err == io.EOF {
 						break
 					}
-					b.Fatalf("s.Sequence error %s", err)
+					b.Fatalf("s.Parse error %s", err)
 				}
 				blocks = append(blocks, blk)
 			}
@@ -376,7 +376,7 @@ func BenchmarkDecoders(b *testing.B) {
 			}
 			hw := sha256.New()
 
-			d, err = NewDecoder(hw, DecConfig{
+			d, err = NewDecoder(hw, DecoderConfig{
 				WindowSize: bm.winSize,
 				BufferSize: bm.maxSize,
 			})

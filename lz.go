@@ -5,23 +5,22 @@
 // consists of the distance of the match to copy and the length of the match in
 // bytes.
 //
-// A [Sequencer] is an encoder that converts a byte stream into blocks of
+// A [Parser] is an encoder that converts a byte stream into blocks of
 // sequences. A [Decoder] converts the block of sequences into the original
-// decompressed byte stream. We provide a Sequencer interface only supporting
-// the Sequence interface.
+// decompressed byte stream.
 //
-// The actual basic Sequencer provided by the package support the SeqBuffer
+// The actual basic Parser provided by the package support the SeqBuffer
 // interface, which has methods for writing and reading from the buffer. A pure
-// Sequencer is provided by the [Wrap function.
+// Parser is provided by the [Wrap function.
 //
-// The module provides multiple sequencer implementations that provide different
+// The module provides multiple parser implementations that provide different
 // combinations of encoding speed  and compression ratios. Usually a slower
-// sequencer will generate a better compression ratio.
+// parser will generate a better compression ratio.
 //
 // The [Decoder] slides the decompression window through a larger buffer
 // implemented by [DecBuffer].
 //
-// The library supports the implementation of Sequencers outside the package
+// The library supports the implementation of Parsers outside the package
 // that can then be used by real compressors as provided by the
 // [github.com/ulikunitz/xz] module.
 //
@@ -42,7 +41,7 @@ const (
 	miB = 1 << 20
 )
 
-// Seq represents a single Lempel-Ziv 77 Sequence describing a match,
+// Seq represents a single Lempel-Ziv 77 Parse describing a match,
 // consisting of the offset, the length of the match and the number of
 // literals preceding the match. The Aux field can be used on upper
 // layers to store additional information.
@@ -80,26 +79,26 @@ func (b *Block) Len() int64 {
 
 // Flags for the sequence function stored in the block structure.
 const (
-	// NoTrailingLiterals tells a sequencer that trailing literals don't
+	// NoTrailingLiterals tells a parser that trailing literals don't
 	// need to be included in the block.
 	NoTrailingLiterals = 1 << iota
 )
 
 // ErrEmptyBuffer indicates that no more data is available in the buffer. It
-// will be returned by the Sequence method of  [Sequencer].
+// will be returned by the Parse method of  [Parser].
 var ErrEmptyBuffer = errors.New("lz: no more data in buffer")
 
 // ErrFullBuffer indicates that the buffer is full. It will be returned by the
-// Write and ReadFrom methods of the [Sequencer].
+// Write and ReadFrom methods of the [Parser].
 var ErrFullBuffer = errors.New("lz: buffer is full")
 
-// Sequencer provides the basic interface of a Sequencer. It provides the
+// Parser provides the basic interface of a Parser. It provides the
 // functions provided by SeqBuffer.
-type Sequencer interface {
-	Sequence(blk *Block, flags int) (n int, err error)
+type Parser interface {
+	Parse(blk *Block, flags int) (n int, err error)
 	Reset(data []byte) error
 	Shrink() int
-	SeqConfig() SeqConfig
+	ParserConfig() ParserConfig
 	BufferConfig() BufConfig
 	Write(p []byte) (n int, err error)
 	ReadFrom(r io.Reader) (n int64, err error)
@@ -107,11 +106,11 @@ type Sequencer interface {
 	ByteAt(off int64) (c byte, err error)
 }
 
-// SeqConfig generates  new sequencer instances. Note that the sequencer doesn't
+// ParserConfig generates  new parser instances. Note that the parser doesn't
 // use ShrinkSize and BufferSize directly but we added it here, so it can be
-// used for the WriteSequencer which provides a WriteCloser interface.
-type SeqConfig interface {
-	NewSequencer() (s Sequencer, err error)
+// used for the WriteParser which provides a WriteCloser interface.
+type ParserConfig interface {
+	NewParser() (s Parser, err error)
 	BufConfig() BufConfig
 	SetBufConfig(bc BufConfig)
 	SetDefaults()
@@ -140,8 +139,8 @@ func iVal(v reflect.Value, name string) int {
 	return int(v.FieldByName(name).Int())
 }
 
-// bufferConfig reads the BufConfig from the sequencer configuration.
-func bufferConfig(x SeqConfig) BufConfig {
+// bufferConfig reads the BufConfig from the parser configuration.
+func bufferConfig(x ParserConfig) BufConfig {
 	v := reflect.Indirect(reflect.ValueOf(x))
 	bc := BufConfig{
 		ShrinkSize: iVal(v, "ShrinkSize"),
@@ -156,7 +155,7 @@ func setIVal(v reflect.Value, name string, i int) {
 	v.FieldByName(name).SetInt(int64(i))
 }
 
-func setBufferConfig(x SeqConfig, bc BufConfig) {
+func setBufferConfig(x ParserConfig, bc BufConfig) {
 	v := reflect.Indirect(reflect.ValueOf(x))
 	setIVal(v, "ShrinkSize", bc.ShrinkSize)
 	setIVal(v, "BufferSize", bc.BufferSize)
@@ -164,9 +163,9 @@ func setBufferConfig(x SeqConfig, bc BufConfig) {
 	setIVal(v, "BlockSize", bc.BlockSize)
 }
 
-// seqConfigUnion must contain all fields for all sequencers. Fields with the
+// parserConfigUnion must contain all fields for all parsers. Fields with the
 // same name must have the same type.
-type seqConfigUnion struct {
+type parserConfigUnion struct {
 	Type        string
 	ShrinkSize  int    `json:",omitempty"`
 	BufferSize  int    `json:",omitempty"`
@@ -184,9 +183,9 @@ type seqConfigUnion struct {
 	Cost        string `json:",omitempty"`
 }
 
-func unmarshalJSON(cfg SeqConfig, type_ string, p []byte) error {
+func unmarshalJSON(cfg ParserConfig, type_ string, p []byte) error {
 	var err error
-	var s seqConfigUnion
+	var s parserConfigUnion
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
@@ -206,8 +205,8 @@ func unmarshalJSON(cfg SeqConfig, type_ string, p []byte) error {
 	return nil
 }
 
-func marshalJSON(cfg SeqConfig, type_ string) (p []byte, err error) {
-	var s seqConfigUnion
+func marshalJSON(cfg ParserConfig, type_ string) (p []byte, err error) {
+	var s parserConfigUnion
 	s.Type = type_
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	vt := v.Type()
@@ -228,7 +227,7 @@ func marshalJSON(cfg SeqConfig, type_ string) (p []byte, err error) {
 // are independent of the rest of the other sizes only the shrink size must be
 // less than the buffer size.
 func (cfg *BufConfig) Verify() error {
-	// We are taking care of the margin for tha hash sequencers.
+	// We are taking care of the margin for tha hash parsers.
 	maxSize := int64(maxUint32) - 7
 	if int64(maxInt) < maxSize {
 		maxSize = maxInt - 7
@@ -279,51 +278,56 @@ func (cfg *BufConfig) SetDefaults() {
 }
 
 // ParseJSON parses a JSON structure
-func ParseJSON(p []byte) (s SeqConfig, err error) {
+func ParseJSON(p []byte) (s ParserConfig, err error) {
 	var v struct{ Type string }
 	if err = json.Unmarshal(p, &v); err != nil {
 		return nil, err
 	}
 
 	switch v.Type {
-	case "HS":
-		var hsCfg HSConfig
-		if err = json.Unmarshal(p, &hsCfg); err != nil {
+	case "HP":
+		var hpCfg HPConfig
+		if err = json.Unmarshal(p, &hpCfg); err != nil {
 			return nil, err
 		}
-		return &hsCfg, nil
-	case "BHS":
-		var bhsCfg BHSConfig
-		if err = json.Unmarshal(p, &bhsCfg); err != nil {
+		return &hpCfg, nil
+	case "BHP":
+		var bhpCfg BHPConfig
+		if err = json.Unmarshal(p, &bhpCfg); err != nil {
 			return nil, err
 		}
-		return &bhsCfg, nil
-	case "DHS":
-		var dhsCfg DHSConfig
-		if err = json.Unmarshal(p, &dhsCfg); err != nil {
+		return &bhpCfg, nil
+	case "DHP":
+		var dhpCfg DHPConfig
+		if err = json.Unmarshal(p, &dhpCfg); err != nil {
 			return nil, err
 		}
-		return &dhsCfg, nil
-	case "BDHS":
-		var bdhsCfg BDHSConfig
-		if err = json.Unmarshal(p, &bdhsCfg); err != nil {
+		return &dhpCfg, nil
+	case "BDHP":
+		var bdhpCfg BDHPConfig
+		if err = json.Unmarshal(p, &bdhpCfg); err != nil {
 			return nil, err
 		}
-		return &bdhsCfg, nil
-	case "BUHS":
-		var buhsCfg BUHSConfig
-		if err = json.Unmarshal(p, &buhsCfg); err != nil {
+		return &bdhpCfg, nil
+	case "BUP":
+		var buhpCfg BUPConfig
+		if err = json.Unmarshal(p, &buhpCfg); err != nil {
 			return nil, err
 		}
-		return &buhsCfg, nil
-	case "GSAS":
-		var gsasCfg GSASConfig
-		if err = json.Unmarshal(p, &gsasCfg); err != nil {
+		return &buhpCfg, nil
+	case "GSAP":
+		var gsapCfg GSAPConfig
+		if err = json.Unmarshal(p, &gsapCfg); err != nil {
 			return nil, err
 		}
-		return &gsasCfg, nil
-
+		return &gsapCfg, nil
+	case "OSAP":
+		var osapCfg OSAPConfig
+		if err = json.Unmarshal(p, &osapCfg); err != nil {
+			return nil, err
+		}
+		return &osapCfg, nil
 	default:
-		return nil, fmt.Errorf("lz: unknown sequencer name %q", v.Type)
+		return nil, fmt.Errorf("lz: unknown parser name %q", v.Type)
 	}
 }

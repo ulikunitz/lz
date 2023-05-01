@@ -12,11 +12,11 @@ import (
 	"testing"
 )
 
-func TestHashSequencerSimple(t *testing.T) {
+func TestHashParserSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	var s hashSequencer
-	err := s.init(HSConfig{
+	var s hashParser
+	err := s.init(HPConfig{
 		WindowSize: 1024,
 		BlockSize:  512,
 		InputLen:   3,
@@ -30,12 +30,12 @@ func TestHashSequencerSimple(t *testing.T) {
 	}
 
 	var blk Block
-	n, err := s.Sequence(&blk, 0)
+	n, err := s.Parse(&blk, 0)
 	if err != nil {
-		t.Fatalf("s.Sequence error %s", err)
+		t.Fatalf("s.Parse error %s", err)
 	}
 	if n != len(str) {
-		t.Fatalf("s.Sequence returned %d; want %d", n, len(str))
+		t.Fatalf("s.Parse returned %d; want %d", n, len(str))
 	}
 	t.Logf("sequences: %+v", blk.Sequences)
 	t.Logf("len(sequences): %d", len(blk.Sequences))
@@ -51,7 +51,7 @@ func TestHashSequencerSimple(t *testing.T) {
 
 	var buf bytes.Buffer
 	var d Decoder
-	if err := d.Init(&buf, DecConfig{WindowSize: 1024}); err != nil {
+	if err := d.Init(&buf, DecoderConfig{WindowSize: 1024}); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
 	m, k, l, err := d.WriteBlock(blk)
@@ -81,48 +81,48 @@ func TestHashSequencerSimple(t *testing.T) {
 	t.Logf("g: %q", g)
 }
 
-func FuzzHS(f *testing.F) {
+func FuzzHP(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
-		cfg := &HSConfig{
+		cfg := &HPConfig{
 			WindowSize: 1024,
 			BlockSize:  512,
 			InputLen:   inputLen,
 			HashBits:   hashBits,
 		}
-		testSequencer(t, cfg, p)
+		testParser(t, cfg, p)
 	})
 }
 
-func TestWrapOldHashSequencer(t *testing.T) {
+func TestWrapOldHashParser(t *testing.T) {
 	const (
 		windowSize = 1024
 		blockSize  = 512
 		str        = "=====foofoobarfoobar bartender===="
 	)
 
-	cfg := HSConfig{
+	cfg := HPConfig{
 		WindowSize: windowSize,
 		BlockSize:  blockSize,
 		InputLen:   3,
 	}
-	ws, err := cfg.NewSequencer()
+	ws, err := cfg.NewParser()
 	if err != nil {
-		t.Fatalf("NewHashSequencer error %s", err)
+		t.Fatalf("NewHashParser error %s", err)
 	}
 	s := Wrap(strings.NewReader(str), ws)
 
 	var builder strings.Builder
 	var decoder Decoder
-	decoder.Init(&builder, DecConfig{WindowSize: windowSize})
+	decoder.Init(&builder, DecoderConfig{WindowSize: windowSize})
 
 	var blk Block
 	for {
-		if _, err := s.Sequence(&blk, 0); err != nil {
+		if _, err := s.Parse(&blk, 0); err != nil {
 			if err == io.EOF {
 				break
 			}
-			t.Fatalf("s.Sequence error %s", err)
+			t.Fatalf("s.Parse error %s", err)
 		}
 		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
 			t.Fatalf("decoder.WriteBlock error %s", err)
@@ -138,7 +138,7 @@ func TestWrapOldHashSequencer(t *testing.T) {
 	}
 }
 
-func TestHashSequencerEnwik7(t *testing.T) {
+func TestHashParserEnwik7(t *testing.T) {
 	const (
 		enwik7     = "testdata/enwik7"
 		blockSize  = 128 * 1024
@@ -156,36 +156,36 @@ func TestHashSequencerEnwik7(t *testing.T) {
 	h1 := sha256.New()
 	r := io.TeeReader(f, h1)
 
-	cfg := HSConfig{
+	cfg := HPConfig{
 		ShrinkSize: windowSize + 100,
 		WindowSize: windowSize,
 		BufferSize: 2 * windowSize,
 		BlockSize:  blockSize,
 		InputLen:   3,
 	}
-	ws, err := cfg.NewSequencer()
+	ws, err := cfg.NewParser()
 	if err != nil {
-		t.Fatalf("NewHashSequencer(%+v) error %s", cfg, err)
+		t.Fatalf("NewHashParser(%+v) error %s", cfg, err)
 	}
 	s := Wrap(r, ws)
 
 	h2 := sha256.New()
 	var decoder Decoder
-	if err = decoder.Init(h2, DecConfig{WindowSize: windowSize}); err != nil {
+	if err = decoder.Init(h2, DecoderConfig{WindowSize: windowSize}); err != nil {
 		t.Fatalf("decoder.Init() error %s", err)
 	}
 
 	var blk Block
 	for {
-		_, err = s.Sequence(&blk, 0)
+		_, err = s.Parse(&blk, 0)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			t.Fatalf("s.Sequence error %s", err)
+			t.Fatalf("s.Parse error %s", err)
 		}
 		if len(blk.Sequences) == 0 {
-			t.Fatalf("s.Sequence doesn't compress")
+			t.Fatalf("s.Parse doesn't compress")
 		}
 		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
 			t.Fatalf("decoder.WriteBlock error %s", err)
@@ -260,10 +260,10 @@ func TestLargeParameters(t *testing.T) {
 	var tests = []struct {
 		filename string
 		size     int64
-		cfg      HSConfig
+		cfg      HPConfig
 	}{
 		// 1 << 30 is a Gigabyte
-		{enwik7, 1 << 30, HSConfig{
+		{enwik7, 1 << 30, HPConfig{
 			WindowSize: 8 << 20,
 			BlockSize:  128 * kiB,
 			InputLen:   3,
@@ -284,27 +284,27 @@ func TestLargeParameters(t *testing.T) {
 				}
 			}()
 			r := io.LimitReader(newLoopReader(f), tc.size)
-			ws, err := tc.cfg.NewSequencer()
+			ws, err := tc.cfg.NewParser()
 			if err != nil {
-				t.Fatalf("NewHashSequencer(%+v) error %s",
+				t.Fatalf("NewHashParser(%+v) error %s",
 					tc.cfg, err)
 			}
 			h1, h2 := sha256.New(), sha256.New()
 			s := Wrap(io.TeeReader(r, h1), ws)
 
 			var d Decoder
-			d.Init(h2, DecConfig{WindowSize: tc.cfg.WindowSize})
+			d.Init(h2, DecoderConfig{WindowSize: tc.cfg.WindowSize})
 
 			var blk Block
 			var n int64
 			for {
-				k, err := s.Sequence(&blk, 0)
+				k, err := s.Parse(&blk, 0)
 				n += int64(k)
 				if err != nil {
 					if err == io.EOF {
 						break
 					}
-					t.Fatalf("s.Sequence(&blk, 0) error %s",
+					t.Fatalf("s.Parse(&blk, 0) error %s",
 						err)
 				}
 
@@ -333,8 +333,8 @@ func TestLargeParameters(t *testing.T) {
 	}
 }
 
-func TestHS_JSON(t *testing.T) {
-	a := HSConfig{
+func TestHP_JSON(t *testing.T) {
+	a := HPConfig{
 		WindowSize: 1024,
 		InputLen:   4,
 	}
@@ -344,7 +344,7 @@ func TestHS_JSON(t *testing.T) {
 		t.Fatalf("json.MarshalIndent error %s", err)
 	}
 	t.Logf("json:\n%s", p)
-	b := HSConfig{}
+	b := HPConfig{}
 	err = json.Unmarshal(p, &b)
 	if err != nil {
 		t.Fatalf("json.Unmarshal error %s", err)
@@ -357,9 +357,9 @@ func TestHS_JSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseJSON error %s", err)
 	}
-	c, ok := s.(*HSConfig)
+	c, ok := s.(*HPConfig)
 	if !ok {
-		t.Fatalf("ParseJSON returned %+v, no HSConfig", s)
+		t.Fatalf("ParseJSON returned %+v, no HPConfig", s)
 	}
 
 	if *c != a {

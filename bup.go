@@ -1,15 +1,15 @@
 package lz
 
-// bucketHashSequencer allows the creation of sequence blocks using a simple hash
+// bucketParser allows the creation of sequence blocks using a simple hash
 // table.
-type bucketHashSequencer struct {
-	buhFinder
+type bucketParser struct {
+	bucketDictionary
 
-	BUHSConfig
+	BUPConfig
 }
 
-// BUHSConfig provides the configuration parameters for the bucket hash sequencer.
-type BUHSConfig struct {
+// BUPConfig provides the configuration parameters for the bucket hash parser.
+type BUPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -20,91 +20,92 @@ type BUHSConfig struct {
 	BucketSize int
 }
 
-// UnmarshalJSON parses the JSON value and sets the fields of BUHSConfig.
-func (cfg *BUHSConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "BUHS", p)
+// UnmarshalJSON parses the JSON value and sets the fields of BUPConfig.
+func (cfg *BUPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = BUPConfig{}
+	return unmarshalJSON(cfg, "BUP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "BUHS" to the structure.
-func (cfg *BUHSConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "BUHS")
+// a property Type with value "BUP" to the structure.
+func (cfg *BUPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "BUP")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BUHSConfig) BufConfig() BufConfig {
+func (cfg *BUPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
-// SetBufConfig sets the buffer configuration parameters of the sequencer
+// SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
-func (cfg *BUHSConfig) SetBufConfig(bc BufConfig) {
+func (cfg *BUPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
-func (cfg *BUHSConfig) SetDefaults() {
+func (cfg *BUPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
 	setBufferConfig(cfg, bc)
-	b, _ := buhCfg(cfg)
+	b, _ := bucketCfg(cfg)
 	b.SetDefaults()
-	setBUHCfg(cfg, b)
+	setBucketCfg(cfg, b)
 }
 
 // Verify checks the config for correctness.
-func (cfg *BUHSConfig) Verify() error {
+func (cfg *BUPConfig) Verify() error {
 	var err error
 	bc := bufferConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
-	b, _ := buhCfg(cfg)
+	b, _ := bucketCfg(cfg)
 	err = b.Verify()
 	return err
 }
 
-// NewSequencer creates a new hash sequencer.
-func (cfg BUHSConfig) NewSequencer() (s Sequencer, err error) {
-	buhs := new(bucketHashSequencer)
+// NewParser creates a new hash parser.
+func (cfg BUPConfig) NewParser() (s Parser, err error) {
+	buhs := new(bucketParser)
 	if err = buhs.init(cfg); err != nil {
 		return nil, err
 	}
 	return buhs, nil
 }
 
-func (s *bucketHashSequencer) SeqConfig() SeqConfig {
-	return &s.BUHSConfig
+func (s *bucketParser) ParserConfig() ParserConfig {
+	return &s.BUPConfig
 }
 
-// init initializes the hash sequencer. It returns an error if there is an issue
+// init initializes the hash parser. It returns an error if there is an issue
 // with the configuration parameters.
-func (s *bucketHashSequencer) init(cfg BUHSConfig) error {
+func (s *bucketParser) init(cfg BUPConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
 
-	b, _ := buhCfg(&cfg)
+	b, _ := bucketCfg(&cfg)
 	bc := bufferConfig(&cfg)
-	if err = s.buhFinder.init(b, bc); err != nil {
+	if err = s.bucketDictionary.init(b, bc); err != nil {
 		return err
 	}
 
-	s.BUHSConfig = cfg
+	s.BUPConfig = cfg
 	return nil
 }
 
-// Sequence converts the next block to sequences. The contents of the blk
+// Parse converts the next block to sequences. The contents of the blk
 // variable will be overwritten. The method returns the number of bytes
 // sequenced and any error encountered. It return ErrEmptyBuffer if there is no
 // further data available.
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *bucketHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *bucketParser) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
 	if n > s.BlockSize {
 		n = s.BlockSize

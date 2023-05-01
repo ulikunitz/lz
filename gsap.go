@@ -7,9 +7,9 @@ import (
 	"github.com/ulikunitz/lz/suffix"
 )
 
-// GSASConfig defines the configuration parameter for the greedy suffix array
-// sequencer.
-type GSASConfig struct {
+// GSAPConfig defines the configuration parameter for the greedy suffix array
+// parser.
+type GSAPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -19,31 +19,32 @@ type GSASConfig struct {
 	MinMatchLen int
 }
 
-// UnmarshalJSON parses the JSON value and sets the fields of GSASConfig.
-func (cfg *GSASConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "GSAS", p)
+// UnmarshalJSON parses the JSON value and sets the fields of GSAPConfig.
+func (cfg *GSAPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = GSAPConfig{}
+	return unmarshalJSON(cfg, "GSAP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "GSAS" to the structure.
-func (cfg *GSASConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "GSAS")
+// a property Type with value "GSAP" to the structure.
+func (cfg *GSAPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "GSAP")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *GSASConfig) BufConfig() BufConfig {
+func (cfg *GSAPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
-// SetBufConfig sets the buffer configuration parameters of the sequencer
+// SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
-func (cfg *GSASConfig) SetBufConfig(bc BufConfig) {
+func (cfg *GSAPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
 // Verify checks the configuration for inconsistencies.
-func (cfg *GSASConfig) Verify() error {
+func (cfg *GSAPConfig) Verify() error {
 	bc := bufferConfig(cfg)
 	if err := bc.Verify(); err != nil {
 		return err
@@ -70,7 +71,7 @@ func (cfg *GSASConfig) Verify() error {
 
 // SetDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
-func (cfg *GSASConfig) SetDefaults() {
+func (cfg *GSAPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
 	setBufferConfig(cfg, bc)
@@ -79,10 +80,10 @@ func (cfg *GSASConfig) SetDefaults() {
 	}
 }
 
-// NewSequencer generates a new sequencer using the configuration parameters in
+// NewParser generates a new parser using the configuration parameters in
 // the structure.
-func (cfg GSASConfig) NewSequencer() (s Sequencer, err error) {
-	gsas := new(greedySuffixArraySequencer)
+func (cfg GSAPConfig) NewParser() (s Parser, err error) {
+	gsas := new(gsap)
 	err = gsas.init(cfg)
 	if err != nil {
 		return nil, err
@@ -90,15 +91,15 @@ func (cfg GSASConfig) NewSequencer() (s Sequencer, err error) {
 	return gsas, nil
 }
 
-// greedySuffixArraySequencer provides a sequencer that uses a suffix array for
+// gsap provides a parser that uses a suffix array for
 // the window and buffered data to create sequence. It looks for the two nearest
 // entries that have the longest match.
 //
 // Since computing the suffix array is rather slow, it consumes a lot of CPU.
-// Double Hash Sequencers are achieving almost the same compression rate with
+// Double Hash Parsers are achieving almost the same compression rate with
 // much less CPU consumption.
-type greedySuffixArraySequencer struct {
-	SeqBuffer
+type gsap struct {
+	ParserBuffer
 
 	// suffix array
 	sa []int32
@@ -108,15 +109,15 @@ type greedySuffixArraySequencer struct {
 	// been processed
 	bits bitset
 
-	GSASConfig
+	GSAPConfig
 }
 
-// init initializes the sequencer. If the configuration has inconsistencies or
+// init initializes the parser. If the configuration has inconsistencies or
 // invalid values the method returns an error.
-func (s *greedySuffixArraySequencer) init(cfg GSASConfig) error {
+func (s *gsap) init(cfg GSAPConfig) error {
 	bc := bufferConfig(&cfg)
 	var err error
-	if err = s.SeqBuffer.Init(bc); err != nil {
+	if err = s.ParserBuffer.Init(bc); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -127,17 +128,17 @@ func (s *greedySuffixArraySequencer) init(cfg GSASConfig) error {
 	s.sa = s.sa[:0]
 	s.isa = s.isa[:0]
 	s.bits.clear()
-	s.GSASConfig = cfg
+	s.GSAPConfig = cfg
 	return nil
 }
 
-func (s *greedySuffixArraySequencer) SeqConfig() SeqConfig {
-	return &s.GSASConfig
+func (s *gsap) ParserConfig() ParserConfig {
+	return &s.GSAPConfig
 }
 
-func (s *greedySuffixArraySequencer) Reset(data []byte) error {
+func (s *gsap) Reset(data []byte) error {
 	var err error
-	if err = s.SeqBuffer.Reset(data); err != nil {
+	if err = s.ParserBuffer.Reset(data); err != nil {
 		return err
 	}
 	s.sa = s.sa[:0]
@@ -146,8 +147,8 @@ func (s *greedySuffixArraySequencer) Reset(data []byte) error {
 	return nil
 }
 
-func (s *greedySuffixArraySequencer) Shrink() int {
-	delta := s.SeqBuffer.Shrink()
+func (s *gsap) Shrink() int {
+	delta := s.ParserBuffer.Shrink()
 	if delta > 0 {
 		s.sa = s.sa[:0]
 		s.isa = s.isa[:0]
@@ -159,7 +160,7 @@ func (s *greedySuffixArraySequencer) Shrink() int {
 // sort computes the suffix array and its inverse for the window and all
 // buffered data. The bits bitmap marks all sa entries that are part of the
 // window.
-func (s *greedySuffixArraySequencer) sort() {
+func (s *gsap) sort() {
 	n := len(s.Data)
 	if n > math.MaxInt32 {
 		panic("n too large")
@@ -184,13 +185,13 @@ func (s *greedySuffixArraySequencer) sort() {
 	}
 }
 
-// Sequence computes the sequences for the next block. Data in the block will be
+// Parse computes the sequences for the next block. Data in the block will be
 // overwritten. The NoTrailingLiterals flag is supported. It returns the number
 // of bytes covered by the computed sequences. If the buffer is empty
 // ErrEmptyBuffer will be returned.
 //
 // The method might compute the suffix array anew using the sort method.
-func (s *greedySuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *gsap) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
 	if n > s.BlockSize {
 		n = s.BlockSize

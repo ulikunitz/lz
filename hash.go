@@ -23,7 +23,7 @@ type hashEntry struct {
 	value uint32
 }
 
-// The hash implements a match finder and can be directly used in a sequencer.
+// The hash implements a match finder and can be directly used in a parser.
 type hash struct {
 	table    []hashEntry
 	mask     uint64
@@ -97,7 +97,7 @@ func hasVal(v reflect.Value, name string) bool {
 
 var errNoHash = errors.New("lz: cfg doesn't support a single hash")
 
-func hashCfg(cfg SeqConfig) (hcfg hashConfig, err error) {
+func hashCfg(cfg ParserConfig) (hcfg hashConfig, err error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
 		return hashConfig{}, errNoHash
@@ -109,7 +109,7 @@ func hashCfg(cfg SeqConfig) (hcfg hashConfig, err error) {
 	return hcfg, nil
 }
 
-func setHashCfg(cfg SeqConfig, hcfg hashConfig) error {
+func setHashCfg(cfg ParserConfig, hcfg hashConfig) error {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
 		return errNoHash
@@ -146,14 +146,14 @@ func (cfg *hashConfig) Verify() error {
 	return nil
 }
 
-type hashFinder struct {
-	SeqBuffer
+type hashDictionary struct {
+	ParserBuffer
 	hash
 }
 
-func (f *hashFinder) init(cfg hashConfig, bcfg BufConfig) error {
+func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.SeqBuffer.Init(bcfg); err != nil {
+	if err = f.ParserBuffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -164,17 +164,17 @@ func (f *hashFinder) init(cfg hashConfig, bcfg BufConfig) error {
 	return err
 }
 
-func (f *hashFinder) Reset(data []byte) error {
+func (f *hashDictionary) Reset(data []byte) error {
 	var err error
-	if err = f.SeqBuffer.Reset(data); err != nil {
+	if err = f.ParserBuffer.Reset(data); err != nil {
 		return err
 	}
 	f.hash.reset()
 	return nil
 }
 
-func (f *hashFinder) Shrink() int {
-	delta := f.SeqBuffer.Shrink()
+func (f *hashDictionary) Shrink() int {
+	delta := f.ParserBuffer.Shrink()
 	if delta > 0 {
 		f.hash.shiftOffsets(uint32(delta))
 	}
@@ -182,7 +182,7 @@ func (f *hashFinder) Shrink() int {
 }
 
 // ProcessSegment adds the hashes between position a and b into the hash.
-func (f *hashFinder) processSegment(a, b int) {
+func (f *hashDictionary) processSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}
@@ -210,9 +210,9 @@ type dhConfig struct {
 }
 
 var errNoDoubleHash = errors.New(
-	"lz: sequencer config doesn't support double hash")
+	"lz: parser config doesn't support double hash")
 
-func dhCfg(cfg SeqConfig) (c dhConfig, err error) {
+func dhCfg(cfg ParserConfig) (c dhConfig, err error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	var f bool
 	f = hasVal(v, "InputLen1")
@@ -235,7 +235,7 @@ func dhCfg(cfg SeqConfig) (c dhConfig, err error) {
 	return c, nil
 }
 
-func setDHCfg(cfg SeqConfig, c dhConfig) error {
+func setDHCfg(cfg ParserConfig, c dhConfig) error {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	var f bool
 	f = hasVal(v, "InputLen1")
@@ -281,15 +281,15 @@ func (cfg *dhConfig) Verify() error {
 	return nil
 }
 
-type doubleHashFinder struct {
-	SeqBuffer
+type doubleHashDictionary struct {
+	ParserBuffer
 	h1 hash
 	h2 hash
 }
 
-func (f *doubleHashFinder) init(cfg dhConfig, bcfg BufConfig) error {
+func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.SeqBuffer.Init(bcfg); err != nil {
+	if err = f.ParserBuffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -303,8 +303,8 @@ func (f *doubleHashFinder) init(cfg dhConfig, bcfg BufConfig) error {
 	return err
 }
 
-func (f *doubleHashFinder) Shrink() int {
-	delta := f.SeqBuffer.Shrink()
+func (f *doubleHashDictionary) Shrink() int {
+	delta := f.ParserBuffer.Shrink()
 	if delta > 0 {
 		f.h1.shiftOffsets(uint32(delta))
 		f.h2.shiftOffsets(uint32(delta))
@@ -313,7 +313,7 @@ func (f *doubleHashFinder) Shrink() int {
 }
 
 // processSegment adds the hashes between position a and b into the hash.
-func (f *doubleHashFinder) processSegment(a, b int) {
+func (f *doubleHashDictionary) processSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}

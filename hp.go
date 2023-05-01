@@ -4,18 +4,18 @@ import (
 	"math/bits"
 )
 
-// hashSequencer allows the creation of sequence blocks using a simple hash
+// hashParser allows the creation of sequence blocks using a simple hash
 // table.
-type hashSequencer struct {
-	hashFinder
+type hashParser struct {
+	hashDictionary
 
-	HSConfig
+	HPConfig
 }
 
-// HSConfig provides the configuration parameters for the
-// HashSequencer. Sequencer doesn't use ShrinkSize and and BufferSize itself,
+// HPConfig provides the configuration parameters for the
+// HashParser. Parser doesn't use ShrinkSize and and BufferSize itself,
 // but it provides it to other code that have to handle the buffer.
-type HSConfig struct {
+type HPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -25,30 +25,32 @@ type HSConfig struct {
 	HashBits int
 }
 
-func (cfg *HSConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "HS", p)
+// UnmarshalJSON converts the JSON into the HPConfig structure.
+func (cfg *HPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = HPConfig{}
+	return unmarshalJSON(cfg, "HP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "HS" to the structure.
-func (cfg *HSConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "HS")
+// a property Type with value "HP" to the structure.
+func (cfg *HPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "HP")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *HSConfig) BufConfig() BufConfig {
+func (cfg *HPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
-// SetBufConfig sets the buffer configuration parameters of the sequencer
+// SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
-func (cfg *HSConfig) SetBufConfig(bc BufConfig) {
+func (cfg *HPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
-func (cfg *HSConfig) SetDefaults() {
+func (cfg *HPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
 	setBufferConfig(cfg, bc)
@@ -58,7 +60,7 @@ func (cfg *HSConfig) SetDefaults() {
 }
 
 // Verify checks the configuration for correctness.
-func (cfg *HSConfig) Verify() error {
+func (cfg *HPConfig) Verify() error {
 	bc := bufferConfig(cfg)
 	var err error
 	if err = bc.Verify(); err != nil {
@@ -69,18 +71,18 @@ func (cfg *HSConfig) Verify() error {
 	return err
 }
 
-// NewSequencer creates a new hash sequencer.
-func (cfg HSConfig) NewSequencer() (s Sequencer, err error) {
-	hs := new(hashSequencer)
+// NewParser creates a new hash parser.
+func (cfg HPConfig) NewParser() (s Parser, err error) {
+	hs := new(hashParser)
 	if err = hs.init(cfg); err != nil {
 		return nil, err
 	}
 	return hs, nil
 }
 
-// init initializes the hash sequencer. It returns an error if there is an issue
+// init initializes the hash parser. It returns an error if there is an issue
 // with the configuration parameters.
-func (s *hashSequencer) init(cfg HSConfig) error {
+func (s *hashParser) init(cfg HPConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -89,27 +91,27 @@ func (s *hashSequencer) init(cfg HSConfig) error {
 
 	hc, _ := hashCfg(&cfg)
 	bc := bufferConfig(&cfg)
-	if err = s.hashFinder.init(hc, bc); err != nil {
+	if err = s.hashDictionary.init(hc, bc); err != nil {
 		return err
 	}
 
-	s.HSConfig = cfg
+	s.HPConfig = cfg
 	return nil
 }
 
-// SeqConfig returns the [HSConfig].
-func (s *hashSequencer) SeqConfig() SeqConfig {
-	return &s.HSConfig
+// ParserConfig returns the [HPConfig].
+func (s *hashParser) ParserConfig() ParserConfig {
+	return &s.HPConfig
 }
 
-// Sequence converts the next block to sequences. The contents of the blk
-// variable will be overwritten. The method returns the number of bytes
-// sequenced and any error encountered. It return ErrEmptyBuffer if there is no
-// further data available.
+// Parse converts the next block to sequences. The contents of the blk variable
+// will be overwritten. The method returns the number of bytes sequenced and any
+// error encountered. It returns ErrEmptyBuffer if there is no further data
+// available.
 //
-// If blk is nil the search structures will be filled. This mode can be used to
+// If blk is nil the internal hash will be filled. This mode can be used to
 // ignore segments of data.
-func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *hashParser) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
 	if n > s.BlockSize {
 		n = s.BlockSize
@@ -226,8 +228,8 @@ func (s *hashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	}
 
 	// len(blk.Sequences) > 0 checks that the literals are actually trailing
-	// a sequence. If there is no Sequence found, then we have to add all
-	// literals to make progress.
+	// a sequence. If there is not a single sequence found, then we have to
+	// add all literals to make progress.
 	if flags&NoTrailingLiterals != 0 && len(blk.Sequences) > 0 {
 		i = litIndex
 	} else {

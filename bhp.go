@@ -4,8 +4,8 @@ import (
 	"math/bits"
 )
 
-// BHSConfig provides the parameters for the backward hash sequencer.
-type BHSConfig struct {
+// BHPConfig provides the parameters for the backward hash parser.
+type BHPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -15,31 +15,32 @@ type BHSConfig struct {
 	HashBits int
 }
 
-// UnmarshalJSON parses the JSON value and sets the fields of BHSConfig.
-func (cfg *BHSConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "BHS", p)
+// UnmarshalJSON parses the JSON value and sets the fields of BHPConfig.
+func (cfg *BHPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = BHPConfig{}
+	return unmarshalJSON(cfg, "BHP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "BHS" to the structure.
-func (cfg *BHSConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "BHS")
+// a property Type with value "BHP" to the structure.
+func (cfg *BHPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "BHP")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BHSConfig) BufConfig() BufConfig {
+func (cfg *BHPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the backward hash
-// sequencer configuration.
-func (cfg *BHSConfig) SetBufConfig(bc BufConfig) {
+// parser configuration.
+func (cfg *BHPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
-func (cfg *BHSConfig) SetDefaults() {
+func (cfg *BHPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
 	setBufferConfig(cfg, bc)
@@ -49,7 +50,7 @@ func (cfg *BHSConfig) SetDefaults() {
 }
 
 // Verify checks the configuration for correctness.
-func (cfg *BHSConfig) Verify() error {
+func (cfg *BHPConfig) Verify() error {
 	bc := bufferConfig(cfg)
 	var err error
 	if err = bc.Verify(); err != nil {
@@ -60,26 +61,26 @@ func (cfg *BHSConfig) Verify() error {
 	return err
 }
 
-// NewSequencer creates a new Backward Hash Sequencer.
-func (cfg BHSConfig) NewSequencer() (s Sequencer, err error) {
-	bhs := new(backwardHashSequencer)
+// NewParser creates a new Backward Hash Parser.
+func (cfg BHPConfig) NewParser() (s Parser, err error) {
+	bhs := new(backwardHashParser)
 	if err = bhs.init(cfg); err != nil {
 		return nil, err
 	}
 	return bhs, nil
 }
 
-// backwardHashSequencer allows the creation of sequence blocks using a simple
+// backwardHashParser allows the creation of sequence blocks using a simple
 // hash table. It extends found matches by looking backward in the input stream.
-type backwardHashSequencer struct {
-	hashFinder
+type backwardHashParser struct {
+	hashDictionary
 
-	BHSConfig
+	BHPConfig
 }
 
-// init initializes the backward hash sequencer. It returns an error if there is
+// init initializes the backward hash parser. It returns an error if there is
 // an issue with the configuration parameters.
-func (s *backwardHashSequencer) init(cfg BHSConfig) error {
+func (s *backwardHashParser) init(cfg BHPConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -88,26 +89,26 @@ func (s *backwardHashSequencer) init(cfg BHSConfig) error {
 
 	hc, _ := hashCfg(&cfg)
 	bc := bufferConfig(&cfg)
-	if err = s.hashFinder.init(hc, bc); err != nil {
+	if err = s.hashDictionary.init(hc, bc); err != nil {
 		return err
 	}
 
-	s.BHSConfig = cfg
+	s.BHPConfig = cfg
 	return nil
 }
 
-// SeqConfig returns the [BHSConfig].
-func (s *backwardHashSequencer) SeqConfig() SeqConfig {
-	return &s.BHSConfig
+// ParserConfig returns the [BHPConfig].
+func (s *backwardHashParser) ParserConfig() ParserConfig {
+	return &s.BHPConfig
 }
 
-// Sequence converts the next block of k bytes to a sequences. The block will be
+// Parse converts the next block of k bytes to a sequences. The block will be
 // overwritten. The method returns the number of bytes sequenced and any error
 // encountered. It return ErrEmptyBuffer if there is no further data available.
 //
 // If blk is nil the search structures will be filled. This mode can be used to
 // ignore segments of data.
-func (s *backwardHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *backwardHashParser) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
 	if n > s.BlockSize {
 		n = s.BlockSize

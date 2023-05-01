@@ -36,9 +36,9 @@ func XZCost(m, o uint32) uint64 {
 	return c
 }
 
-// OSASConfig provides the configuration parameters for the Optimizing Suffix
-// Array Sequencer (OSAS).
-type OSASConfig struct {
+// OSAPConfig provides the configuration parameters for the Optimizing Suffix
+// Array Parser (OSAP).
+type OSAPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -50,31 +50,32 @@ type OSASConfig struct {
 	Cost string
 }
 
-// UnmarshalJSON parses the JSON value and sets the fields of OSASConfig.
-func (cfg *OSASConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "OSAS", p)
+// UnmarshalJSON parses the JSON value and sets the fields of OSAPConfig.
+func (cfg *OSAPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = OSAPConfig{}
+	return unmarshalJSON(cfg, "OSAP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "OSAS" to the structure.
-func (cfg *OSASConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "OSAS")
+// a property Type with value "OSAP" to the structure.
+func (cfg *OSAPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "OSAP")
 }
 
-// BufConfig returns the [BufConfig] value for the OSAS configuration.
-func (cfg *OSASConfig) BufConfig() BufConfig {
+// BufConfig returns the [BufConfig] value for the OSAP configuration.
+func (cfg *OSAPConfig) BufConfig() BufConfig {
 	return bufferConfig(cfg)
 }
 
-// SetBufConfig sets the buffer configuration parameters of the sequencer
+// SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
-func (cfg *OSASConfig) SetBufConfig(bc BufConfig) {
+func (cfg *OSAPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
-// SetDefaults sets the defaults for the zero values of the the OSAS
+// SetDefaults sets the defaults for the zero values of the the OSAP
 // configuration.
-func (cfg *OSASConfig) SetDefaults() {
+func (cfg *OSAPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	if bc.BufferSize == 0 {
 		bc.SetDefaults()
@@ -96,8 +97,8 @@ func (cfg *OSASConfig) SetDefaults() {
 	}
 }
 
-// Verify verifies the configuration for the Optimizing Suffix Array Sequencer.
-func (cfg *OSASConfig) Verify() error {
+// Verify verifies the configuration for the Optimizing Suffix Array Parser.
+func (cfg *OSAPConfig) Verify() error {
 	var err error
 	bc := bufferConfig(cfg)
 	if err = bc.Verify(); err != nil {
@@ -113,15 +114,15 @@ func (cfg *OSASConfig) Verify() error {
 	case "XZCost":
 		break
 	default:
-		return fmt.Errorf("lz.OSASConfig: Cost string must not be empty")
+		return fmt.Errorf("lz.OSAPConfig: Cost string must not be empty")
 	}
 
 	return nil
 }
 
-// NewSequencer returns the Optimizing Sequencer Array Sequencer.
-func (cfg *OSASConfig) NewSequencer() (s Sequencer, err error) {
-	osas := new(optSuffixArraySequencer)
+// NewParser returns the Optimizing Parser Array Parser.
+func (cfg *OSAPConfig) NewParser() (s Parser, err error) {
+	osas := new(optSuffixArrayParser)
 	if err = osas.init(*cfg); err != nil {
 		return nil, err
 	}
@@ -133,8 +134,8 @@ type edge struct {
 	o uint32
 }
 
-type optSuffixArraySequencer struct {
-	SeqBuffer
+type optSuffixArrayParser struct {
+	ParserBuffer
 
 	edgeBuf []edge
 	edges   [][]edge
@@ -145,21 +146,21 @@ type optSuffixArraySequencer struct {
 
 	cost func(m, o uint32) uint64
 
-	OSASConfig
+	OSAPConfig
 }
 
-func (s *optSuffixArraySequencer) SeqConfig() SeqConfig {
-	return &s.OSASConfig
+func (s *optSuffixArrayParser) ParserConfig() ParserConfig {
+	return &s.OSAPConfig
 }
 
-func (s *optSuffixArraySequencer) init(cfg OSASConfig) error {
+func (s *optSuffixArrayParser) init(cfg OSAPConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	bc := bufferConfig(&cfg)
-	if err = s.SeqBuffer.Init(bc); err != nil {
+	if err = s.ParserBuffer.Init(bc); err != nil {
 		return err
 	}
 
@@ -170,12 +171,12 @@ func (s *optSuffixArraySequencer) init(cfg OSASConfig) error {
 		s.cost = XZCost
 	}
 
-	s.OSASConfig = cfg
+	s.OSAPConfig = cfg
 	return nil
 }
 
-func (s *optSuffixArraySequencer) Reset(data []byte) error {
-	err := s.SeqBuffer.Reset(data)
+func (s *optSuffixArrayParser) Reset(data []byte) error {
+	err := s.ParserBuffer.Reset(data)
 	if err != nil {
 		return err
 	}
@@ -184,8 +185,8 @@ func (s *optSuffixArraySequencer) Reset(data []byte) error {
 	return nil
 }
 
-func (s *optSuffixArraySequencer) Shrink() int {
-	delta := s.SeqBuffer.Shrink()
+func (s *optSuffixArrayParser) Shrink() int {
+	delta := s.ParserBuffer.Shrink()
 	if delta > 0 {
 		s.resetEdges()
 	}
@@ -227,7 +228,7 @@ func computeEdgeStats(edges [][]edge) string {
 	return sb.String()
 }
 
-func (s *optSuffixArraySequencer) resetEdges() {
+func (s *optSuffixArrayParser) resetEdges() {
 	s.edgeBuf = s.edgeBuf[:0]
 	s.edges = s.edges[:0]
 	s.start = 0
@@ -235,7 +236,7 @@ func (s *optSuffixArraySequencer) resetEdges() {
 	s.tmp = s.tmp[:0]
 }
 
-func (s *optSuffixArraySequencer) computeEdges() {
+func (s *optSuffixArrayParser) computeEdges() {
 	data := s.Data
 	if len(data) > math.MaxInt32 {
 		panic(fmt.Errorf("lz: len(data)=%d too large", len(data)))
@@ -350,7 +351,7 @@ func (s *optSuffixArraySequencer) computeEdges() {
 }
 
 // shortestPath appends the shortest path in reversed order
-func (s *optSuffixArraySequencer) shortestPath(p []edge, n int) []edge {
+func (s *optSuffixArrayParser) shortestPath(p []edge, n int) []edge {
 	k := s.W - s.start
 	edges := s.edges[k : k+n]
 
@@ -395,7 +396,7 @@ func (s *optSuffixArraySequencer) shortestPath(p []edge, n int) []edge {
 	return p
 }
 
-func (s *optSuffixArraySequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *optSuffixArrayParser) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
 	if n > s.BlockSize {
 		n = s.BlockSize

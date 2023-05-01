@@ -4,9 +4,8 @@ import (
 	"math/bits"
 )
 
-// BDHSConfig provides the configuration parameters for the backward-looking
-// double Hash Sequencer.
-type BDHSConfig struct {
+// DHPConfig provides the configuration parameters for the DoubleHashParser.
+type DHPConfig struct {
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
@@ -18,29 +17,32 @@ type BDHSConfig struct {
 	HashBits2 int
 }
 
-// UnmarshalJSON parses the JSON value and sets the fields of BDHSConfig.
-func (cfg *BDHSConfig) UnmarshalJSON(p []byte) error {
-	return unmarshalJSON(cfg, "BDHS", p)
+// UnmarshalJSON parses the JSON value and sets the fields of DHPConfig.
+func (cfg *DHPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = DHPConfig{}
+	return unmarshalJSON(cfg, "DHP", p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "BDHS" to the structure.
-func (cfg *BDHSConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "BDHS")
+// a property Type with value "DHP" to the structure.
+func (cfg *DHPConfig) MarshalJSON() (p []byte, err error) {
+	return marshalJSON(cfg, "DHP")
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BDHSConfig) BufConfig() BufConfig {
+func (cfg *DHPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)
 	return bc
 }
 
-func (cfg *BDHSConfig) SetBufConfig(bc BufConfig) {
+// SetBufConfig sets the buffer configuration parameters of the parser
+// configuration.
+func (cfg *DHPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }
 
 // Verify checks the configuration for errors.
-func (cfg *BDHSConfig) Verify() error {
+func (cfg *DHPConfig) Verify() error {
 	var err error
 	bc := bufferConfig(cfg)
 	if err = bc.Verify(); err != nil {
@@ -55,7 +57,7 @@ func (cfg *BDHSConfig) Verify() error {
 
 // SetDefaults uses the defaults for the configuration parameters that are set
 // to zero.
-func (cfg *BDHSConfig) SetDefaults() {
+func (cfg *DHPConfig) SetDefaults() {
 	bc := bufferConfig(cfg)
 	bc.SetDefaults()
 	setBufferConfig(cfg, bc)
@@ -64,32 +66,28 @@ func (cfg *BDHSConfig) SetDefaults() {
 	setDHCfg(cfg, d)
 }
 
-// NewSequencer creates a new DoubleHashSequencer.
-func (cfg BDHSConfig) NewSequencer() (s Sequencer, err error) {
-	bdhs := new(backwardDoubleHashSequencer)
-	if err = bdhs.init(cfg); err != nil {
+// NewParser creates a new DoubleHashParser.
+func (cfg DHPConfig) NewParser() (s Parser, err error) {
+	dhs := new(doubleHashParser)
+	if err = dhs.init(cfg); err != nil {
 		return nil, err
 	}
-	return bdhs, nil
+	return dhs, nil
 }
 
-// backwardDoubleHashSequencer uses two hashes and tries to extend matches
-// backward.
-type backwardDoubleHashSequencer struct {
-	doubleHashFinder
+// doubleHashParser generates LZ77 sequences by using two hash tables. The
+// input length for the two hash tables will be different. The speed of the hash
+// parser is slower than parsers using a single hash, but the compression
+// ratio is much better.
+type doubleHashParser struct {
+	doubleHashDictionary
 
-	BDHSConfig
+	DHPConfig
 }
 
-// Config returns [BDHSConfig]
-func (s *backwardDoubleHashSequencer) SeqConfig() SeqConfig {
-	return &s.BDHSConfig
-}
-
-// Init initializes the sequencer. The method returns an error if the
-// configuration contains inconsistencies and the sequencer remains
-// uninitialized.
-func (s *backwardDoubleHashSequencer) init(cfg BDHSConfig) error {
+// init initializes the DoubleHashParser. The first error found in the
+// configuration will be returned.
+func (s *doubleHashParser) init(cfg DHPConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -98,30 +96,32 @@ func (s *backwardDoubleHashSequencer) init(cfg BDHSConfig) error {
 
 	dhc, _ := dhCfg(&cfg)
 	bc := bufferConfig(&cfg)
-	if err = s.doubleHashFinder.init(dhc, bc); err != nil {
+	if err = s.doubleHashDictionary.init(dhc, bc); err != nil {
 		return err
 	}
-
-	s.BDHSConfig = cfg
+	s.DHPConfig = cfg
 	return nil
 }
 
-// Sequence computes the LZ77 sequence for the next block. It returns the number
-// of bytes actually sequenced. ErrEmptyBuffer will be returned if there is no
-// data to sequence.
-func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+// ParserConfig returns [DHPConfig]
+func (s *doubleHashParser) ParserConfig() ParserConfig {
+	return &s.DHPConfig
+}
+
+// Parse generates the LZ77 sequences. It returns the number of bytes covered
+// by the new sequences. The block will be overwritten but the memory for the
+// slices will be reused.
+func (s *doubleHashParser) Parse(blk *Block, flags int) (n int, err error) {
 	n = len(s.Data) - s.W
-	if n > s.BlockSize {
+	if s.BlockSize < n {
 		n = s.BlockSize
 	}
-
 	if blk == nil {
 		if n == 0 {
 			return 0, ErrEmptyBuffer
 		}
 		t := s.W + n
 		s.processSegment(s.W-s.h2.inputLen+1, t)
-		s.W = t
 		return n, nil
 	}
 
@@ -133,12 +133,10 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 	}
 
 	s.processSegment(s.W-s.h2.inputLen+1, s.W)
-
 	p := s.Data[:s.W+n]
 
 	e1 := len(p) - s.h1.inputLen + 1
 	e2 := len(p) - s.h2.inputLen + 1
-
 	i := s.W
 	litIndex := i
 
@@ -158,7 +156,6 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		v2 := uint32(x)
 		pos := uint32(i)
 		s.h2.table[h] = hashEntry{pos: pos, value: v2}
-
 		x = y & s.h1.mask
 		h = hashValue(x, s.h1.shift)
 		entry1 := s.h1.table[h]
@@ -206,19 +203,11 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 			}
 		match:
 		}
-		if back := i - litIndex; back > 0 {
-			if back > j {
-				back = j
-			}
-			m := lcs(p[j-back:j], p[:i])
-			i -= m
-			k += m
-		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,
 			Seq{
-				MatchLen: uint32(k),
 				LitLen:   uint32(len(q)),
+				MatchLen: uint32(k),
 				Offset:   uint32(o),
 			})
 		blk.Literals = append(blk.Literals, q...)
@@ -229,9 +218,10 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		}
 		for j = i + 1; j < b; j++ {
 			y := _getLE64(_p[j:])
-
+			x := y & s.h2.mask
+			h := hashValue(x, s.h2.shift)
 			pos := uint32(j)
-
+			s.h2.table[h] = hashEntry{pos: pos, value: uint32(x)}
 			x = y & s.h1.mask
 			h = hashValue(x, s.h1.shift)
 			s.h1.table[h] = hashEntry{pos: pos, value: uint32(x)}
@@ -267,14 +257,13 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 		}
 		// potential match
 		j := int(entry.pos)
-		// j must not be less than window start
 		o := i - j
 		if !(0 < o && o <= s.WindowSize) {
 			continue
 		}
 		k := bits.TrailingZeros64(_getLE64(_p[j:])^y) >> 3
-		if k > len(p)-int(i) {
-			k = len(p) - int(i)
+		if k > len(p)-i {
+			k = len(p) - i
 		}
 		if k < minMatchLen {
 			continue
@@ -301,14 +290,6 @@ func (s *backwardDoubleHashSequencer) Sequence(blk *Block, flags int) (n int, er
 				k += b
 			}
 		match1:
-		}
-		if back := i - litIndex; back > 0 {
-			if back > j {
-				back = j
-			}
-			m := lcs(p[j-back:j], p[:i])
-			i -= m
-			k += m
 		}
 		q := p[litIndex:i]
 		blk.Sequences = append(blk.Sequences,

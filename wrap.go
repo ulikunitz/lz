@@ -4,29 +4,29 @@ import (
 	"io"
 )
 
-// Wrap combines a reader and a Sequencer and makes a Sequencer. The user
-// doesn't need to take care of filling the Sequencer with additional data. The
-// returned sequencer returns EOF if no further data is available.
+// Wrap combines a reader and a Parser and makes a Parser. The user
+// doesn't need to take care of filling the Parser with additional data. The
+// returned parser returns EOF if no further data is available.
 //
 // Wrap chooses the minimum of 32 kbyte or half of the window size as shrink
 // size.
-func Wrap(r io.Reader, seq Sequencer) *WrappedSequencer {
-	return &WrappedSequencer{r: r, s: seq}
+func Wrap(r io.Reader, seq Parser) *WrappedParser {
+	return &WrappedParser{r: r, s: seq}
 }
 
-// WrappedSequencer is returned by the Wrap function. It provides the Sequence
+// WrappedParser is returned by the Wrap function. It provides the Parse
 // method and reads the data required automatically from the stored reader.
-type WrappedSequencer struct {
+type WrappedParser struct {
 	r io.Reader
-	s Sequencer
+	s Parser
 }
 
-// Sequence creates a block of sequences but reads the required data from the
+// Parse creates a block of sequences but reads the required data from the
 // reader if necessary. The function returns io.EOF if no further data is
 // available.
-func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
+func (s *WrappedParser) Parse(blk *Block, flags int) (n int, err error) {
 	for {
-		n, err = s.s.Sequence(blk, flags)
+		n, err = s.s.Parse(blk, flags)
 		if err != ErrEmptyBuffer {
 			return n, err
 		}
@@ -40,9 +40,9 @@ func (s *WrappedSequencer) Sequence(blk *Block, flags int) (n int, err error) {
 	}
 }
 
-// Reset puts the WrappedSequencer in its initial state and changes the wrapped
+// Reset puts the WrappedParser in its initial state and changes the wrapped
 // reader to another reader.
-func (s *WrappedSequencer) Reset(r io.Reader) {
+func (s *WrappedParser) Reset(r io.Reader) {
 	if err := s.s.Reset(nil); err != nil {
 		panic(err)
 	}

@@ -6,10 +6,10 @@ import (
 	"io"
 )
 
-// DecConfig contains the parameters for the [DecBuffer] and [Decoder] types.
+// DecoderConfig contains the parameters for the [DecBuffer] and [Decoder] types.
 // The WindowSize must be smaller than the BufferSize. It is recommended to set
 // the BufferSize twice as large as the WindowSize.
-type DecConfig struct {
+type DecoderConfig struct {
 	// Size of the sliding dictionary window in bytes.
 	WindowSize int
 	// Maximum size of the buffer in bytes.
@@ -18,7 +18,7 @@ type DecConfig struct {
 
 // SetDefaults sets the zero values in DecConfig to default values. Note that
 // the default BufferSize is twice the WindowSize.
-func (cfg *DecConfig) SetDefaults() {
+func (cfg *DecoderConfig) SetDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * miB
 	}
@@ -29,7 +29,7 @@ func (cfg *DecConfig) SetDefaults() {
 
 // Verify checks the parameters of the [DecConfig] value and returns an error
 // for the first problem.
-func (cfg *DecConfig) Verify() error {
+func (cfg *DecoderConfig) Verify() error {
 	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: BufferSize=%d out of range [%d..%d]",
@@ -43,8 +43,8 @@ func (cfg *DecConfig) Verify() error {
 	return nil
 }
 
-// DecBuffer provides a simple buffer for the decoding of LZ77 sequences.
-type DecBuffer struct {
+// DecoderBuffer provides a simple buffer for the decoding of LZ77 sequences.
+type DecoderBuffer struct {
 	// Data is the actual buffer. The end of the slice is also the head of
 	// the dictionary window.
 	Data []byte
@@ -57,19 +57,19 @@ type DecBuffer struct {
 
 	// DecConfig provides the configuration parameters WindowSize and
 	// BufferSize.
-	DecConfig
+	DecoderConfig
 }
 
 // Init initializes the [DecBuffer] value.
-func (b *DecBuffer) Init(cfg DecConfig) error {
+func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	*b = DecBuffer{
-		Data:      b.Data[:0],
-		DecConfig: cfg,
+	*b = DecoderBuffer{
+		Data:          b.Data[:0],
+		DecoderConfig: cfg,
 	}
 	if cap(b.Data) > b.BufferSize {
 		b.BufferSize = cap(b.Data)
@@ -78,10 +78,10 @@ func (b *DecBuffer) Init(cfg DecConfig) error {
 }
 
 // Reset puts the DecBuffer back to the initialized status.
-func (b *DecBuffer) Reset() {
-	*b = DecBuffer{
-		Data:      b.Data[:0],
-		DecConfig: b.DecConfig,
+func (b *DecoderBuffer) Reset() {
+	*b = DecoderBuffer{
+		Data:          b.Data[:0],
+		DecoderConfig: b.DecoderConfig,
 	}
 	if cap(b.Data) > b.BufferSize {
 		b.BufferSize = cap(b.Data)
@@ -89,7 +89,7 @@ func (b *DecBuffer) Reset() {
 }
 
 // ByteAtEnd returns byte at end of the buffer
-func (b *DecBuffer) ByteAtEnd(off int) byte {
+func (b *DecoderBuffer) ByteAtEnd(off int) byte {
 	i := len(b.Data) - off
 	if !(0 <= i && i < len(b.Data)) {
 		return 0
@@ -98,14 +98,14 @@ func (b *DecBuffer) ByteAtEnd(off int) byte {
 }
 
 // Read reads decoded data from the buffer.
-func (b *DecBuffer) Read(p []byte) (n int, err error) {
+func (b *DecoderBuffer) Read(p []byte) (n int, err error) {
 	n = copy(p, b.Data[b.R:])
 	b.R += n
 	return n, nil
 }
 
 // WriteTo writes the decoded data to the writer.
-func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
+func (b *DecoderBuffer) WriteTo(w io.Writer) (n int64, err error) {
 	k, err := w.Write(b.Data[b.R:])
 	b.R += k
 	return int64(k), err
@@ -117,7 +117,7 @@ func (b *DecBuffer) WriteTo(w io.Writer) (n int64, err error) {
 //
 // The method is private because it is called by the various write methods
 // automatically.
-func (b *DecBuffer) shrink(g int) int {
+func (b *DecoderBuffer) shrink(g int) int {
 	if b.BufferSize < cap(b.Data) {
 		b.BufferSize = cap(b.Data)
 		if g <= b.BufferSize {
@@ -138,7 +138,7 @@ func (b *DecBuffer) shrink(g int) int {
 }
 
 // WriteByte writes a single byte into the buffer.
-func (b *DecBuffer) WriteByte(c byte) error {
+func (b *DecoderBuffer) WriteByte(c byte) error {
 	g := len(b.Data) + 1
 	if g > b.BufferSize {
 		if g -= b.shrink(g); g > b.BufferSize {
@@ -152,7 +152,7 @@ func (b *DecBuffer) WriteByte(c byte) error {
 
 // Write puts the slice into the buffer. The method will write the slice only
 // fully or will return 0, [ErrFullBuffer].
-func (b *DecBuffer) Write(p []byte) (n int, err error) {
+func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	n = len(p)
 	g := len(b.Data) + n
 	if g > b.BufferSize {
@@ -167,7 +167,7 @@ func (b *DecBuffer) Write(p []byte) (n int, err error) {
 
 // WriteMatch puts the match at the end of the buffer. The match will only be
 // written completely or n=0 and [ErrFullBuffer] will be returned.
-func (b *DecBuffer) WriteMatch(m, o uint32) (n int, err error) {
+func (b *DecoderBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	if o == 0 && m > 0 {
 		return 0, errOffset
 	}
@@ -220,7 +220,7 @@ var (
 //
 // The return values n, k and l provide the number of bytes written into the
 // buffer, the number of sequences as well as the number of literals.
-func (b *DecBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
+func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	ld := len(b.Data)
 	ll := len(blk.Literals)
 	var s Seq
@@ -289,13 +289,13 @@ end:
 
 // Decoder decodes LZ77 sequences and writes them into the writer.
 type Decoder struct {
-	buf DecBuffer
+	buf DecoderBuffer
 	w   io.Writer
 }
 
 // NewDecoder creates a new decoder. The first issue with the configuration
 // will be reported.
-func NewDecoder(w io.Writer, cfg DecConfig) (*Decoder, error) {
+func NewDecoder(w io.Writer, cfg DecoderConfig) (*Decoder, error) {
 	d := new(Decoder)
 	err := d.Init(w, cfg)
 	return d, err
@@ -303,7 +303,7 @@ func NewDecoder(w io.Writer, cfg DecConfig) (*Decoder, error) {
 
 // Init initializes the decoder. The first issue of the configuration value will
 // be reported as error.
-func (d *Decoder) Init(w io.Writer, cfg DecConfig) error {
+func (d *Decoder) Init(w io.Writer, cfg DecoderConfig) error {
 	var err error
 	if err = d.buf.Init(cfg); err != nil {
 		return err
@@ -356,7 +356,7 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 }
 
 // WriteBlock writes the block into the decoder. It returns the number n of
-// bytes, the number k of sequencers and the number l of literal bytes written
+// bytes, the number k of parsers and the number l of literal bytes written
 // to the decoder.
 func (d *Decoder) WriteBlock(blk Block) (n, k, l int, err error) {
 	for {

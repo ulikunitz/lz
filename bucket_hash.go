@@ -37,21 +37,21 @@ func (bh *bucketHash) add(h, pos, val uint32) {
 	*pi = byte(i)
 }
 
-type buhConfig struct {
+type bucketConfig struct {
 	InputLen   int
 	HashBits   int
 	BucketSize int
 }
 
-var errNoBuhConfig = errors.New("lz: no BUH configuration")
+var errNoBucketConfig = errors.New("lz: no bucket hash configuration")
 
-func buhCfg(cfg SeqConfig) (b buhConfig, err error) {
+func bucketCfg(cfg ParserConfig) (b bucketConfig, err error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	f := hasVal(v, "InputLen")
 	f = f && hasVal(v, "HashBits")
 	f = f && hasVal(v, "BucketSize")
 	if !f {
-		return buhConfig{}, errNoBuhConfig
+		return bucketConfig{}, errNoBucketConfig
 	}
 	b.InputLen = iVal(v, "InputLen")
 	b.HashBits = iVal(v, "HashBits")
@@ -59,13 +59,13 @@ func buhCfg(cfg SeqConfig) (b buhConfig, err error) {
 	return b, nil
 }
 
-func setBUHCfg(cfg SeqConfig, b buhConfig) error {
+func setBucketCfg(cfg ParserConfig, b bucketConfig) error {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	f := hasVal(v, "InputLen")
 	f = f && hasVal(v, "HashBits")
 	f = f && hasVal(v, "BucketSize")
 	if !f {
-		return errNoBuhConfig
+		return errNoBucketConfig
 	}
 	setIVal(v, "InputLen", b.InputLen)
 	setIVal(v, "HashBits", b.HashBits)
@@ -73,7 +73,7 @@ func setBUHCfg(cfg SeqConfig, b buhConfig) error {
 	return nil
 }
 
-func (cfg *buhConfig) SetDefaults() {
+func (cfg *bucketConfig) SetDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -85,7 +85,7 @@ func (cfg *buhConfig) SetDefaults() {
 	}
 }
 
-func (cfg *buhConfig) Verify() error {
+func (cfg *bucketConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
@@ -107,7 +107,7 @@ func (cfg *buhConfig) Verify() error {
 	return nil
 }
 
-func (bh *bucketHash) init(cfg *buhConfig) error {
+func (bh *bucketHash) init(cfg *bucketConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
@@ -173,14 +173,14 @@ func (bh *bucketHash) shiftOffsets(delta uint32) {
 	}
 }
 
-type buhFinder struct {
-	SeqBuffer
+type bucketDictionary struct {
+	ParserBuffer
 	bucketHash
 }
 
-func (f *buhFinder) init(cfg buhConfig, bcfg BufConfig) error {
+func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.SeqBuffer.Init(bcfg); err != nil {
+	if err = f.ParserBuffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -191,24 +191,24 @@ func (f *buhFinder) init(cfg buhConfig, bcfg BufConfig) error {
 	return err
 }
 
-func (f *buhFinder) Reset(data []byte) error {
+func (f *bucketDictionary) Reset(data []byte) error {
 	var err error
-	if err = f.SeqBuffer.Reset(data); err != nil {
+	if err = f.ParserBuffer.Reset(data); err != nil {
 		return err
 	}
 	f.bucketHash.reset()
 	return nil
 }
 
-func (f *buhFinder) Shrink() int {
-	delta := f.SeqBuffer.Shrink()
+func (f *bucketDictionary) Shrink() int {
+	delta := f.ParserBuffer.Shrink()
 	if delta > 0 {
 		f.bucketHash.shiftOffsets(uint32(delta))
 	}
 	return delta
 }
 
-func (f *buhFinder) processSegment(a, b int) {
+func (f *bucketDictionary) processSegment(a, b int) {
 	if a < 0 {
 		a = 0
 	}

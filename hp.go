@@ -25,6 +25,12 @@ type HPConfig struct {
 	HashBits int
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *HPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON converts the JSON into the HPConfig structure.
 func (cfg *HPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = HPConfig{}

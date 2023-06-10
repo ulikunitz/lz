@@ -246,36 +246,36 @@ func BenchmarkParsers(b *testing.B) {
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"BDHPequencer-3,6", &BDHPConfig{
+		{"BDHParser-3,6", &BDHPConfig{
 			InputLen1:  3,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"BDHPequencer-4,6", &BDHPConfig{
+		{"BDHParser-4,6", &BDHPConfig{
 			InputLen1:  4,
 			HashBits1:  15,
 			InputLen2:  6,
 			HashBits2:  18,
 			WindowSize: 8 << 20,
 		}},
-		{"GSAPequencer", &GSAPConfig{
+		{"GSAParser", &GSAPConfig{
 			WindowSize: 8 << 20,
 		}},
-		{"BUPequencer-3-12", &BUPConfig{
+		{"BUParser-3-12", &BUPConfig{
 			InputLen:   3,
 			HashBits:   18,
 			BucketSize: 12,
 			WindowSize: 8 << 20,
 		}},
-		{"BUPequencer-3-100", &BUPConfig{
+		{"BUParser-3-100", &BUPConfig{
 			InputLen:   3,
 			HashBits:   18,
 			BucketSize: 100,
 			WindowSize: 8 << 20,
 		}},
-		{"OSAPequencer", &OSAPConfig{
+		{"OSAParser", &OSAPConfig{
 			MinMatchLen: 2,
 			MaxMatchLen: 273,
 			Cost:        "XZCost",

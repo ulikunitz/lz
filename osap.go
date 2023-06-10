@@ -50,6 +50,12 @@ type OSAPConfig struct {
 	Cost string
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *OSAPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON parses the JSON value and sets the fields of OSAPConfig.
 func (cfg *OSAPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = OSAPConfig{}

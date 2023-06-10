@@ -15,6 +15,12 @@ type BHPConfig struct {
 	HashBits int
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *BHPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON parses the JSON value and sets the fields of BHPConfig.
 func (cfg *BHPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = BHPConfig{}

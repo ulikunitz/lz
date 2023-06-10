@@ -115,6 +115,7 @@ type ParserConfig interface {
 	SetBufConfig(bc BufConfig)
 	SetDefaults()
 	Verify() error
+	Clone() ParserConfig
 }
 
 // BufConfig describes the various sizes relevant for the buffer. Note that

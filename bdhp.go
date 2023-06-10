@@ -30,6 +30,12 @@ func (cfg *BDHPConfig) MarshalJSON() (p []byte, err error) {
 	return marshalJSON(cfg, "BDHP")
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *BDHPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *BDHPConfig) BufConfig() BufConfig {
 	bc := bufferConfig(cfg)

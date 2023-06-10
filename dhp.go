@@ -17,6 +17,12 @@ type DHPConfig struct {
 	HashBits2 int
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *DHPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON parses the JSON value and sets the fields of DHPConfig.
 func (cfg *DHPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = DHPConfig{}

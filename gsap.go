@@ -19,6 +19,12 @@ type GSAPConfig struct {
 	MinMatchLen int
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *GSAPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON parses the JSON value and sets the fields of GSAPConfig.
 func (cfg *GSAPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = GSAPConfig{}

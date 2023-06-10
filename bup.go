@@ -20,6 +20,12 @@ type BUPConfig struct {
 	BucketSize int
 }
 
+// Clone creates a copy of the configuration.
+func (cfg *BUPConfig) Clone() ParserConfig {
+	x := *cfg
+	return &x
+}
+
 // UnmarshalJSON parses the JSON value and sets the fields of BUPConfig.
 func (cfg *BUPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = BUPConfig{}

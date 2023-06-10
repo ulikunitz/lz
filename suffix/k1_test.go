@@ -62,7 +62,6 @@ func shorter(s []byte) string {
 	return string(s)
 }
 
-
 func TestEnwik6(t *testing.T) {
 	cfg := config{
 		sizeThreshold: 8,

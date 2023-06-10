@@ -46,6 +46,7 @@ func (cfg *BDHPConfig) BufConfig() BufConfig {
 	return bc
 }
 
+// SetBufConfig sets the buffer configuration.
 func (cfg *BDHPConfig) SetBufConfig(bc BufConfig) {
 	setBufferConfig(cfg, bc)
 }

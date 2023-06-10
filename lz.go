@@ -188,15 +188,15 @@ type parserConfigUnion struct {
 	Cost        string `json:",omitempty"`
 }
 
-func unmarshalJSON(cfg ParserConfig, type_ string, p []byte) error {
+func unmarshalJSON(cfg ParserConfig, typ string, p []byte) error {
 	var err error
 	var s parserConfigUnion
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
-	if s.Type != type_ {
+	if s.Type != typ {
 		return fmt.Errorf("lz: Type property %q is not %q",
-			s.Type, type_)
+			s.Type, typ)
 	}
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	vt := v.Type()
@@ -210,9 +210,9 @@ func unmarshalJSON(cfg ParserConfig, type_ string, p []byte) error {
 	return nil
 }
 
-func marshalJSON(cfg ParserConfig, type_ string) (p []byte, err error) {
+func marshalJSON(cfg ParserConfig, typ string) (p []byte, err error) {
 	var s parserConfigUnion
-	s.Type = type_
+	s.Type = typ
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	vt := v.Type()
 	w := reflect.Indirect(reflect.ValueOf(&s))

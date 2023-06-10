@@ -434,9 +434,8 @@ func trMedian3(sa, isaD []int32, v1, v2, v3 int) int {
 	if y2 > y3 {
 		if y1 > y3 {
 			return v1
-		} else {
-			return v3
 		}
+		return v3
 	}
 	return v2
 }
@@ -482,11 +481,10 @@ func trPivot(sa, isaD []int32, first, last int) int {
 	if t <= 512 {
 		if t <= 32 {
 			return trMedian3(sa, isaD, first, middle, last)
-		} else {
-			t >>= 2
-			return trMedian5(sa, isaD, first, first+t, middle,
-				last-t, last)
 		}
+		t >>= 2
+		return trMedian5(sa, isaD, first, first+t, middle,
+			last-t, last)
 	}
 
 	t >>= 3
@@ -808,6 +806,6 @@ func (b *budget) check(size int) bool {
 		return false
 	}
 	b.remain += b.incval - size
-	b.chance -= 1
+	b.chance--
 	return true
 }

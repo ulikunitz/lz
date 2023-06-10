@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: © 2021 Ulrich Kunitz
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Package suffix provides a suffix sort algorithm.
 //
 // It is based on the DivSufSort algorithm as described in the

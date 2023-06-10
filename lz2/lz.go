@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: © 2021 Ulrich Kunitz
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Package lz provides encoders and decoders for LZ77 sequences. A sequence, as
 // described in the [Zstandard specification], consists of a literal copy
 // command followed by a match copy command. The literal copy command is

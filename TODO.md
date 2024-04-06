@@ -1,16 +1,8 @@
 # TODO lz module
 
-## updates
+## lz module
 
-## v0.3.0
+* support match length limit
+  - addresses [xz issue 42](https://github.com/ulikunitz/xz/issues/42)
+* support history match optimization
 
-* Remove lz2 and lzold
-* Write documentation for each client and document defaults
-* Package documentation should have table of supported sequencers
-* We support go1.20 and above
-* Write README.md
-  - be explicit about no backward compatibility will be maintained; we
-    will stay forever with v0
-* Setup security policy
-* Make v0.3.0
-* Make repository public on github

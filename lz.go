@@ -15,16 +15,16 @@
 //
 // The actual basic Parser provided by the package support the SeqBuffer
 // interface, which has methods for writing and reading from the buffer. A pure
-// Parser is provided by the [Wrap function.
+// Parser is provided by the [Wrap] function.
 //
 // The module provides multiple parser implementations that provide different
 // combinations of encoding speed  and compression ratios. Usually a slower
 // parser will generate a better compression ratio.
 //
 // The [Decoder] slides the decompression window through a larger buffer
-// implemented by [DecBuffer].
+// implemented by [DecoderBuffer].
 //
-// The library supports the implementation of Parsers outside the package
+// The library supports the implementation of parsers outside of this package
 // that can then be used by real compressors as provided by the
 // [github.com/ulikunitz/xz] module.
 //
@@ -89,15 +89,15 @@ const (
 )
 
 // ErrEmptyBuffer indicates that no more data is available in the buffer. It
-// will be returned by the Parse method of  [Parser].
+// will be returned by the Parse method of [Parser].
 var ErrEmptyBuffer = errors.New("lz: no more data in buffer")
 
 // ErrFullBuffer indicates that the buffer is full. It will be returned by the
 // Write and ReadFrom methods of the [Parser].
 var ErrFullBuffer = errors.New("lz: buffer is full")
 
-// Parser provides the basic interface of a Parser. It provides the
-// functions provided by SeqBuffer.
+// Parser provides the basic interface of a Parser. Most of the functions are
+// provided by the underlying [ParserBuffer].
 type Parser interface {
 	Parse(blk *Block, flags int) (n int, err error)
 	Reset(data []byte) error

@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-// DecoderConfig contains the parameters for the [DecBuffer] and [Decoder] types.
+// DecoderConfig contains the parameters for the [DecoderBuffer] and [Decoder] types.
 // The WindowSize must be smaller than the BufferSize. It is recommended to set
 // the BufferSize twice as large as the WindowSize.
 type DecoderConfig struct {
@@ -64,7 +64,7 @@ type DecoderBuffer struct {
 	DecoderConfig
 }
 
-// Init initializes the [DecBuffer] value.
+// Init initializes the [DecoderBuffer] value.
 func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
 	cfg.SetDefaults()
 	var err error
@@ -81,7 +81,7 @@ func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
 	return nil
 }
 
-// Reset puts the DecBuffer back to the initialized status.
+// Reset puts the DecoderBuffer back to the initialized status.
 func (b *DecoderBuffer) Reset() {
 	*b = DecoderBuffer{
 		Data:          b.Data[:0],

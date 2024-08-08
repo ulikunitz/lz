@@ -2,8 +2,7 @@
 
 ## lz module
 
-* support match length limit
-  - addresses [xz issue 42](https://github.com/ulikunitz/xz/issues/42)
+* Review documentation
 * support history match optimization
 
 ## Releases

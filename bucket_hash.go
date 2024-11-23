@@ -73,7 +73,7 @@ func setBucketCfg(cfg ParserConfig, b bucketConfig) error {
 	}
 	setIVal(v, "InputLen", b.InputLen)
 	setIVal(v, "HashBits", b.HashBits)
-	setIVal(v, "BucketSize", b.HashBits)
+	setIVal(v, "BucketSize", b.BucketSize)
 	return nil
 }
 

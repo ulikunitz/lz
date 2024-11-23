@@ -414,3 +414,27 @@ func BenchmarkDecoders(b *testing.B) {
 		})
 	}
 }
+
+func TestParseJSON(t *testing.T) {
+	const json = `
+{
+	"Type": "BUP",
+	"BucketSize": 3
+}
+	`
+	cfg, err := ParseJSON([]byte(json))
+	if err != nil {
+		t.Fatalf("ParseJSON error %s", err)
+	}
+
+	var bup *BUPConfig
+
+	bup, ok := cfg.(*BUPConfig)
+	if !ok {
+		t.Fatalf("cfg is not a BUPConfig")
+	}
+	if bup.BucketSize != 3 {
+		t.Fatalf("bup.BucketSize = %d; want 3", bup.BucketSize)
+	}
+	t.Logf("cfg: %+v", cfg)
+}

@@ -122,10 +122,12 @@ func (b *DecoderBuffer) WriteTo(w io.Writer) (n int64, err error) {
 // The method is private because it is called by the various write methods
 // automatically.
 func (b *DecoderBuffer) shrink(g int) int {
+	delta0 := 0
 	if b.BufferSize < cap(b.Data) {
+		delta0 = cap(b.Data) - b.BufferSize
 		b.BufferSize = cap(b.Data)
 		if g <= b.BufferSize {
-			return 0
+			return delta0
 		}
 	}
 	delta := doz(len(b.Data), b.WindowSize)
@@ -133,12 +135,12 @@ func (b *DecoderBuffer) shrink(g int) int {
 		delta = b.R
 	}
 	if delta == 0 {
-		return 0
+		return delta0
 	}
 	k := copy(b.Data, b.Data[delta:])
 	b.Data = b.Data[:k]
 	b.R -= delta
-	return delta
+	return delta0 + delta
 }
 
 // WriteByte writes a single byte into the buffer.

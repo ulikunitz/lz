@@ -97,7 +97,7 @@ var ErrEmptyBuffer = errors.New("lz: no more data in buffer")
 var ErrFullBuffer = errors.New("lz: buffer is full")
 
 // Parser provides the basic interface of a Parser. Most of the functions are
-// provided by the underlying [ParserBuffer].
+// provided by the underlying [Buffer].
 type Parser interface {
 	Parse(blk *Block, flags int) (n int, err error)
 	Reset(data []byte) error

@@ -109,7 +109,7 @@ func (cfg GSAPConfig) NewParser() (s Parser, err error) {
 // Double Hash Parsers are achieving almost the same compression rate with
 // much less CPU consumption.
 type gsap struct {
-	ParserBuffer
+	Buffer
 
 	// suffix array
 	sa []int32
@@ -127,7 +127,7 @@ type gsap struct {
 func (s *gsap) init(cfg GSAPConfig) error {
 	bc := bufferConfig(&cfg)
 	var err error
-	if err = s.ParserBuffer.Init(bc); err != nil {
+	if err = s.Buffer.Init(bc); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -148,7 +148,7 @@ func (s *gsap) ParserConfig() ParserConfig {
 
 func (s *gsap) Reset(data []byte) error {
 	var err error
-	if err = s.ParserBuffer.Reset(data); err != nil {
+	if err = s.Buffer.Reset(data); err != nil {
 		return err
 	}
 	s.sa = s.sa[:0]
@@ -158,7 +158,7 @@ func (s *gsap) Reset(data []byte) error {
 }
 
 func (s *gsap) Shrink() int {
-	delta := s.ParserBuffer.Shrink()
+	delta := s.Buffer.Shrink()
 	if delta > 0 {
 		s.sa = s.sa[:0]
 		s.isa = s.isa[:0]

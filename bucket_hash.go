@@ -178,13 +178,13 @@ func (bh *bucketHash) shiftOffsets(delta uint32) {
 }
 
 type bucketDictionary struct {
-	ParserBuffer
+	Buffer
 	bucketHash
 }
 
 func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.ParserBuffer.Init(bcfg); err != nil {
+	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -197,7 +197,7 @@ func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufConfig) error {
 
 func (f *bucketDictionary) Reset(data []byte) error {
 	var err error
-	if err = f.ParserBuffer.Reset(data); err != nil {
+	if err = f.Buffer.Reset(data); err != nil {
 		return err
 	}
 	f.bucketHash.reset()
@@ -205,7 +205,7 @@ func (f *bucketDictionary) Reset(data []byte) error {
 }
 
 func (f *bucketDictionary) Shrink() int {
-	delta := f.ParserBuffer.Shrink()
+	delta := f.Buffer.Shrink()
 	if delta > 0 {
 		f.bucketHash.shiftOffsets(uint32(delta))
 	}

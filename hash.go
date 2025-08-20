@@ -151,13 +151,13 @@ func (cfg *hashConfig) Verify() error {
 }
 
 type hashDictionary struct {
-	ParserBuffer
+	Buffer
 	hash
 }
 
 func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.ParserBuffer.Init(bcfg); err != nil {
+	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -170,7 +170,7 @@ func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
 
 func (f *hashDictionary) Reset(data []byte) error {
 	var err error
-	if err = f.ParserBuffer.Reset(data); err != nil {
+	if err = f.Buffer.Reset(data); err != nil {
 		return err
 	}
 	f.hash.reset()
@@ -178,7 +178,7 @@ func (f *hashDictionary) Reset(data []byte) error {
 }
 
 func (f *hashDictionary) Shrink() int {
-	delta := f.ParserBuffer.Shrink()
+	delta := f.Buffer.Shrink()
 	if delta > 0 {
 		f.hash.shiftOffsets(uint32(delta))
 	}
@@ -286,14 +286,14 @@ func (cfg *dhConfig) Verify() error {
 }
 
 type doubleHashDictionary struct {
-	ParserBuffer
+	Buffer
 	h1 hash
 	h2 hash
 }
 
 func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.ParserBuffer.Init(bcfg); err != nil {
+	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
 	cfg.SetDefaults()
@@ -308,7 +308,7 @@ func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
 }
 
 func (f *doubleHashDictionary) Shrink() int {
-	delta := f.ParserBuffer.Shrink()
+	delta := f.Buffer.Shrink()
 	if delta > 0 {
 		f.h1.shiftOffsets(uint32(delta))
 		f.h2.shiftOffsets(uint32(delta))

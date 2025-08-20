@@ -10,9 +10,9 @@ import (
 	"io"
 )
 
-// ParserBuffer provides a base for Parser implementation. Since the package
+// Buffer provides a base for Parser implementation. Since the package
 // allows implementations outside of the package. All members are public.
-type ParserBuffer struct {
+type Buffer struct {
 	// actual buffer data
 	Data []byte
 
@@ -29,13 +29,13 @@ type ParserBuffer struct {
 // Init initializes the buffer. The function
 // sets the defaults for the buffer configuration if required and verifies it.
 // Errors will be reported.
-func (b *ParserBuffer) Init(cfg BufConfig) error {
+func (b *Buffer) Init(cfg BufConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	*b = ParserBuffer{
+	*b = Buffer{
 		Data:      b.Data[:0],
 		BufConfig: cfg,
 	}
@@ -45,7 +45,7 @@ func (b *ParserBuffer) Init(cfg BufConfig) error {
 // Reset initializes the buffer with new data. The data slice requires a margin
 // of 7 bytes for the hash parsers to be used directly. If there is no margin
 // the data will be copied into a slice with enough capacity.
-func (b *ParserBuffer) Reset(data []byte) error {
+func (b *Buffer) Reset(data []byte) error {
 	if len(data) > b.BufferSize {
 		return fmt.Errorf("lz: len(data)=%d larger than BufferSize=%d",
 			len(data), b.BufferSize)
@@ -77,7 +77,7 @@ func (b *ParserBuffer) Reset(data []byte) error {
 
 // Shrink will move the window head to the shrink size if it is larger. The
 // amount of data discarded from the buffer, named delta, will be returned.
-func (b *ParserBuffer) Shrink() int {
+func (b *Buffer) Shrink() int {
 	delta := b.W - b.ShrinkSize
 	if delta <= 0 {
 		return 0
@@ -93,7 +93,7 @@ func (b *ParserBuffer) Shrink() int {
 // or BufferSize bytes plus 7 bytes margin to support the hash parsers.
 // Usually the size allocate will roughly more than twice the requested size to
 // avoid repeated allocations.
-func (b *ParserBuffer) grow(t int) {
+func (b *Buffer) grow(t int) {
 	if t+7 <= cap(b.Data) {
 		return
 	}
@@ -115,7 +115,7 @@ func (b *ParserBuffer) grow(t int) {
 
 // Write writes data into the buffer. If not the complete p slice can be copied
 // into the buffer, Write will return [ErrFullBuffer].
-func (b *ParserBuffer) Write(p []byte) (n int, err error) {
+func (b *Buffer) Write(p []byte) (n int, err error) {
 	available := b.BufferSize - len(b.Data)
 	if available < len(p) {
 		p = p[:available]
@@ -133,7 +133,7 @@ func (b *ParserBuffer) Write(p []byte) (n int, err error) {
 
 // ReadFrom reads the data from reader into the buffer. If there is an error it
 // will be reported. If the buffer is full, [ErrFullBuffer] will be reported.
-func (b *ParserBuffer) ReadFrom(r io.Reader) (n int64, err error) {
+func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
 	const chunkSize = 32 << 10
 	n = int64(len(b.Data))
 	for {
@@ -166,7 +166,7 @@ var (
 // buffer ErrOutOfBuffer will be reported. If there is not enough data to fill p
 // ErrEndOfBuffer will be reported. See [SeqBuffer.PeekAt] for avoiding the
 // copy.
-func (b *ParserBuffer) ReadAt(p []byte, off int64) (n int, err error) {
+func (b *Buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	q, err := b.PeekAt(len(p), off)
 	n = copy(p, q)
 	return n, err
@@ -176,7 +176,7 @@ func (b *ParserBuffer) ReadAt(p []byte, off int64) (n int, err error) {
 // The total offset takes all data written to the buffer into account. If the
 // off parameter is outside the current buffer ErrOutOfBuffer will be returned.
 // If less than n bytes of data can be provided ErrEndOfBuffer will be returned.
-func (b *ParserBuffer) PeekAt(n int, off int64) (p []byte, err error) {
+func (b *Buffer) PeekAt(n int, off int64) (p []byte, err error) {
 	i := off - b.Off
 	if !(0 <= i && i < int64(len(b.Data))) {
 		return nil, ErrOutOfBuffer
@@ -191,7 +191,7 @@ func (b *ParserBuffer) PeekAt(n int, off int64) (p []byte, err error) {
 // ByteAt returns the byte at total offset off, if it can be provided. If off
 // points to the end of the buffer, [ErrEndOfBuffer] will be returned otherwise
 // [ErrOutOfBuffer].
-func (b *ParserBuffer) ByteAt(off int64) (c byte, err error) {
+func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 	i := off - b.Off
 	if !(0 <= i && i <= int64(len(b.Data))) {
 		if i == int64(len(b.Data)) {

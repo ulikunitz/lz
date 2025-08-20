@@ -145,7 +145,7 @@ type edge struct {
 }
 
 type optSuffixArrayParser struct {
-	ParserBuffer
+	Buffer
 
 	edgeBuf []edge
 	edges   [][]edge
@@ -170,7 +170,7 @@ func (s *optSuffixArrayParser) init(cfg OSAPConfig) error {
 		return err
 	}
 	bc := bufferConfig(&cfg)
-	if err = s.ParserBuffer.Init(bc); err != nil {
+	if err = s.Buffer.Init(bc); err != nil {
 		return err
 	}
 
@@ -186,7 +186,7 @@ func (s *optSuffixArrayParser) init(cfg OSAPConfig) error {
 }
 
 func (s *optSuffixArrayParser) Reset(data []byte) error {
-	err := s.ParserBuffer.Reset(data)
+	err := s.Buffer.Reset(data)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (s *optSuffixArrayParser) Reset(data []byte) error {
 }
 
 func (s *optSuffixArrayParser) Shrink() int {
-	delta := s.ParserBuffer.Shrink()
+	delta := s.Buffer.Shrink()
 	if delta > 0 {
 		s.resetEdges()
 	}

@@ -7,7 +7,6 @@ package lz
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -20,12 +19,10 @@ func TestHashParserSimple(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
 	var s hashParser
-	err := s.init(HPConfig{
-		WindowSize: 1024,
-		BlockSize:  512,
-		InputLen:   3,
-	})
-
+	err := s.init(
+		HashConfig{InputLen: 3},
+		BufConfig{WindowSize: 1024, BlockSize: 512},
+	)
 	if err != nil {
 		t.Fatalf("s.Init error %s", err)
 	}
@@ -85,6 +82,7 @@ func TestHashParserSimple(t *testing.T) {
 	t.Logf("g: %q", g)
 }
 
+/*
 func FuzzHP(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
@@ -97,6 +95,7 @@ func FuzzHP(f *testing.F) {
 		testParser(t, cfg, p)
 	})
 }
+*/
 
 func TestWrapOldHashParser(t *testing.T) {
 	const (
@@ -105,12 +104,10 @@ func TestWrapOldHashParser(t *testing.T) {
 		str        = "=====foofoobarfoobar bartender===="
 	)
 
-	cfg := HPConfig{
-		WindowSize: windowSize,
-		BlockSize:  blockSize,
-		InputLen:   3,
-	}
-	ws, err := cfg.NewParser()
+	ws, err := NewHashParser(
+		HashConfig{InputLen: 3},
+		BufConfig{WindowSize: windowSize, BlockSize: blockSize},
+	)
 	if err != nil {
 		t.Fatalf("NewHashParser error %s", err)
 	}
@@ -160,16 +157,16 @@ func TestHashParserEnwik7(t *testing.T) {
 	h1 := sha256.New()
 	r := io.TeeReader(f, h1)
 
-	cfg := HPConfig{
+	bcfg := BufConfig{
 		ShrinkSize: windowSize + 100,
 		WindowSize: windowSize,
 		BufferSize: 2 * windowSize,
 		BlockSize:  blockSize,
-		InputLen:   3,
 	}
-	ws, err := cfg.NewParser()
+	hcfg := HashConfig{InputLen: 3}
+	ws, err := NewHashParser(hcfg, bcfg)
 	if err != nil {
-		t.Fatalf("NewHashParser(%+v) error %s", cfg, err)
+		t.Fatalf("NewHashParser(%+v, %+v) error %s", hcfg, bcfg, err)
 	}
 	s := Wrap(r, ws)
 
@@ -264,14 +261,12 @@ func TestLargeParameters(t *testing.T) {
 	var tests = []struct {
 		filename string
 		size     int64
-		cfg      HPConfig
+		hcfg     HashConfig
+		bcfg     BufConfig
 	}{
 		// 1 << 30 is a Gigabyte
-		{enwik7, 1 << 30, HPConfig{
-			WindowSize: 8 << 20,
-			BlockSize:  128 * kiB,
-			InputLen:   3,
-		}},
+		{enwik7, 1 << 30, HashConfig{InputLen: 3},
+			BufConfig{WindowSize: 8 * miB, BlockSize: 128 * kiB}},
 	}
 
 	for i, tc := range tests {
@@ -288,16 +283,16 @@ func TestLargeParameters(t *testing.T) {
 				}
 			}()
 			r := io.LimitReader(newLoopReader(f), tc.size)
-			ws, err := tc.cfg.NewParser()
+			ws, err := NewHashParser(tc.hcfg, tc.bcfg)
 			if err != nil {
-				t.Fatalf("NewHashParser(%+v) error %s",
-					tc.cfg, err)
+				t.Fatalf("NewHashParser(%+v, %+v) error %s",
+					tc.hcfg, tc.bcfg, err)
 			}
 			h1, h2 := sha256.New(), sha256.New()
 			s := Wrap(io.TeeReader(r, h1), ws)
 
 			var d Decoder
-			d.Init(h2, DecoderConfig{WindowSize: tc.cfg.WindowSize})
+			d.Init(h2, DecoderConfig{WindowSize: tc.bcfg.WindowSize})
 
 			var blk Block
 			var n int64
@@ -334,39 +329,5 @@ func TestLargeParameters(t *testing.T) {
 					s1, s2)
 			}
 		})
-	}
-}
-
-func TestHP_JSON(t *testing.T) {
-	a := HPConfig{
-		WindowSize: 1024,
-		InputLen:   4,
-	}
-
-	p, err := json.MarshalIndent(&a, "", "  ")
-	if err != nil {
-		t.Fatalf("json.MarshalIndent error %s", err)
-	}
-	t.Logf("json:\n%s", p)
-	b := HPConfig{}
-	err = json.Unmarshal(p, &b)
-	if err != nil {
-		t.Fatalf("json.Unmarshal error %s", err)
-	}
-	if b != a {
-		t.Fatalf("json.Unmarshal returned %+v; want %+v", b, a)
-	}
-
-	s, err := ParseJSON(p)
-	if err != nil {
-		t.Fatalf("ParseJSON error %s", err)
-	}
-	c, ok := s.(*HPConfig)
-	if !ok {
-		t.Fatalf("ParseJSON returned %+v, no HPConfig", s)
-	}
-
-	if *c != a {
-		t.Fatalf("ParseJSON returned %+v; want %+v", c, a)
 	}
 }

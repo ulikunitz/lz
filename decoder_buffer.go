@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 // DecoderConfig contains the parameters for the [DecoderBuffer] and [Decoder] types.
@@ -34,10 +35,10 @@ func (cfg *DecoderConfig) SetDefaults() {
 // Verify checks the parameters of the [DecConfig] value and returns an error
 // for the first problem.
 func (cfg *DecoderConfig) Verify() error {
-	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxUint32) {
+	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: BufferSize=%d out of range [%d..%d]",
-			cfg.BufferSize, 1, int64(maxUint32))
+			cfg.BufferSize, 1, int64(math.MaxUint32))
 	}
 	if !(0 <= cfg.WindowSize && cfg.WindowSize < cfg.BufferSize) {
 		return fmt.Errorf(

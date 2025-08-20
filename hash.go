@@ -5,9 +5,7 @@
 package lz
 
 import (
-	"errors"
 	"fmt"
-	"reflect"
 )
 
 // prime is used by [hashValue].
@@ -35,21 +33,27 @@ type hash struct {
 	inputLen int
 }
 
+// HashConfig describes the configuration for a single Hash.
+type HashConfig struct {
+	InputLen int
+	HashBits int
+}
+
 // init initializes the hash structure.
-func (h *hash) init(inputLen, hashBits int) error {
-	if !(2 <= inputLen && inputLen <= 8) {
+func (h *hash) init(cfg HashConfig) error {
+	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: inputLen must be in range [2,8]")
 	}
 	maxHashBits := 24
-	if t := 8 * inputLen; t < maxHashBits {
+	if t := 8 * cfg.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}
-	if !(0 <= hashBits && hashBits <= maxHashBits) {
+	if !(0 <= cfg.HashBits && cfg.HashBits <= maxHashBits) {
 		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
-			hashBits, maxHashBits)
+			cfg.HashBits, maxHashBits)
 	}
 
-	n := 1 << hashBits
+	n := 1 << cfg.HashBits
 	if n <= cap(h.table) {
 		h.table = h.table[:n]
 		for i := range h.table {
@@ -59,9 +63,9 @@ func (h *hash) init(inputLen, hashBits int) error {
 		h.table = make([]hashEntry, n)
 	}
 
-	h.mask = 1<<(uint(inputLen)*8) - 1
-	h.shift = 64 - uint(hashBits)
-	h.inputLen = inputLen
+	h.mask = 1<<(uint(cfg.InputLen)*8) - 1
+	h.shift = 64 - uint(cfg.HashBits)
+	h.inputLen = cfg.InputLen
 
 	return nil
 }
@@ -88,44 +92,9 @@ func (h *hash) shiftOffsets(delta uint32) {
 	}
 }
 
-// hashConfig provides the configuration for the hash match finder.
-type hashConfig struct {
-	InputLen int
-	HashBits int
-}
-
-func hasVal(v reflect.Value, name string) bool {
-	_, ok := v.Type().FieldByName(name)
-	return ok
-}
-
-var errNoHash = errors.New("lz: cfg doesn't support a single hash")
-
-func hashCfg(cfg ParserConfig) (hcfg hashConfig, err error) {
-	v := reflect.Indirect(reflect.ValueOf(cfg))
-	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
-		return hashConfig{}, errNoHash
-	}
-	hcfg = hashConfig{
-		InputLen: iVal(v, "InputLen"),
-		HashBits: iVal(v, "HashBits"),
-	}
-	return hcfg, nil
-}
-
-func setHashCfg(cfg ParserConfig, hcfg hashConfig) error {
-	v := reflect.Indirect(reflect.ValueOf(cfg))
-	if !(hasVal(v, "InputLen") && hasVal(v, "HashBits")) {
-		return errNoHash
-	}
-	setIVal(v, "InputLen", hcfg.InputLen)
-	setIVal(v, "HashBits", hcfg.HashBits)
-	return nil
-}
-
-// SetDefaults sets the defaults of the HashConfig. The default input length
+// setDefaults sets the defaults of the HashConfig. The default input length
 // is 3 and the hash bits are 18.
-func (cfg *hashConfig) SetDefaults() {
+func (cfg *HashConfig) setDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -134,8 +103,8 @@ func (cfg *hashConfig) SetDefaults() {
 	}
 }
 
-// Verify checks the configuration parameters.
-func (cfg *hashConfig) Verify() error {
+// verify checks the configuration parameters.
+func (cfg *HashConfig) verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in range [2..8]")
 	}
@@ -151,26 +120,26 @@ func (cfg *hashConfig) Verify() error {
 }
 
 type hashDictionary struct {
-	ParserBuffer
+	Buffer
 	hash
 }
 
-func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
+func (f *hashDictionary) init(cfg HashConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.ParserBuffer.Init(bcfg); err != nil {
+	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+	cfg.setDefaults()
+	if err = cfg.verify(); err != nil {
 		return err
 	}
-	err = f.hash.init(cfg.InputLen, cfg.HashBits)
+	err = f.hash.init(cfg)
 	return err
 }
 
 func (f *hashDictionary) Reset(data []byte) error {
 	var err error
-	if err = f.ParserBuffer.Reset(data); err != nil {
+	if err = f.Buffer.Reset(data); err != nil {
 		return err
 	}
 	f.hash.reset()
@@ -178,7 +147,7 @@ func (f *hashDictionary) Reset(data []byte) error {
 }
 
 func (f *hashDictionary) Shrink() int {
-	delta := f.ParserBuffer.Shrink()
+	delta := f.Buffer.Shrink()
 	if delta > 0 {
 		f.hash.shiftOffsets(uint32(delta))
 	}
@@ -208,107 +177,37 @@ func (f *hashDictionary) processSegment(a, b int) {
 	}
 }
 
-type dhConfig struct {
-	H1 hashConfig
-	H2 hashConfig
-}
-
-var errNoDoubleHash = errors.New(
-	"lz: parser config doesn't support double hash")
-
-func dhCfg(cfg ParserConfig) (c dhConfig, err error) {
-	v := reflect.Indirect(reflect.ValueOf(cfg))
-	var f bool
-	f = hasVal(v, "InputLen1")
-	f = f && hasVal(v, "InputLen2")
-	f = f && hasVal(v, "HashBits1")
-	f = f && hasVal(v, "HashBits2")
-	if !f {
-		return dhConfig{}, errNoDoubleHash
-	}
-	c = dhConfig{
-		H1: hashConfig{
-			InputLen: iVal(v, "InputLen1"),
-			HashBits: iVal(v, "HashBits1"),
-		},
-		H2: hashConfig{
-			InputLen: iVal(v, "InputLen2"),
-			HashBits: iVal(v, "HashBits2"),
-		},
-	}
-	return c, nil
-}
-
-func setDHCfg(cfg ParserConfig, c dhConfig) error {
-	v := reflect.Indirect(reflect.ValueOf(cfg))
-	var f bool
-	f = hasVal(v, "InputLen1")
-	f = f && hasVal(v, "InputLen2")
-	f = f && hasVal(v, "HashBits1")
-	f = f && hasVal(v, "HashBits2")
-	if !f {
-		return errNoDoubleHash
-	}
-	setIVal(v, "InputLen1", c.H1.InputLen)
-	setIVal(v, "HashBits1", c.H1.HashBits)
-	setIVal(v, "InputLen2", c.H2.InputLen)
-	setIVal(v, "HashBits2", c.H2.HashBits)
-	return nil
-}
-
-func (cfg *dhConfig) SetDefaults() {
-	cfg.H1.SetDefaults()
-	if cfg.H2.InputLen == 0 {
-		if cfg.H1.InputLen < 5 {
-			cfg.H2.InputLen = 6
-		} else {
-			cfg.H2.InputLen = 8
-		}
-	}
-	cfg.H2.SetDefaults()
-}
-
-func (cfg *dhConfig) Verify() error {
-	var err error
-	if err = cfg.H1.Verify(); err != nil {
-		return err
-	}
-	if err = cfg.H2.Verify(); err != nil {
-		return err
-	}
-	il1, il2 := cfg.H1.InputLen, cfg.H2.InputLen
-	if !(il1 < il2) {
-		return fmt.Errorf("lz: inputLen1=%d must be < inputLen2=%d",
-			il1, il2)
-	}
-
-	return nil
-}
-
 type doubleHashDictionary struct {
-	ParserBuffer
+	Buffer
 	h1 hash
 	h2 hash
 }
 
-func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
+func (f *doubleHashDictionary) init(h1cfg, h2cfg HashConfig, bcfg BufConfig) error {
 	var err error
-	if err = f.ParserBuffer.Init(bcfg); err != nil {
+	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+	h1cfg.setDefaults()
+	if err = h1cfg.verify(); err != nil {
 		return err
 	}
-	if err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits); err != nil {
+	h2cfg.setDefaults()
+	if err = h2cfg.verify(); err != nil {
 		return err
 	}
-	err = f.h2.init(cfg.H2.InputLen, cfg.H2.HashBits)
+	if h1cfg.InputLen < h2cfg.InputLen {
+		return fmt.Errorf("lz: h1 must have shorter InputLen than h2")
+	}
+	if err = f.h1.init(h1cfg); err != nil {
+		return err
+	}
+	err = f.h2.init(h2cfg)
 	return err
 }
 
 func (f *doubleHashDictionary) Shrink() int {
-	delta := f.ParserBuffer.Shrink()
+	delta := f.Buffer.Shrink()
 	if delta > 0 {
 		f.h1.shiftOffsets(uint32(delta))
 		f.h2.shiftOffsets(uint32(delta))

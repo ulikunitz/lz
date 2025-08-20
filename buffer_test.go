@@ -16,7 +16,7 @@ func TestWindow_Write(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)
 	}
-	var w ParserBuffer
+	var w Buffer
 	const winSize = 1024
 	cfg := BufConfig{
 		WindowSize: winSize,
@@ -51,7 +51,7 @@ func TestWindow_ReadFrom(t *testing.T) {
 		t.Fatalf("os.Open(%q) error %s", file, err)
 	}
 	defer f.Close()
-	var w ParserBuffer
+	var w Buffer
 	const winSize = 1024
 	cfg := BufConfig{
 		WindowSize: winSize,
@@ -90,7 +90,7 @@ func TestWindow_shrink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.ReadFile(%q) error %s", file, err)
 	}
-	var w ParserBuffer
+	var w Buffer
 	const winSize = 1024
 	const shrinkSize = 256
 	cfg := BufConfig{

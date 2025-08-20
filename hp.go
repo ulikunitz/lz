@@ -12,106 +12,15 @@ import (
 // table.
 type hashParser struct {
 	hashDictionary
-
-	HPConfig
 }
 
-// HPConfig provides the configuration parameters for the
-// HashParser. Parser doesn't use ShrinkSize and and BufferSize itself,
-// but it provides it to other code that have to handle the buffer.
-type HPConfig struct {
-	ShrinkSize int
-	BufferSize int
-	WindowSize int
-	BlockSize  int
-
-	InputLen int
-	HashBits int
-}
-
-// Clone creates a copy of the configuration.
-func (cfg *HPConfig) Clone() ParserConfig {
-	x := *cfg
-	return &x
-}
-
-// UnmarshalJSON converts the JSON into the HPConfig structure.
-func (cfg *HPConfig) UnmarshalJSON(p []byte) error {
-	*cfg = HPConfig{}
-	return unmarshalJSON(cfg, "HP", p)
-}
-
-// MarshalJSON creates the JSON string for the configuration. Note that it adds
-// a property Type with value "HP" to the structure.
-func (cfg *HPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "HP")
-}
-
-// BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *HPConfig) BufConfig() BufConfig {
-	bc := bufferConfig(cfg)
-	return bc
-}
-
-// SetBufConfig sets the buffer configuration parameters of the parser
-// configuration.
-func (cfg *HPConfig) SetBufConfig(bc BufConfig) {
-	setBufferConfig(cfg, bc)
-}
-
-// SetDefaults sets values that are zero to their defaults values.
-func (cfg *HPConfig) SetDefaults() {
-	bc := bufferConfig(cfg)
-	bc.SetDefaults()
-	setBufferConfig(cfg, bc)
-	h, _ := hashCfg(cfg)
-	h.SetDefaults()
-	setHashCfg(cfg, h)
-}
-
-// Verify checks the configuration for correctness.
-func (cfg *HPConfig) Verify() error {
-	bc := bufferConfig(cfg)
-	var err error
-	if err = bc.Verify(); err != nil {
-		return err
-	}
-	h, _ := hashCfg(cfg)
-	err = h.Verify()
-	return err
-}
-
-// NewParser creates a new hash parser.
-func (cfg HPConfig) NewParser() (s Parser, err error) {
+// NewHashParser creates a new hash parser.
+func NewHashParser(hcfg HashConfig, bcfg BufConfig) (Parser, error) {
 	hs := new(hashParser)
-	if err = hs.init(cfg); err != nil {
+	if err := hs.init(hcfg, bcfg); err != nil {
 		return nil, err
 	}
 	return hs, nil
-}
-
-// init initializes the hash parser. It returns an error if there is an issue
-// with the configuration parameters.
-func (s *hashParser) init(cfg HPConfig) error {
-	cfg.SetDefaults()
-	var err error
-	if err = cfg.Verify(); err != nil {
-		return err
-	}
-
-	hc, _ := hashCfg(&cfg)
-	bc := bufferConfig(&cfg)
-	if err = s.hashDictionary.init(hc, bc); err != nil {
-		return err
-	}
-
-	s.HPConfig = cfg
-	return nil
-}
-
-// ParserConfig returns the [HPConfig].
-func (s *hashParser) ParserConfig() ParserConfig {
-	return &s.HPConfig
 }
 
 // Parse converts the next block to sequences. The contents of the blk variable

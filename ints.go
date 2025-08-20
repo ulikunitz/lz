@@ -4,10 +4,10 @@
 
 package lz
 
+// Kilobytes and Megabyte defined as the more precise kibibyte and mebibyte.
 const (
-	intSize   = 32 << (^uint(0) >> 63)
-	maxInt    = 1<<(intSize-1) - 1
-	maxUint32 = 1<<32 - 1
+	kiB = 1 << 10
+	miB = 1 << 20
 )
 
 // iverson returns 1 or 0 depending whether the boolean parameter is true or

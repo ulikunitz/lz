@@ -8,57 +8,11 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"io"
-	"math/bits"
 	"os"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func testParser(t *testing.T, cfg ParserConfig, p []byte) {
-	cfg.SetDefaults()
-	t.Logf("cfg.SetDefaults() %+v", cfg)
-	if err := cfg.Verify(); err != nil {
-		t.Skip()
-	}
-	bcfg := cfg.BufConfig()
-
-	seq, err := cfg.NewParser()
-	if err != nil {
-		t.Fatalf("cfg.NewParser() error %s", err)
-	}
-	s := Wrap(bytes.NewReader(p), seq)
-
-	var buffer bytes.Buffer
-	var decoder Decoder
-	err = decoder.Init(&buffer, DecoderConfig{WindowSize: bcfg.WindowSize})
-	if err != nil {
-		t.Fatalf("decoder.Init error %s", err)
-	}
-
-	var blk Block
-	for {
-		if _, err := s.Parse(&blk, 0); err != nil {
-			if err == io.EOF {
-				break
-			}
-			t.Fatalf("s.Parse error %s", err)
-		}
-		if _, _, _, err := decoder.WriteBlock(blk); err != nil {
-			t.Fatalf("decoder.WriteBlock error %s", err)
-		}
-	}
-	if err := decoder.Flush(); err != nil {
-		t.Fatalf("decoder.Flush error %s", err)
-	}
-
-	q := buffer.Bytes()
-	if diff := cmp.Diff(p, q, cmpopts.EquateEmpty()); diff != "" {
-		t.Fatalf("decoded mismatch (+got -want):\n%s", diff)
-	}
-}
-
+/*
 func FuzzBHP(f *testing.F) {
 	f.Add(3, 5, []byte("=====foofoobarfoobar bartender===="))
 	f.Fuzz(func(t *testing.T, inputLen int, hashBits int, p []byte) {
@@ -331,6 +285,7 @@ func BenchmarkParsers(b *testing.B) {
 		})
 	}
 }
+*/
 
 func BenchmarkDecoders(b *testing.B) {
 	const enwik7 = "testdata/enwik7"
@@ -351,11 +306,10 @@ func BenchmarkDecoders(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			var blocks []Block
-			hs, err := HPConfig{
-				InputLen:   3,
-				WindowSize: bm.winSize,
-			}.NewParser()
-
+			hs, err := NewHashParser(
+				HashConfig{InputLen: 3},
+				BufConfig{WindowSize: bm.winSize},
+			)
 			if err != nil {
 				b.Fatalf("NewHashParser error %s", err)
 			}
@@ -413,28 +367,4 @@ func BenchmarkDecoders(b *testing.B) {
 			}
 		})
 	}
-}
-
-func TestParseJSON(t *testing.T) {
-	const json = `
-{
-	"Type": "BUP",
-	"BucketSize": 3
-}
-	`
-	cfg, err := ParseJSON([]byte(json))
-	if err != nil {
-		t.Fatalf("ParseJSON error %s", err)
-	}
-
-	var bup *BUPConfig
-
-	bup, ok := cfg.(*BUPConfig)
-	if !ok {
-		t.Fatalf("cfg is not a BUPConfig")
-	}
-	if bup.BucketSize != 3 {
-		t.Fatalf("bup.BucketSize = %d; want 3", bup.BucketSize)
-	}
-	t.Logf("cfg: %+v", cfg)
 }

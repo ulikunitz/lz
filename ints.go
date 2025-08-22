@@ -4,7 +4,6 @@
 
 package lz
 
-
 // Kilobytes and Megabyte defined as the more precise kibibyte and mebibyte.
 const (
 	kiB = 1 << 10

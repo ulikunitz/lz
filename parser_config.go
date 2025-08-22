@@ -15,6 +15,7 @@ type ParserConfig interface {
 	SetBufConfig(bcfg BufConfig)
 	json.Marshaler
 	json.Unmarshaler
+	Clone() ParserConfig
 }
 
 func ParseJSON(data []byte) (ParserConfig, error) {

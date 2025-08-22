@@ -36,7 +36,7 @@ func (cfg *DHPConfig) UnmarshalJSON(p []byte) error {
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "DHP" to the structure.
 func (cfg *DHPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "DHP")
+	return marshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

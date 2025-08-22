@@ -39,7 +39,7 @@ func (cfg *BUPConfig) UnmarshalJSON(p []byte) error {
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "BUP" to the structure.
 func (cfg *BUPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "BUP")
+	return marshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

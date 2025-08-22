@@ -1,6 +1,9 @@
 package lz
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParserType(t *testing.T) {
 	pcfg := &HPConfig{}
@@ -28,5 +31,56 @@ func TestParserJSON_2(t *testing.T) {
 	}
 	if hpCfg.HashBits != 16 {
 		t.Fatalf("HashBits are %d, want %d", hpCfg.HashBits, 16)
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	tc := []ParserConfig{
+		&HPConfig{
+			InputLen: 3,
+			HashBits: 16,
+		},
+		&BDHPConfig{
+			InputLen1: 4,
+		},
+		&BHPConfig{
+			BufferSize: 64,
+		},
+		&BUPConfig{
+			WindowSize: 128,
+		},
+		&DHPConfig{
+			BlockSize: 256,
+		},
+		&GSAPConfig{
+			WindowSize: 8 << 20,
+		},
+		&OSAPConfig{
+			ShrinkSize: 512,
+		},
+	}
+
+	for _, cfg := range tc {
+		typ := parserType(cfg)
+		t.Run(typ+"Config", func(t *testing.T) {
+			type defaultsSetter interface {
+				SetDefaults()
+			}
+			cfg.(defaultsSetter).SetDefaults()
+			data, err := cfg.MarshalJSON()
+			if err != nil {
+				t.Fatalf("MarshalJSON() error = %v", err)
+			}
+			pcfg, err := ParseJSON(data)
+			if err != nil {
+				t.Fatalf("ParseJSON() error = %v", err)
+			}
+			if got := parserType(pcfg); got != typ {
+				t.Fatalf("wanted parser type %s, got %s", typ, got)
+			}
+			if !reflect.DeepEqual(cfg, pcfg) {
+				t.Fatalf("wanted config %v, got %v", cfg, pcfg)
+			}
+		})
 	}
 }

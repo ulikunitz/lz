@@ -96,6 +96,18 @@ func unmarshalJSON(pcfg ParserConfig, data []byte) error {
 	return nil
 }
 
+func marshalJSON(pcfg ParserConfig) (p []byte, err error) {
+	m := make(map[string]any)
+	m["Type"] = parserType(pcfg)
+	v := reflect.Indirect(reflect.ValueOf(pcfg))
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		m[f.Name] = v.Field(i).Interface()
+	}
+	return json.MarshalIndent(m, "", "  ")
+}
+
 func iVal(v reflect.Value, name string) int {
 	return int(v.FieldByName(name).Int())
 }

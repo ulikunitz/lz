@@ -31,7 +31,7 @@ func (cfg *BDHPConfig) UnmarshalJSON(p []byte) error {
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "BDHP" to the structure.
 func (cfg *BDHPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "BDHP")
+	return marshalJSON(cfg)
 }
 
 // Clone creates a copy of the configuration.

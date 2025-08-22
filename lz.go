@@ -28,10 +28,8 @@
 package lz
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
-	"reflect"
 )
 
 // Seq represents a single Lempel-Ziv 77 Parse describing a match,
@@ -97,40 +95,4 @@ type Parser interface {
 	ReadFrom(r io.Reader) (n int64, err error)
 	ReadAt(p []byte, off int64) (n int, err error)
 	ByteAt(off int64) (c byte, err error)
-}
-
-// parserConfigUnion must contain all fields for all parsers. Fields with the
-// same name must have the same type.
-type parserConfigUnion struct {
-	Type        string
-	ShrinkSize  int    `json:",omitempty"`
-	BufferSize  int    `json:",omitempty"`
-	WindowSize  int    `json:",omitempty"`
-	BlockSize   int    `json:",omitempty"`
-	InputLen    int    `json:",omitempty"`
-	HashBits    int    `json:",omitempty"`
-	InputLen1   int    `json:",omitempty"`
-	HashBits1   int    `json:",omitempty"`
-	InputLen2   int    `json:",omitempty"`
-	HashBits2   int    `json:",omitempty"`
-	MinMatchLen int    `json:",omitempty"`
-	MaxMatchLen int    `json:",omitempty"`
-	BucketSize  int    `json:",omitempty"`
-	Cost        string `json:",omitempty"`
-}
-
-func marshalJSON(cfg ParserConfig, typ string) (p []byte, err error) {
-	var s parserConfigUnion
-	s.Type = typ
-	v := reflect.Indirect(reflect.ValueOf(cfg))
-	vt := v.Type()
-	w := reflect.Indirect(reflect.ValueOf(&s))
-	n := v.NumField()
-	for i := 0; i < n; i++ {
-		name := vt.Field(i).Name
-		y := w.FieldByName(name)
-		y.Set(v.Field(i))
-	}
-	p, err = json.Marshal(&s)
-	return p, err
 }

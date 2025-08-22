@@ -69,7 +69,7 @@ func (cfg *OSAPConfig) UnmarshalJSON(p []byte) error {
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "OSAP" to the structure.
 func (cfg *OSAPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "OSAP")
+	return marshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value for the OSAP configuration.

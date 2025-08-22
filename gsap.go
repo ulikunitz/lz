@@ -38,7 +38,7 @@ func (cfg *GSAPConfig) UnmarshalJSON(p []byte) error {
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "GSAP" to the structure.
 func (cfg *GSAPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg, "GSAP")
+	return marshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.

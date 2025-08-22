@@ -43,15 +43,15 @@ func XZCost(m, o uint32) uint64 {
 // OSAPConfig provides the configuration parameters for the Optimizing Suffix
 // Array Parser (OSAP).
 type OSAPConfig struct {
-	ShrinkSize int
-	BufferSize int
-	WindowSize int
-	BlockSize  int
-
 	MinMatchLen int
 	MaxMatchLen int
 
 	Cost string
+
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
 }
 
 // Clone creates a copy of the configuration.

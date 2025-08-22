@@ -10,13 +10,13 @@ import (
 
 // BHPConfig provides the parameters for the backward hash parser.
 type BHPConfig struct {
+	InputLen int
+	HashBits int
+
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
 	BlockSize  int
-
-	InputLen int
-	HashBits int
 }
 
 // Clone creates a copy of the configuration.

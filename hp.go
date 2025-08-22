@@ -20,13 +20,13 @@ type hashParser struct {
 // HashParser. Parser doesn't use ShrinkSize and and BufferSize itself,
 // but it provides it to other code that have to handle the buffer.
 type HPConfig struct {
+	InputLen int
+	HashBits int
+
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
 	BlockSize  int
-
-	InputLen int
-	HashBits int
 }
 
 // Clone creates a copy of the configuration.

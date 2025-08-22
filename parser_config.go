@@ -1,6 +1,7 @@
 package lz
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -97,15 +98,27 @@ func unmarshalJSON(pcfg ParserConfig, data []byte) error {
 }
 
 func marshalJSON(pcfg ParserConfig) (p []byte, err error) {
-	m := make(map[string]any)
-	m["Type"] = parserType(pcfg)
+	buf := new(bytes.Buffer)
+
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
 	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
+	fmt.Fprintf(buf, "{\n  \"Type\": %q,\n", parserType(pcfg))
+	n := t.NumField()
+	for i := 0; i < n; i++ {
 		f := t.Field(i)
-		m[f.Name] = v.Field(i).Interface()
+		v, err := json.Marshal(v.Field(i).Interface())
+		if err != nil {
+			return nil, fmt.Errorf("lz: json marshal error: %w", err)
+		}
+		fmt.Fprintf(buf, "  %q: %s", f.Name, v)
+		if i < n-1 {
+			fmt.Fprint(buf, ",\n")
+		} else {
+			fmt.Fprint(buf, "\n")
+		}
 	}
-	return json.MarshalIndent(m, "", "  ")
+	fmt.Fprintf(buf, "}\n")
+	return buf.Bytes(), nil
 }
 
 func iVal(v reflect.Value, name string) int {

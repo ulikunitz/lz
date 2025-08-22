@@ -11,15 +11,15 @@ import (
 // BDHPConfig provides the configuration parameters for the Backward-looking
 // Double Hash Parser.
 type BDHPConfig struct {
-	ShrinkSize int
-	BufferSize int
-	WindowSize int
-	BlockSize  int
-
 	InputLen1 int
 	HashBits1 int
 	InputLen2 int
 	HashBits2 int
+
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
 }
 
 // UnmarshalJSON parses the JSON value and sets the fields of BDHPConfig.

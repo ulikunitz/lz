@@ -14,13 +14,13 @@ import (
 // GSAPConfig defines the configuration parameter for the greedy suffix array
 // parser.
 type GSAPConfig struct {
+	// minimum match len
+	MinMatchLen int
+
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
 	BlockSize  int
-
-	// minimum match len
-	MinMatchLen int
 }
 
 // Clone creates a copy of the configuration.

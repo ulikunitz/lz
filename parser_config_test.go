@@ -71,6 +71,7 @@ func TestMarshalJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MarshalJSON() error = %v", err)
 			}
+			t.Logf("json: \n%s", data)
 			pcfg, err := ParseJSON(data)
 			if err != nil {
 				t.Fatalf("ParseJSON() error = %v", err)

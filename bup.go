@@ -14,14 +14,14 @@ type bucketParser struct {
 
 // BUPConfig provides the configuration parameters for the bucket hash parser.
 type BUPConfig struct {
+	InputLen   int
+	HashBits   int
+	BucketSize int
+
 	ShrinkSize int
 	BufferSize int
 	WindowSize int
 	BlockSize  int
-
-	InputLen   int
-	HashBits   int
-	BucketSize int
 }
 
 // Clone creates a copy of the configuration.

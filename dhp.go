@@ -10,15 +10,15 @@ import (
 
 // DHPConfig provides the configuration parameters for the DoubleHashParser.
 type DHPConfig struct {
-	ShrinkSize int
-	BufferSize int
-	WindowSize int
-	BlockSize  int
-
 	InputLen1 int
 	HashBits1 int
 	InputLen2 int
 	HashBits2 int
+
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
 }
 
 // Clone creates a copy of the configuration.

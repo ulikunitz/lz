@@ -28,7 +28,7 @@ func testParser(t *testing.T, cfg ParserConfig, p []byte) {
 	if err != nil {
 		t.Fatalf("cfg.NewParser() error %s", err)
 	}
-	s := Wrap(bytes.NewReader(p), seq)
+	s := wrap(bytes.NewReader(p), seq)
 
 	var buffer bytes.Buffer
 	var decoder Decoder
@@ -296,7 +296,7 @@ func BenchmarkParsers(b *testing.B) {
 				b.Fatalf("io.ReadFile(%q) error %s", enwik7,
 					err)
 			}
-			r := Wrap(bytes.NewReader(data), ws)
+			r := wrap(bytes.NewReader(data), ws)
 			b.SetBytes(int64(len(data)))
 			var cost int64
 			b.ResetTimer()
@@ -359,7 +359,7 @@ func BenchmarkDecoders(b *testing.B) {
 			if err != nil {
 				b.Fatalf("NewHashParser error %s", err)
 			}
-			s := Wrap(bytes.NewReader(data), hs)
+			s := wrap(bytes.NewReader(data), hs)
 			for {
 				var blk Block
 				_, err = s.Parse(&blk, 0)

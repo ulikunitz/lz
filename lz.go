@@ -14,9 +14,8 @@
 // decompressed byte stream.
 //
 // The actual basic Parser provided by the package support the SeqBuffer
-// interface, which has methods for writing and reading from the buffer. A pure
-// Parser is provided by the [Wrap] function.
-//
+// interface, which has methods for writing and reading from the buffer.
+
 // The module provides multiple parser implementations that provide different
 // combinations of encoding speed  and compression ratios. Usually a slower
 // parser will generate a better compression ratio.

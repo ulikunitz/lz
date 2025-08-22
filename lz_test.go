@@ -17,18 +17,13 @@ import (
 )
 
 func testParser(t *testing.T, cfg ParserConfig, p []byte) {
-	cfg.SetDefaults()
-	t.Logf("cfg.SetDefaults() %+v", cfg)
-	if err := cfg.Verify(); err != nil {
-		t.Skip()
-	}
-	bcfg := cfg.BufConfig()
-
 	seq, err := cfg.NewParser()
 	if err != nil {
 		t.Fatalf("cfg.NewParser() error %s", err)
 	}
 	s := wrap(bytes.NewReader(p), seq)
+
+	bcfg := seq.ParserConfig().BufConfig()
 
 	var buffer bytes.Buffer
 	var decoder decoder

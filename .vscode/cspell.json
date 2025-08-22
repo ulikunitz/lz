@@ -67,6 +67,7 @@
         "lcs",
         "lzold",
         "noinline",
+        "pcfg",
         "pdata",
         "proot",
         "sainv",

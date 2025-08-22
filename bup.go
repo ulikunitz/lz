@@ -33,7 +33,7 @@ func (cfg *BUPConfig) Clone() ParserConfig {
 // UnmarshalJSON parses the JSON value and sets the fields of BUPConfig.
 func (cfg *BUPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = BUPConfig{}
-	return unmarshalJSON(cfg, "BUP", p)
+	return unmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
@@ -44,21 +44,21 @@ func (cfg *BUPConfig) MarshalJSON() (p []byte, err error) {
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *BUPConfig) BufConfig() BufConfig {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
 func (cfg *BUPConfig) SetBufConfig(bc BufConfig) {
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *BUPConfig) SetDefaults() {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	bc.SetDefaults()
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 	b, _ := bucketCfg(cfg)
 	b.SetDefaults()
 	setBucketCfg(cfg, b)
@@ -67,7 +67,7 @@ func (cfg *BUPConfig) SetDefaults() {
 // Verify checks the config for correctness.
 func (cfg *BUPConfig) Verify() error {
 	var err error
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *bucketParser) init(cfg BUPConfig) error {
 	}
 
 	b, _ := bucketCfg(&cfg)
-	bc := bufferConfig(&cfg)
+	bc := bufConfig(&cfg)
 	if err = s.bucketDictionary.init(b, bc); err != nil {
 		return err
 	}

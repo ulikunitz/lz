@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 // Buffer provides a base for Parser implementation. Since the package
@@ -200,4 +201,78 @@ func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 		return 0, ErrOutOfBuffer
 	}
 	return b.Data[i], nil
+}
+
+// BufConfig describes the various sizes relevant for the buffer. Note that
+// ShrinkSize should be significantly smaller than BufferSize and at most 50% of
+// it. The WindowSize is independent of the BufferSize, but usually the
+// BufferSize should be larger or equal the WindowSize. The actual sequencing
+// happens in blocks. A typical BlockSize 128 kByte as used by ZStandard
+// specification.
+type BufConfig struct {
+	ShrinkSize int
+	BufferSize int
+
+	WindowSize int
+	BlockSize  int
+}
+
+// BufferConfig returns itself, which will be used by the structures embedding
+// the value.
+func (cfg *BufConfig) BufferConfig() BufConfig { return *cfg }
+
+// Methods to the types defined above.
+
+// Verify checks the buffer configuration. Note that window size and block size
+// are independent of the rest of the other sizes only the shrink size must be
+// less than the buffer size.
+func (cfg *BufConfig) Verify() error {
+	// We are taking care of the margin for tha hash parsers.
+	maxSize := int64(math.MaxUint32) - 7
+	if int64(math.MaxInt) < maxSize {
+		maxSize = math.MaxInt - 7
+	}
+	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxSize) {
+		return fmt.Errorf("lz.BufferConfig: BufferSize=%d out of range [%d..%d]",
+			cfg.BufferSize, 1, maxSize)
+	}
+	if !(0 <= cfg.ShrinkSize && cfg.ShrinkSize <= cfg.BufferSize) {
+		return fmt.Errorf("lz.BufferConfig: ShrinkSize=%d out of range [0..BufferSize=%d]",
+			cfg.ShrinkSize, cfg.BufferSize)
+	}
+	if !(0 <= cfg.WindowSize && int64(cfg.WindowSize) <= maxSize) {
+		return fmt.Errorf("lz.BufferConfig: WindowSize=%d out of range [%d..%d]",
+			cfg.WindowSize, 0, maxSize)
+	}
+	if !(1 <= cfg.BlockSize && int64(cfg.BlockSize) <= maxSize) {
+		return fmt.Errorf("lz.BufferConfig: cfg.BLockSize=%d out of range [%d..%d]",
+			cfg.BlockSize, 1, maxSize)
+	}
+	return nil
+}
+
+// SetDefaults sets the defaults for the various size values. The defaults are
+// given below.
+//
+//	BufferSize:   8 MiB
+//	ShrinkSize:  32 KiB (or half of BufferSize, if it is smaller than 64 KiB)
+//	WindowSize: BufferSize
+//	BlockSize:  128 KiB
+func (cfg *BufConfig) SetDefaults() {
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 * miB
+	}
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = cfg.WindowSize
+	}
+	if cfg.ShrinkSize == 0 {
+		if cfg.BufferSize < 64*kiB {
+			cfg.ShrinkSize = cfg.BufferSize >> 1
+		} else {
+			cfg.ShrinkSize = 32 * kiB
+		}
+	}
+	if cfg.BlockSize == 0 {
+		cfg.BlockSize = 128 * kiB
+	}
 }

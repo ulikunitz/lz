@@ -32,7 +32,7 @@ func (cfg *GSAPConfig) Clone() ParserConfig {
 // UnmarshalJSON parses the JSON value and sets the fields of GSAPConfig.
 func (cfg *GSAPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = GSAPConfig{}
-	return unmarshalJSON(cfg, "GSAP", p)
+	return unmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
@@ -43,19 +43,19 @@ func (cfg *GSAPConfig) MarshalJSON() (p []byte, err error) {
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *GSAPConfig) BufConfig() BufConfig {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
 func (cfg *GSAPConfig) SetBufConfig(bc BufConfig) {
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 }
 
 // Verify checks the configuration for inconsistencies.
 func (cfg *GSAPConfig) Verify() error {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	if err := bc.Verify(); err != nil {
 		return err
 	}
@@ -82,9 +82,9 @@ func (cfg *GSAPConfig) Verify() error {
 // SetDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
 func (cfg *GSAPConfig) SetDefaults() {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	bc.SetDefaults()
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
 	}
@@ -125,7 +125,7 @@ type gsap struct {
 // init initializes the parser. If the configuration has inconsistencies or
 // invalid values the method returns an error.
 func (s *gsap) init(cfg GSAPConfig) error {
-	bc := bufferConfig(&cfg)
+	bc := bufConfig(&cfg)
 	var err error
 	if err = s.Buffer.Init(bc); err != nil {
 		return err

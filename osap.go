@@ -63,7 +63,7 @@ func (cfg *OSAPConfig) Clone() ParserConfig {
 // UnmarshalJSON parses the JSON value and sets the fields of OSAPConfig.
 func (cfg *OSAPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = OSAPConfig{}
-	return unmarshalJSON(cfg, "OSAP", p)
+	return unmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
@@ -74,26 +74,26 @@ func (cfg *OSAPConfig) MarshalJSON() (p []byte, err error) {
 
 // BufConfig returns the [BufConfig] value for the OSAP configuration.
 func (cfg *OSAPConfig) BufConfig() BufConfig {
-	return bufferConfig(cfg)
+	return bufConfig(cfg)
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
 func (cfg *OSAPConfig) SetBufConfig(bc BufConfig) {
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 }
 
 // SetDefaults sets the defaults for the zero values of the the OSAP
 // configuration.
 func (cfg *OSAPConfig) SetDefaults() {
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	if bc.BufferSize == 0 {
 		bc.SetDefaults()
 		bc.BufferSize = bc.WindowSize
 	} else {
 		bc.SetDefaults()
 	}
-	setBufferConfig(cfg, bc)
+	setBufConfig(cfg, bc)
 
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
@@ -110,7 +110,7 @@ func (cfg *OSAPConfig) SetDefaults() {
 // Verify verifies the configuration for the Optimizing Suffix Array Parser.
 func (cfg *OSAPConfig) Verify() error {
 	var err error
-	bc := bufferConfig(cfg)
+	bc := bufConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *optSuffixArrayParser) init(cfg OSAPConfig) error {
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
-	bc := bufferConfig(&cfg)
+	bc := bufConfig(&cfg)
 	if err = s.Buffer.Init(bc); err != nil {
 		return err
 	}

@@ -90,7 +90,6 @@ type Parser interface {
 	Reset(data []byte) error
 	Shrink() int
 	ParserConfig() ParserConfig
-	BufferConfig() BufConfig
 	Write(p []byte) (n int, err error)
 	ReadFrom(r io.Reader) (n int64, err error)
 	ReadAt(p []byte, off int64) (n int, err error)

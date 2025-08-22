@@ -54,7 +54,7 @@ func TestHashParserSimple(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	var d Decoder
+	var d decoder
 	if err := d.Init(&buf, DecoderConfig{WindowSize: 1024}); err != nil {
 		t.Fatalf("dw.Init(%d) error %s", 1024, err)
 	}
@@ -117,7 +117,7 @@ func TestWrapOldHashParser(t *testing.T) {
 	s := wrap(strings.NewReader(str), ws)
 
 	var builder strings.Builder
-	var decoder Decoder
+	var decoder decoder
 	decoder.Init(&builder, DecoderConfig{WindowSize: windowSize})
 
 	var blk Block
@@ -174,7 +174,7 @@ func TestHashParserEnwik7(t *testing.T) {
 	s := wrap(r, ws)
 
 	h2 := sha256.New()
-	var decoder Decoder
+	var decoder decoder
 	if err = decoder.Init(h2, DecoderConfig{WindowSize: windowSize}); err != nil {
 		t.Fatalf("decoder.Init() error %s", err)
 	}
@@ -296,7 +296,7 @@ func TestLargeParameters(t *testing.T) {
 			h1, h2 := sha256.New(), sha256.New()
 			s := wrap(io.TeeReader(r, h1), ws)
 
-			var d Decoder
+			var d decoder
 			d.Init(h2, DecoderConfig{WindowSize: tc.cfg.WindowSize})
 
 			var blk Block

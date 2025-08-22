@@ -31,7 +31,7 @@ func testParser(t *testing.T, cfg ParserConfig, p []byte) {
 	s := wrap(bytes.NewReader(p), seq)
 
 	var buffer bytes.Buffer
-	var decoder Decoder
+	var decoder decoder
 	err = decoder.Init(&buffer, DecoderConfig{WindowSize: bcfg.WindowSize})
 	if err != nil {
 		t.Fatalf("decoder.Init error %s", err)
@@ -380,12 +380,12 @@ func BenchmarkDecoders(b *testing.B) {
 			}
 			hw := sha256.New()
 
-			d, err = NewDecoder(hw, DecoderConfig{
+			d, err = newDecoder(hw, DecoderConfig{
 				WindowSize: bm.winSize,
 				BufferSize: bm.maxSize,
 			})
 			if err != nil {
-				b.Fatalf("NewDecoder error %s", err)
+				b.Fatalf("newDecoder error %s", err)
 			}
 			b.ResetTimer()
 			b.StopTimer()

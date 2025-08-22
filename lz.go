@@ -10,7 +10,7 @@
 // bytes.
 //
 // A [Parser] is an encoder that converts a byte stream into blocks of
-// sequences. A [Decoder] converts the block of sequences into the original
+// sequences. A [decoder] converts the block of sequences into the original
 // decompressed byte stream.
 //
 // The actual basic Parser provided by the package support the SeqBuffer
@@ -19,9 +19,6 @@
 // The module provides multiple parser implementations that provide different
 // combinations of encoding speed  and compression ratios. Usually a slower
 // parser will generate a better compression ratio.
-//
-// The [Decoder] slides the decompression window through a larger buffer
-// implemented by [DecoderBuffer].
 //
 // The library supports the implementation of parsers outside of this package
 // that can then be used by real compressors as provided by the

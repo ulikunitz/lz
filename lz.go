@@ -32,13 +32,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
-)
-
-// Kilobytes and Megabyte defined as the more precise kibibyte and mebibyte.
-const (
-	kiB = 1 << 10
-	miB = 1 << 20
 )
 
 // Seq represents a single Lempel-Ziv 77 Parse describing a match,
@@ -229,9 +224,9 @@ func marshalJSON(cfg ParserConfig, typ string) (p []byte, err error) {
 // less than the buffer size.
 func (cfg *BufConfig) Verify() error {
 	// We are taking care of the margin for tha hash parsers.
-	maxSize := int64(maxUint32) - 7
-	if int64(maxInt) < maxSize {
-		maxSize = maxInt - 7
+	maxSize := int64(math.MaxUint32) - 7
+	if int64(math.MaxInt) < maxSize {
+		maxSize = math.MaxInt - 7
 	}
 	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= maxSize) {
 		return fmt.Errorf("lz.BufferConfig: BufferSize=%d out of range [%d..%d]",

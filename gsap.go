@@ -74,7 +74,7 @@ func (cfg *GSAPConfig) Verify() error {
 		// is necessary
 		return fmt.Errorf(
 			"lz: MaxSize=%d; must be less than MaxUint32=%d",
-			cfg.WindowSize, maxUint32)
+			cfg.WindowSize, math.MaxUint32)
 	}
 	return nil
 }

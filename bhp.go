@@ -49,25 +49,25 @@ func (cfg *BHPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// SetDefaults sets values that are zero to their defaults values.
-func (cfg *BHPConfig) SetDefaults() {
+// setDefaults sets values that are zero to their defaults values.
+func (cfg *BHPConfig) setDefaults() {
 	bc := bufConfig(cfg)
-	bc.SetDefaults()
+	bc.setDefaults()
 	setBufConfig(cfg, bc)
 	h, _ := hashCfg(cfg)
-	h.SetDefaults()
+	h.setDefaults()
 	setHashCfg(cfg, h)
 }
 
-// Verify checks the configuration for correctness.
-func (cfg *BHPConfig) Verify() error {
+// verify checks the configuration for correctness.
+func (cfg *BHPConfig) verify() error {
 	bc := bufConfig(cfg)
 	var err error
-	if err = bc.Verify(); err != nil {
+	if err = bc.verify(); err != nil {
 		return err
 	}
 	h, _ := hashCfg(cfg)
-	err = h.Verify()
+	err = h.verify()
 	return err
 }
 
@@ -91,9 +91,9 @@ type backwardHashParser struct {
 // init initializes the backward hash parser. It returns an error if there is
 // an issue with the configuration parameters.
 func (s *backwardHashParser) init(cfg BHPConfig) error {
-	cfg.SetDefaults()
+	cfg.setDefaults()
 	var err error
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 

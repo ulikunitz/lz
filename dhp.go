@@ -51,28 +51,28 @@ func (cfg *DHPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// Verify checks the configuration for errors.
-func (cfg *DHPConfig) Verify() error {
+// verify checks the configuration for errors.
+func (cfg *DHPConfig) verify() error {
 	var err error
 	bc := bufConfig(cfg)
-	if err = bc.Verify(); err != nil {
+	if err = bc.verify(); err != nil {
 		return err
 	}
 	d, _ := dhCfg(cfg)
-	if err = d.Verify(); err != nil {
+	if err = d.verify(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// SetDefaults uses the defaults for the configuration parameters that are set
+// setDefaults uses the defaults for the configuration parameters that are set
 // to zero.
-func (cfg *DHPConfig) SetDefaults() {
+func (cfg *DHPConfig) setDefaults() {
 	bc := bufConfig(cfg)
-	bc.SetDefaults()
+	bc.setDefaults()
 	setBufConfig(cfg, bc)
 	d, _ := dhCfg(cfg)
-	d.SetDefaults()
+	d.setDefaults()
 	setDHCfg(cfg, d)
 }
 
@@ -98,9 +98,9 @@ type doubleHashParser struct {
 // init initializes the DoubleHashParser. The first error found in the
 // configuration will be returned.
 func (s *doubleHashParser) init(cfg DHPConfig) error {
-	cfg.SetDefaults()
+	cfg.setDefaults()
 	var err error
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 

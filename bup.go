@@ -54,25 +54,25 @@ func (cfg *BUPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// SetDefaults sets values that are zero to their defaults values.
-func (cfg *BUPConfig) SetDefaults() {
+// setDefaults sets values that are zero to their defaults values.
+func (cfg *BUPConfig) setDefaults() {
 	bc := bufConfig(cfg)
-	bc.SetDefaults()
+	bc.setDefaults()
 	setBufConfig(cfg, bc)
 	b, _ := bucketCfg(cfg)
-	b.SetDefaults()
+	b.setDefaults()
 	setBucketCfg(cfg, b)
 }
 
-// Verify checks the config for correctness.
-func (cfg *BUPConfig) Verify() error {
+// verify checks the config for correctness.
+func (cfg *BUPConfig) verify() error {
 	var err error
 	bc := bufConfig(cfg)
-	if err = bc.Verify(); err != nil {
+	if err = bc.verify(); err != nil {
 		return err
 	}
 	b, _ := bucketCfg(cfg)
-	err = b.Verify()
+	err = b.verify()
 	return err
 }
 
@@ -92,9 +92,9 @@ func (s *bucketParser) ParserConfig() ParserConfig {
 // init initializes the hash parser. It returns an error if there is an issue
 // with the configuration parameters.
 func (s *bucketParser) init(cfg BUPConfig) error {
-	cfg.SetDefaults()
+	cfg.setDefaults()
 	var err error
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 

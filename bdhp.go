@@ -51,28 +51,28 @@ func (cfg *BDHPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// Verify checks the configuration for errors.
-func (cfg *BDHPConfig) Verify() error {
+// verify checks the configuration for errors.
+func (cfg *BDHPConfig) verify() error {
 	var err error
 	bc := bufConfig(cfg)
-	if err = bc.Verify(); err != nil {
+	if err = bc.verify(); err != nil {
 		return err
 	}
 	d, _ := dhCfg(cfg)
-	if err = d.Verify(); err != nil {
+	if err = d.verify(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// SetDefaults uses the defaults for the configuration parameters that are set
+// setDefaults uses the defaults for the configuration parameters that are set
 // to zero.
-func (cfg *BDHPConfig) SetDefaults() {
+func (cfg *BDHPConfig) setDefaults() {
 	bc := bufConfig(cfg)
-	bc.SetDefaults()
+	bc.setDefaults()
 	setBufConfig(cfg, bc)
 	d, _ := dhCfg(cfg)
-	d.SetDefaults()
+	d.setDefaults()
 	setDHCfg(cfg, d)
 }
 
@@ -100,9 +100,9 @@ func (s *bdhp) ParserConfig() ParserConfig {
 // Init initializes the parser. The method returns an error if the configuration
 // contains inconsistencies and the parser remains uninitialized.
 func (s *bdhp) init(cfg BDHPConfig) error {
-	cfg.SetDefaults()
+	cfg.setDefaults()
 	var err error
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 

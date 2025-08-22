@@ -21,9 +21,9 @@ type DecoderConfig struct {
 	BufferSize int
 }
 
-// SetDefaults sets the zero values in DecConfig to default values. Note that
+// setDefaults sets the zero values in DecConfig to default values. Note that
 // the default BufferSize is twice the WindowSize.
-func (cfg *DecoderConfig) SetDefaults() {
+func (cfg *DecoderConfig) setDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * miB
 	}
@@ -32,9 +32,9 @@ func (cfg *DecoderConfig) SetDefaults() {
 	}
 }
 
-// Verify checks the parameters of the [DecConfig] value and returns an error
+// verify checks the parameters of the [DecConfig] value and returns an error
 // for the first problem.
-func (cfg *DecoderConfig) Verify() error {
+func (cfg *DecoderConfig) verify() error {
 	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: BufferSize=%d out of range [%d..%d]",
@@ -67,9 +67,9 @@ type DecoderBuffer struct {
 
 // Init initializes the [DecoderBuffer] value.
 func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
-	cfg.SetDefaults()
+	cfg.setDefaults()
 	var err error
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 	*b = DecoderBuffer{

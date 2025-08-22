@@ -53,10 +53,10 @@ func (cfg *GSAPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// Verify checks the configuration for inconsistencies.
-func (cfg *GSAPConfig) Verify() error {
+// verify checks the configuration for inconsistencies.
+func (cfg *GSAPConfig) verify() error {
 	bc := bufConfig(cfg)
-	if err := bc.Verify(); err != nil {
+	if err := bc.verify(); err != nil {
 		return err
 	}
 	if !(2 <= cfg.MinMatchLen) {
@@ -79,11 +79,11 @@ func (cfg *GSAPConfig) Verify() error {
 	return nil
 }
 
-// SetDefaults sets configuration parameters to its defaults. The code doesn't
+// setDefaults sets configuration parameters to its defaults. The code doesn't
 // provide consistency.
-func (cfg *GSAPConfig) SetDefaults() {
+func (cfg *GSAPConfig) setDefaults() {
 	bc := bufConfig(cfg)
-	bc.SetDefaults()
+	bc.setDefaults()
 	setBufConfig(cfg, bc)
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3
@@ -130,8 +130,8 @@ func (s *gsap) init(cfg GSAPConfig) error {
 	if err = s.Buffer.Init(bc); err != nil {
 		return err
 	}
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+	cfg.setDefaults()
+	if err = cfg.verify(); err != nil {
 		return err
 	}
 

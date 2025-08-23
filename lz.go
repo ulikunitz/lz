@@ -5,24 +5,19 @@
 // Package lz supports encoding and decoding of LZ77 sequences. A sequence, as
 // described in the [Zstandard specification], consists of a literal copy
 // command followed by a match copy command. The literal copy command is
-// described by the length in literal bytes to be copied and the match command
+// described by the length in literal bytes to be copied, and the match command
 // consists of the distance of the match to copy and the length of the match in
 // bytes.
 //
-// A [Parser] is an encoder that converts a byte stream into blocks of
-// sequences. A [decoder] converts the block of sequences into the original
+// A [Parser] converts a byte stream into blocks of sequences. The
+// [DecoderBuffer] converts the block of sequences into the original
 // decompressed byte stream.
 //
-// The actual basic Parser provided by the package support the SeqBuffer
-// interface, which has methods for writing and reading from the buffer.
-//
-// The module provides multiple parser implementations that provide different
-// combinations of encoding speed  and compression ratios. Usually a slower
+// The module provides multiple parser implementations that offer different
+// combinations of encoding speed and compression ratios. Usually, a slower
 // parser will generate a better compression ratio.
 //
-// The library supports the implementation of parsers outside of this package
-// that can then be used by real compressors as provided by the
-// [github.com/ulikunitz/xz] module.
+// The library supports the implementation of parsers outside of this package.
 //
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
 package lz
@@ -32,9 +27,9 @@ import (
 	"io"
 )
 
-// Seq represents a single Lempel-Ziv 77 Parse describing a match,
-// consisting of the offset, the length of the match and the number of
-// literals preceding the match. The Aux field can be used on upper
+// Seq represents a single Lempel-Ziv 77 sequence describing a match,
+// consisting of the offset, the length of the match, and the number of
+// literals preceding the match. The Aux field can be used in upper
 // layers to store additional information.
 type Seq struct {
 	LitLen   uint32
@@ -43,22 +38,22 @@ type Seq struct {
 	Aux      uint32
 }
 
-// Len returns the complete length of the sequence.
+// Len returns the complete length of the sequence in bytes.
 func (s Seq) Len() int64 {
 	return int64(s.MatchLen) + int64(s.LitLen)
 }
 
-// Block stores sequences and literals. Note that the sequences stores in the
-// Sequences slice might not consume the whole Literals slice. They must be
-// added to the decoded text after all the sequences have been decoded and their
-// content added to the decoder buffer.
+// Block stores sequences and literals. Note that the sequences stored in the
+// Sequences slice might not consume the entire Literals slice. The remaining
+// literal bytes must be added to the decoded text after all sequences have
+// been decoded.
 type Block struct {
 	Sequences []Seq
 	Literals  []byte
 }
 
 // Len computes the length of the block in bytes. It assumes that the sum of the
-// literal lengths in the sequences doesn't exceed that length of the Literals
+// literal lengths in the sequences does not exceed the length of the Literals
 // byte slice.
 func (b *Block) Len() int64 {
 	n := int64(len(b.Literals))
@@ -70,20 +65,20 @@ func (b *Block) Len() int64 {
 
 // Flags for the sequence function stored in the block structure.
 const (
-	// NoTrailingLiterals tells a parser that trailing literals don't
+	// NoTrailingLiterals tells a parser that trailing literals do not
 	// need to be included in the block.
 	NoTrailingLiterals = 1 << iota
 )
 
 // ErrEmptyBuffer indicates that no more data is available in the buffer. It
-// will be returned by the Parse method of [Parser].
+// is returned by the Parse method of [Parser].
 var ErrEmptyBuffer = errors.New("lz: no more data in buffer")
 
-// ErrFullBuffer indicates that the buffer is full. It will be returned by the
-// Write and ReadFrom methods of the [Parser].
+// ErrFullBuffer indicates that the buffer is full. It is returned by the
+// Write and ReadFrom methods of [Parser].
 var ErrFullBuffer = errors.New("lz: buffer is full")
 
-// Parser provides the basic interface of a Parser. Most of the functions are
+// Parser provides the basic interface for a parser. Most functions are
 // provided by the underlying [Buffer].
 type Parser interface {
 	Parse(blk *Block, flags int) (n int, err error)

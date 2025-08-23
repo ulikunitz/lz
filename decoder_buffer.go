@@ -11,9 +11,9 @@ import (
 	"math"
 )
 
-// DecoderConfig contains the parameters for the [DecoderBuffer] and [decoder] types.
-// The WindowSize must be smaller than the BufferSize. It is recommended to set
-// the BufferSize twice as large as the WindowSize.
+// DecoderConfig contains the parameters for the DecoderBuffer and decoder
+// types. WindowSize must be smaller than BufferSize. It is recommended to set
+// BufferSize to twice the WindowSize.
 type DecoderConfig struct {
 	// Size of the sliding dictionary window in bytes.
 	WindowSize int
@@ -21,8 +21,7 @@ type DecoderConfig struct {
 	BufferSize int
 }
 
-// setDefaults sets the zero values in DecConfig to default values. Note that
-// the default BufferSize is twice the WindowSize.
+// setDefaults assigns default values to zero fields in DecoderConfig.
 func (cfg *DecoderConfig) setDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * miB
@@ -32,8 +31,8 @@ func (cfg *DecoderConfig) setDefaults() {
 	}
 }
 
-// verify checks the parameters of the [DecConfig] value and returns an error
-// for the first problem.
+// verify checks the parameters of the DecoderConfig value and returns an error
+// for the first issue found.
 func (cfg *DecoderConfig) verify() error {
 	if !(1 <= cfg.BufferSize && int64(cfg.BufferSize) <= math.MaxUint32) {
 		return fmt.Errorf(
@@ -48,13 +47,19 @@ func (cfg *DecoderConfig) verify() error {
 	return nil
 }
 
-// DecoderBuffer provides a simple buffer for the decoding of LZ77 sequences.
+// DecoderBuffer provides a simple buffer for decoding LZ77 sequences. Data is
+// the actual buffer. The end of the slice is also the head of the dictionary
+// window. R tracks the read position in the buffer and must be less than or
+// equal to the length of the Data slice. Off records the total offset and marks
+// the end of the Data slice, which is also the end of the dictionary window.
+// DecoderConfig provides the configuration parameters WindowSize and
+// BufferSize.
 type DecoderBuffer struct {
 	// Data is the actual buffer. The end of the slice is also the head of
 	// the dictionary window.
 	Data []byte
 	// R tracks the position of the reads from the buffer and must be less
-	// or equal the length of the Data slice.
+	// or equal to the length of the Data slice.
 	R int
 	// Off records the total offset and marks the end of the Data slice,
 	// which is also the end of the dictionary window.
@@ -65,7 +70,7 @@ type DecoderBuffer struct {
 	DecoderConfig
 }
 
-// Init initializes the [DecoderBuffer] value.
+// Init initializes the DecoderBuffer.
 func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
 	cfg.setDefaults()
 	var err error
@@ -82,18 +87,19 @@ func (b *DecoderBuffer) Init(cfg DecoderConfig) error {
 	return nil
 }
 
-// Reset puts the DecoderBuffer back to the initialized status.
+// Reset returns the DecoderBuffer to its initialized state.
 func (b *DecoderBuffer) Reset() {
 	*b = DecoderBuffer{
 		Data:          b.Data[:0],
 		DecoderConfig: b.DecoderConfig,
 	}
 	if cap(b.Data) > b.BufferSize {
+		// The default BufferSize is twice the WindowSize.
 		b.BufferSize = cap(b.Data)
 	}
 }
 
-// ByteAtEnd returns byte at end of the buffer
+// ByteAtEnd returns the byte at the end of the buffer.
 func (b *DecoderBuffer) ByteAtEnd(off int) byte {
 	i := len(b.Data) - off
 	if !(0 <= i && i < len(b.Data)) {
@@ -116,12 +122,10 @@ func (b *DecoderBuffer) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(k), err
 }
 
-// shrink shifts data in the buffer and returns the additional space in bytes
-// that has been made available. Note that shrink will return 0 if it cannot
-// provide more space.
+// shrink shifts data in the buffer and returns the additional space made
+// available, in bytes. It returns 0 if no more space can be provided.
 //
-// The method is private because it is called by the various write methods
-// automatically.
+// This method is private and is called automatically by various write methods.
 func (b *DecoderBuffer) shrink(g int) int {
 	delta0 := 0
 	if b.BufferSize < cap(b.Data) {
@@ -157,8 +161,8 @@ func (b *DecoderBuffer) WriteByte(c byte) error {
 	return nil
 }
 
-// Write puts the slice into the buffer. The method will write the slice only
-// fully or will return 0, [ErrFullBuffer].
+// Write inserts the slice into the buffer. The method will write the entire
+// slice or return 0 and ErrFullBuffer.
 func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	n = len(p)
 	g := len(b.Data) + n
@@ -172,8 +176,8 @@ func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// WriteMatch puts the match at the end of the buffer. The match will only be
-// written completely or n=0 and [ErrFullBuffer] will be returned.
+// WriteMatch appends the ma tch to the end of the buffer. The match will be
+// written completely, or n=0 and ErrFullBuffer will be returned.
 func (b *DecoderBuffer) WriteMatch(m, o uint32) (n int, err error) {
 	if o == 0 && m > 0 {
 		return 0, errOffset
@@ -217,16 +221,15 @@ var (
 	errOffset   = errors.New("lz: Offset out of range")
 )
 
-// WriteBlock writes sequences from the block into the buffer. A single sequence
-// will be written in an atomic manner, because the block value will not be
-// modified. If there is not enough space in the buffer [ErrFullBuffer] will be
-// returned.
+// WriteBlock writes sequences from the block into the buffer. Each sequence is
+// written atomically, as the block value is not modified. If there is not
+// enough space in the buffer, ErrFullBuffer will be returned.
 //
-// We are not limiting the growth of the array to BufferSize. We may consume
-// more memory but we are faster.
+// The growth of the array is not limited to BufferSize. This may consume more
+// memory, but increases speed.
 //
-// The return values n, k and l provide the number of bytes written into the
-// buffer, the number of sequences as well as the number of literals.
+// The return values n, k, and l indicate the number of bytes written to the
+// buffer, the number of sequences, and the number of literals, respectively.
 func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	ld := len(b.Data)
 	ll := len(blk.Literals)

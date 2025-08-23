@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// ParserConfig generates  new parser instances.^.
+// ParserConfig generates new parser instances.
 type ParserConfig interface {
 	NewParser() (p Parser, err error)
 	BufConfig() BufConfig

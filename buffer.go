@@ -31,9 +31,9 @@ type Buffer struct {
 // sets the defaults for the buffer configuration if required and verifies it.
 // Errors will be reported.
 func (b *Buffer) Init(cfg BufConfig) error {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	var err error
-	if err = cfg.verify(); err != nil {
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	*b = Buffer{
@@ -219,10 +219,10 @@ type BufConfig struct {
 
 // Methods to the types defined above.
 
-// verify checks the buffer configuration. Note that window size and block size
+// Verify checks the buffer configuration. Note that window size and block size
 // are independent of the rest of the other sizes only the shrink size must be
 // less than the buffer size.
-func (cfg *BufConfig) verify() error {
+func (cfg *BufConfig) Verify() error {
 	// We are taking care of the margin for tha hash parsers.
 	maxSize := int64(math.MaxUint32) - 7
 	if int64(math.MaxInt) < maxSize {
@@ -247,14 +247,14 @@ func (cfg *BufConfig) verify() error {
 	return nil
 }
 
-// setDefaults sets the defaults for the various size values. The defaults are
+// SetDefaults sets the defaults for the various size values. The defaults are
 // given below.
 //
 //	BufferSize:   8 MiB
 //	ShrinkSize:  32 KiB (or half of BufferSize, if it is smaller than 64 KiB)
 //	WindowSize: BufferSize
 //	BlockSize:  128 KiB
-func (cfg *BufConfig) setDefaults() {
+func (cfg *BufConfig) SetDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * miB
 	}

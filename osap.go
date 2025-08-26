@@ -83,15 +83,15 @@ func (cfg *OSAPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// setDefaults sets the defaults for the zero values of the the OSAP
+// SetDefaults sets the defaults for the zero values of the the OSAP
 // configuration.
-func (cfg *OSAPConfig) setDefaults() {
+func (cfg *OSAPConfig) SetDefaults() {
 	bc := bufConfig(cfg)
 	if bc.BufferSize == 0 {
-		bc.setDefaults()
+		bc.SetDefaults()
 		bc.BufferSize = bc.WindowSize
 	} else {
-		bc.setDefaults()
+		bc.SetDefaults()
 	}
 	setBufConfig(cfg, bc)
 
@@ -107,11 +107,11 @@ func (cfg *OSAPConfig) setDefaults() {
 	}
 }
 
-// verify verifies the configuration for the Optimizing Suffix Array Parser.
-func (cfg *OSAPConfig) verify() error {
+// Verify verifies the configuration for the Optimizing Suffix Array Parser.
+func (cfg *OSAPConfig) Verify() error {
 	var err error
 	bc := bufConfig(cfg)
-	if err = bc.verify(); err != nil {
+	if err = bc.Verify(); err != nil {
 		return err
 	}
 
@@ -164,9 +164,9 @@ func (s *optSuffixArrayParser) ParserConfig() ParserConfig {
 }
 
 func (s *optSuffixArrayParser) init(cfg OSAPConfig) error {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	var err error
-	if err = cfg.verify(); err != nil {
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	bc := bufConfig(&cfg)

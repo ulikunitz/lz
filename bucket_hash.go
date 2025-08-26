@@ -77,7 +77,7 @@ func setBucketCfg(cfg ParserConfig, b bucketConfig) error {
 	return nil
 }
 
-func (cfg *bucketConfig) setDefaults() {
+func (cfg *bucketConfig) SetDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -89,7 +89,7 @@ func (cfg *bucketConfig) setDefaults() {
 	}
 }
 
-func (cfg *bucketConfig) verify() error {
+func (cfg *bucketConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf(
 			"lz: InputLen=%d; must be in range [2,8]", cfg.InputLen)
@@ -112,9 +112,9 @@ func (cfg *bucketConfig) verify() error {
 }
 
 func (bh *bucketHash) init(cfg *bucketConfig) error {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	var err error
-	if err = cfg.verify(); err != nil {
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 
@@ -187,8 +187,8 @@ func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufConfig) error {
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
-	cfg.setDefaults()
-	if err = cfg.verify(); err != nil {
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	err = f.bucketHash.init(&cfg)

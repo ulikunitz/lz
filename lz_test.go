@@ -118,7 +118,7 @@ func FuzzBUP(f *testing.F) {
 			HashBits:   hashBits,
 			BucketSize: bucketSize,
 		}
-		cfg.setDefaults()
+		cfg.SetDefaults()
 		// We need to limit the memory consumption for Fuzzing.
 		if cfg.HashBits > 21 {
 			t.Skip()

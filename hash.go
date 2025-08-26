@@ -123,9 +123,9 @@ func setHashCfg(cfg ParserConfig, hcfg hashConfig) error {
 	return nil
 }
 
-// setDefaults sets the defaults of the HashConfig. The default input length
+// SetDefaults sets the defaults of the HashConfig. The default input length
 // is 3 and the hash bits are 18.
-func (cfg *hashConfig) setDefaults() {
+func (cfg *hashConfig) SetDefaults() {
 	if cfg.InputLen == 0 {
 		cfg.InputLen = 3
 	}
@@ -134,8 +134,8 @@ func (cfg *hashConfig) setDefaults() {
 	}
 }
 
-// verify checks the configuration parameters.
-func (cfg *hashConfig) verify() error {
+// Verify checks the configuration parameters.
+func (cfg *hashConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in range [2..8]")
 	}
@@ -160,8 +160,8 @@ func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
-	cfg.setDefaults()
-	if err = cfg.verify(); err != nil {
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	err = f.hash.init(cfg.InputLen, cfg.HashBits)
@@ -256,8 +256,8 @@ func setDHCfg(cfg ParserConfig, c dhConfig) error {
 	return nil
 }
 
-func (cfg *dhConfig) setDefaults() {
-	cfg.H1.setDefaults()
+func (cfg *dhConfig) SetDefaults() {
+	cfg.H1.SetDefaults()
 	if cfg.H2.InputLen == 0 {
 		if cfg.H1.InputLen < 5 {
 			cfg.H2.InputLen = 6
@@ -265,15 +265,15 @@ func (cfg *dhConfig) setDefaults() {
 			cfg.H2.InputLen = 8
 		}
 	}
-	cfg.H2.setDefaults()
+	cfg.H2.SetDefaults()
 }
 
-func (cfg *dhConfig) verify() error {
+func (cfg *dhConfig) Verify() error {
 	var err error
-	if err = cfg.H1.verify(); err != nil {
+	if err = cfg.H1.Verify(); err != nil {
 		return err
 	}
-	if err = cfg.H2.verify(); err != nil {
+	if err = cfg.H2.Verify(); err != nil {
 		return err
 	}
 	il1, il2 := cfg.H1.InputLen, cfg.H2.InputLen
@@ -296,8 +296,8 @@ func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
 	}
-	cfg.setDefaults()
-	if err = cfg.verify(); err != nil {
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	if err = f.h1.init(cfg.H1.InputLen, cfg.H1.HashBits); err != nil {

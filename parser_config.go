@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// ParserConfig generates new parser instances.
+// ParserConfig provides the interface to parser configurations.
 type ParserConfig interface {
 	NewParser() (p Parser, err error)
 	BufConfig() BufConfig
@@ -16,6 +16,8 @@ type ParserConfig interface {
 	json.Marshaler
 	json.Unmarshaler
 	Clone() ParserConfig
+	SetDefaults()
+	Verify() error
 }
 
 func ParseJSON(data []byte) (ParserConfig, error) {

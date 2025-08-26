@@ -63,10 +63,7 @@ func TestMarshalJSON(t *testing.T) {
 	for _, cfg := range tc {
 		typ := parserType(cfg)
 		t.Run(typ+"Config", func(t *testing.T) {
-			type defaultsSetter interface {
-				setDefaults()
-			}
-			cfg.(defaultsSetter).setDefaults()
+			cfg.SetDefaults()
 			data, err := cfg.MarshalJSON()
 			if err != nil {
 				t.Fatalf("MarshalJSON() error = %v", err)

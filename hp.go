@@ -59,25 +59,25 @@ func (cfg *HPConfig) SetBufConfig(bc BufConfig) {
 	setBufConfig(cfg, bc)
 }
 
-// setDefaults sets values that are zero to their defaults values.
-func (cfg *HPConfig) setDefaults() {
+// SetDefaults sets values that are zero to their defaults values.
+func (cfg *HPConfig) SetDefaults() {
 	bc := bufConfig(cfg)
-	bc.setDefaults()
+	bc.SetDefaults()
 	setBufConfig(cfg, bc)
 	h, _ := hashCfg(cfg)
-	h.setDefaults()
+	h.SetDefaults()
 	setHashCfg(cfg, h)
 }
 
-// verify checks the configuration for correctness.
-func (cfg *HPConfig) verify() error {
+// Verify checks the configuration for correctness.
+func (cfg *HPConfig) Verify() error {
 	bc := bufConfig(cfg)
 	var err error
-	if err = bc.verify(); err != nil {
+	if err = bc.Verify(); err != nil {
 		return err
 	}
 	h, _ := hashCfg(cfg)
-	err = h.verify()
+	err = h.Verify()
 	return err
 }
 
@@ -93,9 +93,9 @@ func (cfg HPConfig) NewParser() (s Parser, err error) {
 // init initializes the hash parser. It returns an error if there is an issue
 // with the configuration parameters.
 func (s *hashParser) init(cfg HPConfig) error {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	var err error
-	if err = cfg.verify(); err != nil {
+	if err = cfg.Verify(); err != nil {
 		return err
 	}
 

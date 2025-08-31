@@ -73,8 +73,8 @@ func (cfg *GSAPConfig) Verify() error {
 		// We manage positions only as uint32 values and so this limit
 		// is necessary
 		return fmt.Errorf(
-			"lz: MaxSize=%d; must be less than MaxUint32=%d",
-			cfg.WindowSize, math.MaxUint32)
+			"lz: WindowSize=%d; must be less than MaxUint32=%d",
+			cfg.WindowSize, uint32(math.MaxUint32))
 	}
 	return nil
 }

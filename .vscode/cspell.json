@@ -19,6 +19,7 @@
         "staticcheck",
         "Ulrich",
         "Unmarshal",
+        "unmarshals",
         "Zstandard"
     ],
     "ignoreWords": [

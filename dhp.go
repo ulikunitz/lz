@@ -30,31 +30,31 @@ func (cfg *DHPConfig) Clone() ParserConfig {
 // UnmarshalJSON parses the JSON value and sets the fields of DHPConfig.
 func (cfg *DHPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = DHPConfig{}
-	return unmarshalJSON(cfg, p)
+	return UnmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "DHP" to the structure.
 func (cfg *DHPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg)
+	return MarshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *DHPConfig) BufConfig() BufConfig {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
 func (cfg *DHPConfig) SetBufConfig(bc BufConfig) {
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 }
 
 // Verify checks the configuration for errors.
 func (cfg *DHPConfig) Verify() error {
 	var err error
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
@@ -68,9 +68,9 @@ func (cfg *DHPConfig) Verify() error {
 // SetDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *DHPConfig) SetDefaults() {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	bc.SetDefaults()
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 	d, _ := dhCfg(cfg)
 	d.SetDefaults()
 	setDHCfg(cfg, d)
@@ -105,7 +105,7 @@ func (s *doubleHashParser) init(cfg DHPConfig) error {
 	}
 
 	dhc, _ := dhCfg(&cfg)
-	bc := bufConfig(&cfg)
+	bc := GetBufConfig(&cfg)
 	if err = s.doubleHashDictionary.init(dhc, bc); err != nil {
 		return err
 	}

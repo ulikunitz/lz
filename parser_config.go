@@ -44,7 +44,7 @@ func ParseJSON(data []byte) (ParserConfig, error) {
 	default:
 		return nil, fmt.Errorf("lz: unknown parser type %s", s.Type)
 	}
-	if err := unmarshalJSON(pcfg, data); err != nil {
+	if err := UnmarshalJSON(pcfg, data); err != nil {
 		return nil, err
 	}
 	return pcfg, nil
@@ -60,7 +60,9 @@ func parserType(pcfg ParserConfig) string {
 	return pt
 }
 
-func unmarshalJSON(pcfg ParserConfig, data []byte) error {
+// UnmarshalJSON is a helper function that unmarshals the JSON data into the
+// parser configuration value provided.
+func UnmarshalJSON(pcfg ParserConfig, data []byte) error {
 	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
@@ -100,14 +102,16 @@ func unmarshalJSON(pcfg ParserConfig, data []byte) error {
 	return nil
 }
 
-func marshalJSON(pcfg ParserConfig) (p []byte, err error) {
+// MarshalJSON is a helper function that marshals the parser configuration
+// value provided into JSON data.
+func MarshalJSON(pcfg ParserConfig) (p []byte, err error) {
 	buf := new(bytes.Buffer)
 
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
 	t := v.Type()
 	fmt.Fprintf(buf, "{\n  \"Type\": %q,\n", parserType(pcfg))
 	n := t.NumField()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f := t.Field(i)
 		v, err := json.Marshal(v.Field(i).Interface())
 		if err != nil {
@@ -132,8 +136,8 @@ func setIVal(v reflect.Value, name string, i int) {
 	v.FieldByName(name).SetInt(int64(i))
 }
 
-// bufConfig reads the BufConfig from the parser configuration.
-func bufConfig(pcfg ParserConfig) BufConfig {
+// GetBufConfig reads the BufConfig from the parser configuration.
+func GetBufConfig(pcfg ParserConfig) BufConfig {
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
 	bc := BufConfig{
 		ShrinkSize: iVal(v, "ShrinkSize"),
@@ -144,7 +148,7 @@ func bufConfig(pcfg ParserConfig) BufConfig {
 	return bc
 }
 
-func setBufConfig(pcfg ParserConfig, bc BufConfig) {
+func SetBufConfig(pcfg ParserConfig, bc BufConfig) {
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
 	setIVal(v, "ShrinkSize", bc.ShrinkSize)
 	setIVal(v, "BufferSize", bc.BufferSize)

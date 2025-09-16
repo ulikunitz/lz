@@ -38,32 +38,32 @@ func (cfg *HPConfig) Clone() ParserConfig {
 // UnmarshalJSON converts the JSON into the HPConfig structure.
 func (cfg *HPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = HPConfig{}
-	return unmarshalJSON(cfg, p)
+	return UnmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "HP" to the structure.
 func (cfg *HPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg)
+	return MarshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *HPConfig) BufConfig() BufConfig {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
 func (cfg *HPConfig) SetBufConfig(bc BufConfig) {
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *HPConfig) SetDefaults() {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	bc.SetDefaults()
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 	h, _ := hashCfg(cfg)
 	h.SetDefaults()
 	setHashCfg(cfg, h)
@@ -71,7 +71,7 @@ func (cfg *HPConfig) SetDefaults() {
 
 // Verify checks the configuration for correctness.
 func (cfg *HPConfig) Verify() error {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	var err error
 	if err = bc.Verify(); err != nil {
 		return err
@@ -100,7 +100,7 @@ func (s *hashParser) init(cfg HPConfig) error {
 	}
 
 	hc, _ := hashCfg(&cfg)
-	bc := bufConfig(&cfg)
+	bc := GetBufConfig(&cfg)
 	if err = s.hashDictionary.init(hc, bc); err != nil {
 		return err
 	}

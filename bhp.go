@@ -28,32 +28,32 @@ func (cfg *BHPConfig) Clone() ParserConfig {
 // UnmarshalJSON parses the JSON value and sets the fields of BHPConfig.
 func (cfg *BHPConfig) UnmarshalJSON(p []byte) error {
 	*cfg = BHPConfig{}
-	return unmarshalJSON(cfg, p)
+	return UnmarshalJSON(cfg, p)
 }
 
 // MarshalJSON creates the JSON string for the configuration. Note that it adds
 // a property Type with value "BHP" to the structure.
 func (cfg *BHPConfig) MarshalJSON() (p []byte, err error) {
-	return marshalJSON(cfg)
+	return MarshalJSON(cfg)
 }
 
 // BufConfig returns the [BufConfig] value containing the buffer parameters.
 func (cfg *BHPConfig) BufConfig() BufConfig {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the backward hash
 // parser configuration.
 func (cfg *BHPConfig) SetBufConfig(bc BufConfig) {
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *BHPConfig) SetDefaults() {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	bc.SetDefaults()
-	setBufConfig(cfg, bc)
+	SetBufConfig(cfg, bc)
 	h, _ := hashCfg(cfg)
 	h.SetDefaults()
 	setHashCfg(cfg, h)
@@ -61,7 +61,7 @@ func (cfg *BHPConfig) SetDefaults() {
 
 // Verify checks the configuration for correctness.
 func (cfg *BHPConfig) Verify() error {
-	bc := bufConfig(cfg)
+	bc := GetBufConfig(cfg)
 	var err error
 	if err = bc.Verify(); err != nil {
 		return err
@@ -98,7 +98,7 @@ func (s *backwardHashParser) init(cfg BHPConfig) error {
 	}
 
 	hc, _ := hashCfg(&cfg)
-	bc := bufConfig(&cfg)
+	bc := GetBufConfig(&cfg)
 	if err = s.hashDictionary.init(hc, bc); err != nil {
 		return err
 	}

@@ -24,21 +24,21 @@ type Buffer struct {
 	// from the buffer.
 	Off int64
 
-	BufConfig
+	BufferConfig
 }
 
 // Init initializes the buffer. The function
 // sets the defaults for the buffer configuration if required and verifies it.
 // Errors will be reported.
-func (b *Buffer) Init(cfg BufConfig) error {
+func (b *Buffer) Init(cfg BufferConfig) error {
 	cfg.SetDefaults()
 	var err error
 	if err = cfg.Verify(); err != nil {
 		return err
 	}
 	*b = Buffer{
-		Data:      b.Data[:0],
-		BufConfig: cfg,
+		Data:         b.Data[:0],
+		BufferConfig: cfg,
 	}
 	return err
 }
@@ -203,13 +203,13 @@ func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 	return b.Data[i], nil
 }
 
-// BufConfig describes the various sizes relevant for the buffer. Note that
+// BufferConfig describes the various sizes relevant for the buffer. Note that
 // ShrinkSize should be significantly smaller than BufferSize and at most 50% of
 // it. The WindowSize is independent of the BufferSize, but usually the
 // BufferSize should be larger or equal the WindowSize. The actual sequencing
 // happens in blocks. A typical BlockSize 128 kByte as used by ZStandard
 // specification.
-type BufConfig struct {
+type BufferConfig struct {
 	ShrinkSize int
 	BufferSize int
 
@@ -222,7 +222,7 @@ type BufConfig struct {
 // Verify checks the buffer configuration. Note that window size and block size
 // are independent of the rest of the other sizes only the shrink size must be
 // less than the buffer size.
-func (cfg *BufConfig) Verify() error {
+func (cfg *BufferConfig) Verify() error {
 	// We are taking care of the margin for tha hash parsers.
 	maxSize := int64(math.MaxUint32) - 7
 	if int64(math.MaxInt) < maxSize {
@@ -254,7 +254,7 @@ func (cfg *BufConfig) Verify() error {
 //	ShrinkSize:  32 KiB (or half of BufferSize, if it is smaller than 64 KiB)
 //	WindowSize: BufferSize
 //	BlockSize:  128 KiB
-func (cfg *BufConfig) SetDefaults() {
+func (cfg *BufferConfig) SetDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 * miB
 	}

@@ -18,7 +18,7 @@ func TestWindow_Write(t *testing.T) {
 	}
 	var w Buffer
 	const winSize = 1024
-	cfg := BufConfig{
+	cfg := BufferConfig{
 		WindowSize: winSize,
 	}
 	if err = w.Init(cfg); err != nil {
@@ -53,7 +53,7 @@ func TestWindow_ReadFrom(t *testing.T) {
 	defer f.Close()
 	var w Buffer
 	const winSize = 1024
-	cfg := BufConfig{
+	cfg := BufferConfig{
 		WindowSize: winSize,
 	}
 	if err = w.Init(cfg); err != nil {
@@ -93,7 +93,7 @@ func TestWindow_shrink(t *testing.T) {
 	var w Buffer
 	const winSize = 1024
 	const shrinkSize = 256
-	cfg := BufConfig{
+	cfg := BufferConfig{
 		WindowSize: winSize,
 		ShrinkSize: shrinkSize,
 	}

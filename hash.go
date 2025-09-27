@@ -155,7 +155,7 @@ type hashDictionary struct {
 	hash
 }
 
-func (f *hashDictionary) init(cfg hashConfig, bcfg BufConfig) error {
+func (f *hashDictionary) init(cfg hashConfig, bcfg BufferConfig) error {
 	var err error
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err
@@ -291,7 +291,7 @@ type doubleHashDictionary struct {
 	h2 hash
 }
 
-func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufConfig) error {
+func (f *doubleHashDictionary) init(cfg dhConfig, bcfg BufferConfig) error {
 	var err error
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err

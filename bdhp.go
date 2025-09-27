@@ -40,21 +40,21 @@ func (cfg *BDHPConfig) Clone() ParserConfig {
 	return &x
 }
 
-// BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BDHPConfig) BufConfig() BufConfig {
-	bc := GetBufConfig(cfg)
+// BufConfig returns the [BufferConfig] value containing the buffer parameters.
+func (cfg *BDHPConfig) BufConfig() BufferConfig {
+	bc := BufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration.
-func (cfg *BDHPConfig) SetBufConfig(bc BufConfig) {
+func (cfg *BDHPConfig) SetBufConfig(bc BufferConfig) {
 	SetBufConfig(cfg, bc)
 }
 
 // Verify checks the configuration for errors.
 func (cfg *BDHPConfig) Verify() error {
 	var err error
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (cfg *BDHPConfig) Verify() error {
 // SetDefaults uses the defaults for the configuration parameters that are set
 // to zero.
 func (cfg *BDHPConfig) SetDefaults() {
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	bc.SetDefaults()
 	SetBufConfig(cfg, bc)
 	d, _ := dhCfg(cfg)
@@ -107,7 +107,7 @@ func (s *bdhp) init(cfg BDHPConfig) error {
 	}
 
 	dhc, _ := dhCfg(&cfg)
-	bc := GetBufConfig(&cfg)
+	bc := BufConfig(&cfg)
 	if err = s.doubleHashDictionary.init(dhc, bc); err != nil {
 		return err
 	}

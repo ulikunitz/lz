@@ -11,8 +11,8 @@ import (
 // ParserConfig provides the interface to parser configurations.
 type ParserConfig interface {
 	NewParser() (p Parser, err error)
-	BufConfig() BufConfig
-	SetBufConfig(bcfg BufConfig)
+	BufConfig() BufferConfig
+	SetBufConfig(bcfg BufferConfig)
 	json.Marshaler
 	json.Unmarshaler
 	Clone() ParserConfig
@@ -136,10 +136,10 @@ func setIVal(v reflect.Value, name string, i int) {
 	v.FieldByName(name).SetInt(int64(i))
 }
 
-// GetBufConfig reads the BufConfig from the parser configuration.
-func GetBufConfig(pcfg ParserConfig) BufConfig {
+// BufConfig reads the BufferConfig from the parser configuration.
+func BufConfig(pcfg ParserConfig) BufferConfig {
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
-	bc := BufConfig{
+	bc := BufferConfig{
 		ShrinkSize: iVal(v, "ShrinkSize"),
 		BufferSize: iVal(v, "BufferSize"),
 		WindowSize: iVal(v, "WindowSize"),
@@ -148,7 +148,7 @@ func GetBufConfig(pcfg ParserConfig) BufConfig {
 	return bc
 }
 
-func SetBufConfig(pcfg ParserConfig, bc BufConfig) {
+func SetBufConfig(pcfg ParserConfig, bc BufferConfig) {
 	v := reflect.Indirect(reflect.ValueOf(pcfg))
 	setIVal(v, "ShrinkSize", bc.ShrinkSize)
 	setIVal(v, "BufferSize", bc.BufferSize)

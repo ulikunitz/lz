@@ -42,21 +42,21 @@ func (cfg *BUPConfig) MarshalJSON() (p []byte, err error) {
 	return MarshalJSON(cfg)
 }
 
-// BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BUPConfig) BufConfig() BufConfig {
-	bc := GetBufConfig(cfg)
+// BufConfig returns the [BufferConfig] value containing the buffer parameters.
+func (cfg *BUPConfig) BufConfig() BufferConfig {
+	bc := BufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the parser
 // configuration.
-func (cfg *BUPConfig) SetBufConfig(bc BufConfig) {
+func (cfg *BUPConfig) SetBufConfig(bc BufferConfig) {
 	SetBufConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *BUPConfig) SetDefaults() {
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	bc.SetDefaults()
 	SetBufConfig(cfg, bc)
 	b, _ := bucketCfg(cfg)
@@ -67,7 +67,7 @@ func (cfg *BUPConfig) SetDefaults() {
 // Verify checks the config for correctness.
 func (cfg *BUPConfig) Verify() error {
 	var err error
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	if err = bc.Verify(); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *bucketParser) init(cfg BUPConfig) error {
 	}
 
 	b, _ := bucketCfg(&cfg)
-	bc := GetBufConfig(&cfg)
+	bc := BufConfig(&cfg)
 	if err = s.bucketDictionary.init(b, bc); err != nil {
 		return err
 	}

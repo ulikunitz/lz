@@ -182,7 +182,7 @@ type bucketDictionary struct {
 	bucketHash
 }
 
-func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufConfig) error {
+func (f *bucketDictionary) init(cfg bucketConfig, bcfg BufferConfig) error {
 	var err error
 	if err = f.Buffer.Init(bcfg); err != nil {
 		return err

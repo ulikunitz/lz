@@ -37,21 +37,21 @@ func (cfg *BHPConfig) MarshalJSON() (p []byte, err error) {
 	return MarshalJSON(cfg)
 }
 
-// BufConfig returns the [BufConfig] value containing the buffer parameters.
-func (cfg *BHPConfig) BufConfig() BufConfig {
-	bc := GetBufConfig(cfg)
+// BufConfig returns the [BufferConfig] value containing the buffer parameters.
+func (cfg *BHPConfig) BufConfig() BufferConfig {
+	bc := BufConfig(cfg)
 	return bc
 }
 
 // SetBufConfig sets the buffer configuration parameters of the backward hash
 // parser configuration.
-func (cfg *BHPConfig) SetBufConfig(bc BufConfig) {
+func (cfg *BHPConfig) SetBufConfig(bc BufferConfig) {
 	SetBufConfig(cfg, bc)
 }
 
 // SetDefaults sets values that are zero to their defaults values.
 func (cfg *BHPConfig) SetDefaults() {
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	bc.SetDefaults()
 	SetBufConfig(cfg, bc)
 	h, _ := hashCfg(cfg)
@@ -61,7 +61,7 @@ func (cfg *BHPConfig) SetDefaults() {
 
 // Verify checks the configuration for correctness.
 func (cfg *BHPConfig) Verify() error {
-	bc := GetBufConfig(cfg)
+	bc := BufConfig(cfg)
 	var err error
 	if err = bc.Verify(); err != nil {
 		return err
@@ -98,7 +98,7 @@ func (s *backwardHashParser) init(cfg BHPConfig) error {
 	}
 
 	hc, _ := hashCfg(&cfg)
-	bc := GetBufConfig(&cfg)
+	bc := BufConfig(&cfg)
 	if err = s.hashDictionary.init(hc, bc); err != nil {
 		return err
 	}

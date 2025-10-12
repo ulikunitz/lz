@@ -209,16 +209,20 @@ var (
 
 // WriteBlock writes sequences from the block into the buffer. Each sequence is
 // written atomically, as the block value is not modified. If there is not
-// enough space in the buffer, ErrFullBuffer will be returned.
+// enough space in the buffer, ErrFullBuffer will be returned. All written
+// sequences and literals will be removed from the block.
 //
-// The growth of the array is not limited to BufferSize. This may consume more
-// memory, but increases speed.
+// The capacity of the block slices will not be maintained. You have to keep a
+// copy of the block to achieve that.
 //
-// The return values n, k, and l indicate the number of bytes written to the
-// buffer, the number of sequences, and the number of literals, respectively.
-func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
-	ll := len(blk.Literals)
-	var s Seq
+// The growth of the array is limited to BufferSize.
+//
+// The function returns the number of bytes written.
+func (b *DecoderBuffer) WriteBlock(blk Block) (n int, err error) {
+	var (
+		k int
+		s Seq
+	)
 	for k, s = range blk.Sequences {
 		if int64(s.LitLen) > int64(len(blk.Literals)) {
 			err = errLitLen
@@ -275,7 +279,7 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 	n += len(blk.Literals)
 	blk.Literals = blk.Literals[:0]
 end:
+	blk.Sequences = blk.Sequences[k:]
 	b.Off += int64(n)
-	l = ll - len(blk.Literals)
-	return n, k, l, err
+	return n, err
 }

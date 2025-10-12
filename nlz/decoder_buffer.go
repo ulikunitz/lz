@@ -217,7 +217,6 @@ var (
 // The return values n, k, and l indicate the number of bytes written to the
 // buffer, the number of sequences, and the number of literals, respectively.
 func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
-	ld := len(b.Data)
 	ll := len(blk.Literals)
 	var s Seq
 	for k, s = range blk.Sequences {
@@ -229,7 +228,7 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 			err = errOffset
 			goto end
 		}
-		winLen := min(len(b.Data) + int(s.LitLen), b.WindowSize)
+		winLen := min(len(b.Data)+int(s.LitLen), b.WindowSize)
 		if int64(s.Offset) > int64(winLen) {
 			err = errOffset
 			goto end
@@ -245,21 +244,22 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 				goto end
 			}
 		}
+		n += int(g)
 		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
-		n := int(s.MatchLen)
+		m := int(s.MatchLen)
 		off := int(s.Offset)
-		for n > off {
+		for m > off {
 			b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
-			n -= off
-			if n <= off {
+			m -= off
+			if m <= off {
 				break
 			}
 			off <<= 1
 		}
-		// n <= off
+		// m <= off
 		j := len(b.Data) - off
-		b.Data = append(b.Data, b.Data[j:j+n]...)
+		b.Data = append(b.Data, b.Data[j:j+m]...)
 	}
 	k = len(blk.Sequences)
 	{ // block required to allow goto over it.
@@ -272,9 +272,9 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n, k, l int, err error) {
 		}
 	}
 	b.Data = append(b.Data, blk.Literals...)
+	n += len(blk.Literals)
 	blk.Literals = blk.Literals[:0]
 end:
-	n = len(b.Data) - ld
 	b.Off += int64(n)
 	l = ll - len(blk.Literals)
 	return n, k, l, err

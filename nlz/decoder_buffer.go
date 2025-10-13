@@ -139,9 +139,8 @@ func (b *DecoderBuffer) prune() int {
 
 // WriteByte writes a single byte into the buffer.
 func (b *DecoderBuffer) WriteByte(c byte) error {
-	g := len(b.Data) + 1
-	if g > b.BufferSize {
-		if g -= b.prune(); g > b.BufferSize {
+	if a := b.BufferSize - len(b.Data); a < 1 {
+		if a += b.prune(); a < 1 {
 			return ErrFullBuffer
 		}
 	}
@@ -154,9 +153,8 @@ func (b *DecoderBuffer) WriteByte(c byte) error {
 // slice or return 0 and ErrFullBuffer.
 func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	n = len(p)
-	g := len(b.Data) + n
-	if g > b.BufferSize {
-		if g -= b.prune(); g > b.BufferSize {
+	if a := b.BufferSize - len(b.Data); n > a {
+		if a += b.prune(); n > a {
 			return 0, ErrFullBuffer
 		}
 	}
@@ -165,47 +163,47 @@ func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// WriteMatch appends the ma tch to the end of the buffer. The match will be
-// written completely, or n=0 and ErrFullBuffer will be returned.
-func (b *DecoderBuffer) WriteMatch(m, o uint32) (n int, err error) {
-	if o == 0 && m > 0 {
-		return 0, errOffset
-	}
-	winLen := max(len(b.Data), b.WindowSize)
-	if int64(o) > int64(winLen) {
-		return 0, errOffset
-	}
-	_m := int64(m)
-	if a := b.BufferSize - len(b.Data); _m > int64(a) {
-		if _m > int64(b.WindowSize) {
-			return 0, errMatchLen
-		}
-		if a += b.prune(); _m > int64(a) {
-			return 0, ErrFullBuffer
-		}
-	}
-	n = int(_m)
-	off := int(o)
-	for n > off {
-		b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
-		n -= off
-		if n <= off {
-			break
-		}
-		off <<= 1
-	}
-	// n <= off
-	j := len(b.Data) - off
-	b.Data = append(b.Data, b.Data[j:j+n]...)
-	b.Off += _m
-	return int(_m), nil
-}
-
+// Errors for WriteMatch and WriteBlock.
 var (
 	errLitLen   = errors.New("lz: LitLen out of range")
 	errMatchLen = errors.New("lz: MatchLen out of range")
 	errOffset   = errors.New("lz: Offset out of range")
 )
+
+// WriteMatch appends the ma tch to the end of the buffer. The match will be
+// written completely, or n=0 and ErrFullBuffer will be returned.
+func (b *DecoderBuffer) WriteMatch(mu, ou uint32) (n int, err error) {
+	if ou == 0 && mu > 0 {
+		return 0, errOffset
+	}
+	winLen := min(len(b.Data), b.WindowSize)
+	if int64(ou) > int64(winLen) {
+		return 0, errOffset
+	}
+	o := int(ou)
+	if int64(mu) > int64(b.WindowSize) {
+		return 0, errMatchLen
+	}
+	m := int(mu)
+	if a := b.BufferSize - len(b.Data); m > a {
+		if a += b.prune(); m > a {
+			return 0, ErrFullBuffer
+		}
+	}
+	for m > o {
+		b.Data = append(b.Data, b.Data[len(b.Data)-o:]...)
+		m -= o
+		if m <= o {
+			break
+		}
+		o <<= 1
+	}
+	// m <= o
+	i := len(b.Data) - o
+	b.Data = append(b.Data, b.Data[i:i+m]...)
+	b.Off += int64(m)
+	return m, nil
+}
 
 // WriteBlock writes sequences from the block into the buffer. Each sequence is
 // written atomically, as the block value is not modified. If there is not
@@ -228,51 +226,53 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n int, err error) {
 			err = errLitLen
 			goto end
 		}
-		if s.Offset == 0 && s.MatchLen > 0 {
-			err = errOffset
-			goto end
-		}
-		winLen := min(len(b.Data)+int(s.LitLen), b.WindowSize)
+		l := int(s.LitLen)
+		winLen := min(len(b.Data)+l, b.WindowSize)
 		if int64(s.Offset) > int64(winLen) {
 			err = errOffset
 			goto end
 		}
-		g := int64(s.LitLen) + int64(s.MatchLen)
-		if a := b.BufferSize - len(b.Data); g > int64(a) {
-			if g > int64(b.WindowSize) {
-				err = errMatchLen
-				goto end
-			}
-			if a += b.prune(); g > int64(a) {
+		o := int(s.Offset)
+		if int64(s.MatchLen) > int64(b.WindowSize) {
+			err = errMatchLen
+			goto end
+		}
+		m := int(s.MatchLen)
+		if m > 0 && o == 0 {
+			err = errOffset
+			goto end
+		}
+		g := l + m
+		if g < 0 {
+			err = errMatchLen
+			goto end
+		}
+		if a := b.BufferSize - len(b.Data); g > a {
+			if a += b.prune(); g > a {
 				err = ErrFullBuffer
 				goto end
 			}
 		}
-		n += int(g)
+		n += g
 		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
-		m := int(s.MatchLen)
-		off := int(s.Offset)
-		for m > off {
-			b.Data = append(b.Data, b.Data[len(b.Data)-off:]...)
-			m -= off
-			if m <= off {
+		for m > o {
+			b.Data = append(b.Data, b.Data[len(b.Data)-o:]...)
+			m -= o
+			if m <= o {
 				break
 			}
-			off <<= 1
+			o <<= 1
 		}
-		// m <= off
-		j := len(b.Data) - off
-		b.Data = append(b.Data, b.Data[j:j+m]...)
+		// m <= o
+		i := len(b.Data) - o
+		b.Data = append(b.Data, b.Data[i:i+m]...)
 	}
 	k = len(blk.Sequences)
-	{ // block required to allow goto over it.
-		g := len(b.Data) + len(blk.Literals)
-		if g > b.BufferSize {
-			if g -= b.prune(); g > b.BufferSize {
-				err = ErrFullBuffer
-				goto end
-			}
+	if a := b.BufferSize - len(b.Data); len(blk.Literals) > a {
+		if a += b.prune(); len(blk.Literals) > a {
+			err = ErrFullBuffer
+			goto end
 		}
 	}
 	b.Data = append(b.Data, blk.Literals...)

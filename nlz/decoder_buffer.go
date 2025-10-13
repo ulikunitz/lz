@@ -71,14 +71,14 @@ type DecoderBuffer struct {
 }
 
 // Init initializes the DecoderBuffer.
-func (b *DecoderBuffer) Init(cfg DecoderOptions) error {
-	cfg.SetDefaults()
-	if err := cfg.Verify(); err != nil {
+func (b *DecoderBuffer) Init(opts DecoderOptions) error {
+	opts.SetDefaults()
+	if err := opts.Verify(); err != nil {
 		return err
 	}
 	*b = DecoderBuffer{
 		Data:           b.Data[:0],
-		DecoderOptions: cfg,
+		DecoderOptions: opts,
 	}
 	if cap(b.Data) > b.BufferSize {
 		b.BufferSize = cap(b.Data)
@@ -121,26 +121,22 @@ func (b *DecoderBuffer) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(k), err
 }
 
-// prune shifts data in the buffer and returns the additional space made
-// available, in bytes. It returns 0 if no more space can be provided.
-//
-// This method is private and is called automatically by various write methods.
+// prune evicts data from the buffer and returns the available space.
 func (b *DecoderBuffer) prune() int {
 	// space that can be pruned
 	n := min(b.R, max(len(b.Data)-b.WindowSize, 0))
-	if n == 0 {
-		return 0
+	if n > 0 {
+		l := copy(b.Data, b.Data[n:])
+		b.Data = b.Data[:l]
+		b.R -= n
 	}
-	l := copy(b.Data, b.Data[n:])
-	b.Data = b.Data[:l]
-	b.R -= n
-	return n
+	return b.BufferSize - len(b.Data)
 }
 
 // WriteByte writes a single byte into the buffer.
 func (b *DecoderBuffer) WriteByte(c byte) error {
 	if a := b.BufferSize - len(b.Data); a < 1 {
-		if a += b.prune(); a < 1 {
+		if b.prune() < 1 {
 			return ErrFullBuffer
 		}
 	}
@@ -154,7 +150,7 @@ func (b *DecoderBuffer) WriteByte(c byte) error {
 func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if a := b.BufferSize - len(b.Data); n > a {
-		if a += b.prune(); n > a {
+		if n > b.prune() {
 			return 0, ErrFullBuffer
 		}
 	}
@@ -186,7 +182,7 @@ func (b *DecoderBuffer) WriteMatch(mu, ou uint32) (n int, err error) {
 	}
 	m := int(mu)
 	if a := b.BufferSize - len(b.Data); m > a {
-		if a += b.prune(); m > a {
+		if m > b.prune() {
 			return 0, ErrFullBuffer
 		}
 	}
@@ -248,7 +244,7 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n int, err error) {
 			goto end
 		}
 		if a := b.BufferSize - len(b.Data); g > a {
-			if a += b.prune(); g > a {
+			if g > b.prune() {
 				err = ErrFullBuffer
 				goto end
 			}
@@ -270,7 +266,7 @@ func (b *DecoderBuffer) WriteBlock(blk Block) (n int, err error) {
 	}
 	k = len(blk.Sequences)
 	if a := b.BufferSize - len(b.Data); len(blk.Literals) > a {
-		if a += b.prune(); len(blk.Literals) > a {
+		if len(blk.Literals) > b.prune() {
 			err = ErrFullBuffer
 			goto end
 		}

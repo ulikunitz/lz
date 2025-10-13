@@ -2,7 +2,6 @@ package nlz
 
 import (
 	"fmt"
-	"math"
 )
 
 // prime is used by [hashValue].
@@ -81,54 +80,4 @@ func (h *hash) shiftOffsets(delta uint32) {
 			h.table[i].pos = e.pos - delta
 		}
 	}
-}
-
-type HashOptions struct {
-	InputLen int
-	HashBits int
-
-	WindowSize   int
-	MinMatchSize int
-	MaxMatchSize int
-}
-
-func (opt *HashOptions) SetDefaults() {
-	if opt.InputLen == 0 {
-		opt.InputLen = 4
-	}
-	if opt.HashBits == 0 {
-		opt.HashBits = 16
-	}
-	if opt.WindowSize == 0 {
-		opt.WindowSize = 32 << 10
-	}
-	if opt.MinMatchSize == 0 {
-		opt.MinMatchSize = 2
-	}
-	if opt.MaxMatchSize == 0 {
-		opt.MaxMatchSize = 273
-	}
-}
-
-func (opt *HashOptions) Verify() error {
-	if !(2 <= opt.InputLen && opt.InputLen <= 8) {
-		return fmt.Errorf("lz: InputLen must be in range [2,8]")
-	}
-	maxHashBits := 24
-	if t := 8 * opt.InputLen; t < maxHashBits {
-		maxHashBits = t
-	}
-	if !(0 <= opt.HashBits && opt.HashBits <= maxHashBits) {
-		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
-			opt.HashBits, maxHashBits)
-	}
-	if !(0 <= opt.WindowSize && int64(opt.WindowSize) <= math.MaxUint32) {
-		return fmt.Errorf("lz: WindowSize=%d; must be in range [0..%d]",
-			opt.WindowSize, math.MaxUint32)
-	}
-	if !(2 <= opt.MinMatchSize && opt.MinMatchSize <= opt.MaxMatchSize) {
-		return fmt.Errorf("lz: MinMatchSize=%d; must be in range [2..MaxMatchSize=%d]",
-			opt.MinMatchSize, opt.MaxMatchSize)
-	}
-	return nil
 }

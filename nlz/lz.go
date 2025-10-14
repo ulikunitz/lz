@@ -17,10 +17,15 @@
 // combinations of encoding speed and compression ratios. Usually, a slower
 // parser will generate a better compression ratio.
 //
+// Parsers may use different matchers to provide their functionality. One
+// Example is [GreedyParser] which can use multiple Matcher implementations.
+//
 // The library supports the implementation of parsers outside of this package.
 //
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
 package nlz
+
+import "io"
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
 // consisting of the offset, the length of the match, and the number of
@@ -58,8 +63,42 @@ func (b *Block) Len() int64 {
 	return n
 }
 
+// Matcher is responsible to find matches or Literal bytes in the byte stream.
+type Matcher interface {
+	AppendEdges(q []Seq, n int) []Seq
+	Skip(n int) (skipped int, err error)
+
+	Prune(n int) int
+	Write(p []byte) (n int, err error)
+	ReadFrom(r io.Reader) (n int64, err error)
+
+	ReadAt(p []byte, off int64) (n int, err error)
+	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
+	Buf() *Buffer
+}
+
+// ParserFlags define optional parser behavior.
 type ParserFlags int
 
 const (
+	// NoTrailingLiterals indicates that the parser should not generate
+	// trailing literal bytes in the output.
 	NoTrailingLiterals ParserFlags = 1 << iota
 )
+
+// Parser can parse the underlying byte stream into blocks of sequences.
+type Parser interface {
+	Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error)
+
+	Prune(n int) int
+	Write(p []byte) (n int, err error)
+	ReadFrom(r io.Reader) (n int64, err error)
+
+	ReadAt(p []byte, off int64) (n int, err error)
+	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
+	Buf() *Buffer
+}

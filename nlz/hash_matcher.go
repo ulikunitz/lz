@@ -134,8 +134,21 @@ func (m *HashMatcher) Prune(n int) int {
 // ErrEndOfBuffer is returned at the end of the buffer.
 var ErrEndOfBuffer = errors.New("nlz: end of buffer")
 
+// ErrStartOfBuffer is returned at the start of the buffer.
+var ErrStartOfBuffer = errors.New("nlz: start of buffer")
+
 // Skip skips n bytes in the buffer and updates the hash table.
 func (m *HashMatcher) Skip(n int) (skipped int, err error) {
+	if n < 0 {
+		if n < -m.W {
+			n = -m.W
+			err = ErrStartOfBuffer
+		}
+		m.W += n
+		m.trailing = max(m.trailing+n, 0)
+		return n, err
+	}
+
 	if k := len(m.Data) - m.W; k < n {
 		n = k
 		err = ErrEndOfBuffer
@@ -202,3 +215,6 @@ func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
 	q = append(q, Seq{Offset: uint32(o), MatchLen: uint32(k)})
 	return q
 }
+
+// ensure that the HashMatcher implements the Matcher interface.
+var _ Matcher = (*HashMatcher)(nil)

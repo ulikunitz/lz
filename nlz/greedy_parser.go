@@ -1,25 +1,23 @@
 package nlz
 
-import "fmt"
+import (
+	"fmt"
+)
 
-type Matcher interface {
-	Reset(data []byte) error
-	Prune(n int) int
-	Buf() *Buffer
-	Skip(n int) (skipped int, err error)
-	AppendEdges(q []Seq, n int) []Seq
-}
-
+// GreedyParserOptions contains the options for the GreedyParser. Right now only
+// the default block size can be configured.
 type GreedyParserOptions struct {
 	BlockSize int
 }
 
+// SetDefaults sets the default values for the GreedyParser options.
 func (opts *GreedyParserOptions) SetDefaults() {
 	if opts.BlockSize <= 0 {
 		opts.BlockSize = 128 << 10
 	}
 }
 
+// Verify checks that the options are valid.
 func (opts *GreedyParserOptions) Verify() error {
 	if opts.BlockSize <= 0 {
 		return fmt.Errorf("lz: BlockSize=%d; must be > 0",
@@ -28,12 +26,15 @@ func (opts *GreedyParserOptions) Verify() error {
 	return nil
 }
 
+// GreedyParser is a simple parser that always chooses the longest match.
 type GreedyParser struct {
 	Matcher
 
 	GreedyParserOptions
 }
 
+// NewGreedyParser creates a new GreedyParser with the given options. If
+// opts is nil, the default options are used.
 func NewGreedyParser(m Matcher, opts *GreedyParserOptions) (p *GreedyParser, err error) {
 	if opts == nil {
 		opts = &GreedyParserOptions{}
@@ -51,6 +52,14 @@ func NewGreedyParser(m Matcher, opts *GreedyParserOptions) (p *GreedyParser, err
 	return p, nil
 }
 
+// Parse parses up to n bytes from the underlying byte stream and appends the
+// resulting sequences and literals to blk. If blk is nil, the parser will skip
+// n bytes in the input stream. The number of bytes parsed or skipped is
+// returned. If no more data is available, ErrEndOfBuffer is returned.
+//
+// If the NoTrailingLiterals flag is set, the parser will not include
+// trailing literals in the block. This can be used to parse a stream in fixed
+// size blocks without overlapping literals.
 func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
@@ -105,8 +114,16 @@ func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	}
 
 	if flags&NoTrailingLiterals != 0 {
-		n -= len(blk.Literals) - iLit
+		l := len(blk.Literals) - iLit
+		_, err := p.Matcher.Skip(-l)
+		if err != nil {
+			panic(err)
+		}
+		n -= l
 		blk.Literals = blk.Literals[:iLit]
 	}
 	return n, err
 }
+
+// ensure that GreedyParser implements the Parser interface.
+var _ Parser = (*GreedyParser)(nil)

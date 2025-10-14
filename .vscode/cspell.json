@@ -67,6 +67,7 @@
         "kmin",
         "lcs",
         "lzold",
+        "nlz",
         "noinline",
         "pcfg",
         "pdata",

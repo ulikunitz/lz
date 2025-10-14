@@ -47,14 +47,14 @@ func (cfg *DecoderOptions) Verify() error {
 	return nil
 }
 
-// DecoderBuffer provides a simple buffer for decoding LZ77 sequences. Data is
+// Decoder provides a simple buffer for decoding LZ77 sequences. Data is
 // the actual buffer. The end of the slice is also the head of the dictionary
 // window. R tracks the read position in the buffer and must be less than or
 // equal to the length of the Data slice. Off records the total offset and marks
 // the end of the Data slice, which is also the end of the dictionary window.
 // DecoderConfig provides the configuration parameters WindowSize and
 // BufferSize.
-type DecoderBuffer struct {
+type Decoder struct {
 	// Data is the actual buffer. The end of the slice is also the head of
 	// the dictionary window.
 	Data []byte
@@ -71,12 +71,12 @@ type DecoderBuffer struct {
 }
 
 // Init initializes the DecoderBuffer.
-func (b *DecoderBuffer) Init(opts DecoderOptions) error {
+func (b *Decoder) Init(opts DecoderOptions) error {
 	opts.SetDefaults()
 	if err := opts.Verify(); err != nil {
 		return err
 	}
-	*b = DecoderBuffer{
+	*b = Decoder{
 		Data:           b.Data[:0],
 		DecoderOptions: opts,
 	}
@@ -86,9 +86,16 @@ func (b *DecoderBuffer) Init(opts DecoderOptions) error {
 	return nil
 }
 
+// NewDecoder creates and initializes a new Decoder.
+func NewDecoder(opts *DecoderOptions) (b *Decoder, err error) {
+	b = new(Decoder)
+	err = b.Init(*opts)
+	return b, err
+}
+
 // Reset returns the DecoderBuffer to its initialized state.
-func (b *DecoderBuffer) Reset() {
-	*b = DecoderBuffer{
+func (b *Decoder) Reset() {
+	*b = Decoder{
 		Data:           b.Data[:0],
 		DecoderOptions: b.DecoderOptions,
 	}
@@ -99,7 +106,7 @@ func (b *DecoderBuffer) Reset() {
 }
 
 // ByteAtEnd returns the byte at the end of the buffer.
-func (b *DecoderBuffer) ByteAtEnd(off int) byte {
+func (b *Decoder) ByteAtEnd(off int) byte {
 	i := len(b.Data) - off
 	if !(0 <= i && i < len(b.Data)) {
 		return 0
@@ -108,21 +115,21 @@ func (b *DecoderBuffer) ByteAtEnd(off int) byte {
 }
 
 // Read reads decoded data from the buffer.
-func (b *DecoderBuffer) Read(p []byte) (n int, err error) {
+func (b *Decoder) Read(p []byte) (n int, err error) {
 	n = copy(p, b.Data[b.R:])
 	b.R += n
 	return n, nil
 }
 
 // WriteTo writes the decoded data to the writer.
-func (b *DecoderBuffer) WriteTo(w io.Writer) (n int64, err error) {
+func (b *Decoder) WriteTo(w io.Writer) (n int64, err error) {
 	k, err := w.Write(b.Data[b.R:])
 	b.R += k
 	return int64(k), err
 }
 
 // prune evicts data from the buffer and returns the available space.
-func (b *DecoderBuffer) prune() int {
+func (b *Decoder) prune() int {
 	// space that can be pruned
 	n := min(b.R, max(len(b.Data)-b.WindowSize, 0))
 	if n > 0 {
@@ -134,7 +141,7 @@ func (b *DecoderBuffer) prune() int {
 }
 
 // WriteByte writes a single byte into the buffer.
-func (b *DecoderBuffer) WriteByte(c byte) error {
+func (b *Decoder) WriteByte(c byte) error {
 	if a := b.BufferSize - len(b.Data); a < 1 {
 		if b.prune() < 1 {
 			return ErrFullBuffer
@@ -147,7 +154,7 @@ func (b *DecoderBuffer) WriteByte(c byte) error {
 
 // Write inserts the slice into the buffer. The method will write the entire
 // slice or return 0 and ErrFullBuffer.
-func (b *DecoderBuffer) Write(p []byte) (n int, err error) {
+func (b *Decoder) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if a := b.BufferSize - len(b.Data); n > a {
 		if n > b.prune() {
@@ -168,7 +175,7 @@ var (
 
 // WriteMatch appends the ma tch to the end of the buffer. The match will be
 // written completely, or n=0 and ErrFullBuffer will be returned.
-func (b *DecoderBuffer) WriteMatch(mu, ou uint32) (n int, err error) {
+func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	if ou == 0 && mu > 0 {
 		return 0, errOffset
 	}
@@ -212,7 +219,7 @@ func (b *DecoderBuffer) WriteMatch(mu, ou uint32) (n int, err error) {
 // The growth of the array is limited to BufferSize.
 //
 // The function returns the number of bytes written.
-func (b *DecoderBuffer) WriteBlock(blk Block) (n int, err error) {
+func (b *Decoder) WriteBlock(blk *Block) (n int, err error) {
 	var (
 		k int
 		s Seq

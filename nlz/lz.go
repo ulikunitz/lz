@@ -10,7 +10,7 @@
 // bytes.
 //
 // A [Parser] converts a byte stream into blocks of sequences. The
-// [DecoderBuffer] converts the block of sequences into the original
+// [Decoder] converts the block of sequences into the original
 // decompressed byte stream.
 //
 // The module provides multiple parser implementations that offer different
@@ -57,3 +57,9 @@ func (b *Block) Len() int64 {
 	}
 	return n
 }
+
+type ParserFlags int
+
+const (
+	NoTrailingLiterals ParserFlags = 1 << iota
+)

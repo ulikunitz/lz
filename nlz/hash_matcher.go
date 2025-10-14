@@ -12,7 +12,6 @@ type HashOptions struct {
 	InputLen int
 	HashBits int
 
-	BlockSize    int
 	BufferSize   int
 	WindowSize   int
 	MinMatchSize int
@@ -143,24 +142,21 @@ func (m *HashMatcher) Skip(n int) (skipped int, err error) {
 	}
 
 	a := max(m.W-m.trailing, 0)
-	w := m.W + n
-	b := min(w, len(m.Data)-m.InputLen+1)
-	if a >= b {
-		return n, nil
-	}
-
-	p := m.Data[:b+7]
-	for i := a; i < b; i++ {
-		x := _getLE64(p[i:]) & m.hash.mask
-		h := hashValue(x, m.hash.shift)
-		m.hash.table[h] = hashEntry{
-			pos:   uint32(i),
-			value: uint32(x),
+	m.W += n
+	b := min(m.W, len(m.Data)-m.InputLen+1)
+	m.trailing = m.W - b
+	if a < b {
+		p := m.Data[:b+7]
+		for i := a; i < b; i++ {
+			x := _getLE64(p[i:]) & m.hash.mask
+			h := hashValue(x, m.hash.shift)
+			m.hash.table[h] = hashEntry{
+				pos:   uint32(i),
+				value: uint32(x),
+			}
 		}
 	}
 
-	m.W = w
-	m.trailing = w - b
 	return n, err
 }
 
@@ -183,14 +179,14 @@ func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
 	if i >= b || n < m.MinMatchSize {
 		return q
 	}
-	
+
 	x := y & m.hash.mask
 	h := hashValue(x, m.hash.shift)
 	entry := &m.hash.table[h]
 	if entry.value != uint32(x) {
 		return q
 	}
-	
+
 	j := int(entry.pos)
 	o := i - j
 	if !(0 < o && o <= m.WindowSize) {

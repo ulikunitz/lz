@@ -100,5 +100,4 @@ type Parser interface {
 	ByteAt(off int64) (c byte, err error)
 
 	Reset(data []byte) error
-	Buf() *Buffer
 }

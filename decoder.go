@@ -193,6 +193,7 @@ func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 			return 0, ErrFullBuffer
 		}
 	}
+	n = m
 	for m > o {
 		b.Data = append(b.Data, b.Data[len(b.Data)-o:]...)
 		m -= o
@@ -204,8 +205,8 @@ func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	// m <= o
 	i := len(b.Data) - o
 	b.Data = append(b.Data, b.Data[i:i+m]...)
-	b.Off += int64(m)
-	return m, nil
+	b.Off += int64(n)
+	return n, nil
 }
 
 // WriteBlock writes sequences from the block into the buffer. Each sequence is

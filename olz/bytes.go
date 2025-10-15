@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package nlz
+package olz
 
 import (
 	"math/bits"
@@ -29,45 +29,42 @@ func _getLE32(p []byte) uint32 {
 		uint32(p[3])<<24
 }
 
-/*
-func getLE32(p []byte) uint32 {
+// getLE64 reads the 64-bit little-endian representation independent of the
+// length of slice p.
+func getLE64(p []byte) uint64 {
 	switch len(p) {
 	case 0:
 		return 0
 	case 1:
-		return uint32(p[0])
+		return uint64(p[0])
 	case 2:
 		_ = p[1]
-		return uint32(p[0]) | uint32(p[1])<<8
+		return uint64(p[0]) | uint64(p[1])<<8
 	case 3:
 		_ = p[2]
-		return uint32(p[0]) | uint32(p[1])<<8 | uint32(p[2])<<16
+		return uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16
+	case 4:
+		return uint64(_getLE32(p))
+	case 5:
+		_ = p[4]
+		return uint64(_getLE32(p)) | uint64(p[4])<<32
+	case 6:
+		_ = p[5]
+		return uint64(_getLE32(p)) | uint64(p[4])<<32 |
+			uint64(p[5])<<40
+	case 7:
+		_ = p[6]
+		return uint64(_getLE32(p)) | uint64(p[4])<<32 |
+			uint64(p[5])<<40 | uint64(p[6])<<48
 	default:
-		return _getLE32(p)
-	}
-}
-*/
-
-/*
-func getLE64(p []byte) uint64 {
-	switch {
-	case len(p) <= 4:
-		return uint64(getLE32(p))
-	case len(p) >= 8:
 		return _getLE64(p)
-	default:
-		return uint64(_getLE32(p)) | uint64(getLE32(p[4:]))<<32
 	}
 }
-*/
 
 // lcp computes the length of the longest common prefix between p and q.
 func lcp(p, q []byte) int {
 	if len(q) > len(p) {
 		p, q = q, p
-	}
-	if len(q) == 0 {
-		return 0
 	}
 	n := 0
 	for len(q) >= 8 {
@@ -90,8 +87,6 @@ func lcp(p, q []byte) int {
 		q = q[4:]
 		p = p[4:]
 	}
-	// len(q) < 4
-	_ = p[len(q)-1]
 	for i, b := range q {
 		if p[i] != b {
 			break
@@ -101,7 +96,6 @@ func lcp(p, q []byte) int {
 	return n
 }
 
-/*
 // lcs computes the longest common suffix
 func lcs(p, q []byte) int {
 	if len(q) > len(p) {
@@ -131,4 +125,3 @@ func lcs(p, q []byte) int {
 	}
 	return n
 }
-*/

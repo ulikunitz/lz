@@ -10,22 +10,22 @@
 // bytes.
 //
 // A [Parser] converts a byte stream into blocks of sequences. The
-// [DecoderBuffer] converts the block of sequences into the original
+// [Decoder] converts the block of sequences into the original
 // decompressed byte stream.
 //
 // The module provides multiple parser implementations that offer different
 // combinations of encoding speed and compression ratios. Usually, a slower
 // parser will generate a better compression ratio.
 //
+// Parsers may use different matchers to provide their functionality. One
+// Example is [GreedyParser] which can use multiple Matcher implementations.
+//
 // The library supports the implementation of parsers outside of this package.
 //
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
 package lz
 
-import (
-	"errors"
-	"io"
-)
+import "io"
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
 // consisting of the offset, the length of the match, and the number of
@@ -63,30 +63,41 @@ func (b *Block) Len() int64 {
 	return n
 }
 
-// Flags for the sequence function stored in the block structure.
-const (
-	// NoTrailingLiterals tells a parser that trailing literals do not
-	// need to be included in the block.
-	NoTrailingLiterals = 1 << iota
-)
+// Matcher is responsible to find matches or Literal bytes in the byte stream.
+type Matcher interface {
+	AppendEdges(q []Seq, n int) []Seq
+	Skip(n int) (skipped int, err error)
 
-// ErrEmptyBuffer indicates that no more data is available in the buffer. It
-// is returned by the Parse method of [Parser].
-var ErrEmptyBuffer = errors.New("lz: no more data in buffer")
-
-// ErrFullBuffer indicates that the buffer is full. It is returned by the
-// Write and ReadFrom methods of [Parser].
-var ErrFullBuffer = errors.New("lz: buffer is full")
-
-// Parser provides the basic interface for a parser. Most functions are
-// provided by the underlying [Buffer].
-type Parser interface {
-	Parse(blk *Block, flags int) (n int, err error)
-	Reset(data []byte) error
-	Shrink() int
-	ParserConfig() ParserConfig
+	Prune(n int) int
 	Write(p []byte) (n int, err error)
 	ReadFrom(r io.Reader) (n int64, err error)
+
 	ReadAt(p []byte, off int64) (n int, err error)
 	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
+	Buf() *Buffer
+}
+
+// ParserFlags define optional parser behavior.
+type ParserFlags int
+
+const (
+	// NoTrailingLiterals indicates that the parser should not generate
+	// trailing literal bytes in the output.
+	NoTrailingLiterals ParserFlags = 1 << iota
+)
+
+// Parser can parse the underlying byte stream into blocks of sequences.
+type Parser interface {
+	Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error)
+
+	Prune(n int) int
+	Write(p []byte) (n int, err error)
+	ReadFrom(r io.Reader) (n int64, err error)
+
+	ReadAt(p []byte, off int64) (n int, err error)
+	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
 }

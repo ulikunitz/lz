@@ -1,4 +1,4 @@
-package nlz
+package lz
 
 import "testing"
 

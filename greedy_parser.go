@@ -1,4 +1,4 @@
-package nlz
+package lz
 
 import (
 	"fmt"
@@ -87,7 +87,7 @@ func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 		}
 		q = p.AppendEdges(q[:0], k)
 		if len(q) == 0 {
-			panic("nlz: no edges returned by matcher")
+			panic("lz: no edges returned by matcher")
 		}
 		seq := q[0]
 		seqLen := seq.Len()
@@ -109,7 +109,7 @@ func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 		_, err = p.Matcher.Skip(int(seqLen))
 		if err != nil {
 			panic(fmt.Errorf(
-				"nlz: unexpected error from Skip: %w", err))
+				"lz: unexpected error from Skip: %w", err))
 		}
 	}
 

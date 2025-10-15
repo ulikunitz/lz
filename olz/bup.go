@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package lz
+package olz
 
 // bucketParser allows the creation of sequence blocks using a simple hash
 // table.

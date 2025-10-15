@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package lz
+package olz
 
 import (
 	"bytes"
@@ -144,7 +144,7 @@ func TestWrapOldHashParser(t *testing.T) {
 
 func TestHashParserEnwik7(t *testing.T) {
 	const (
-		enwik7     = "testdata/enwik7"
+		enwik7     = "../testdata/enwik7"
 		blockSize  = 128 * 1024
 		windowSize = 2*blockSize + 123
 	)
@@ -259,7 +259,7 @@ func TestLargeParameters(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("test is slow")
 	}
-	const enwik7 = "testdata/enwik7"
+	const enwik7 = "../testdata/enwik7"
 
 	var tests = []struct {
 		filename string

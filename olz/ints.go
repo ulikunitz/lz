@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package lz
+package olz
 
 // Kilobytes and Megabyte defined as the more precise kibibyte and mebibyte.
 const (

@@ -1,4 +1,4 @@
-package lz
+package olz
 
 import (
 	"reflect"

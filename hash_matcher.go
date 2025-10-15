@@ -1,4 +1,4 @@
-package nlz
+package lz
 
 import (
 	"errors"
@@ -132,10 +132,10 @@ func (m *HashMatcher) Prune(n int) int {
 }
 
 // ErrEndOfBuffer is returned at the end of the buffer.
-var ErrEndOfBuffer = errors.New("nlz: end of buffer")
+var ErrEndOfBuffer = errors.New("lz: end of buffer")
 
 // ErrStartOfBuffer is returned at the start of the buffer.
-var ErrStartOfBuffer = errors.New("nlz: start of buffer")
+var ErrStartOfBuffer = errors.New("lz: start of buffer")
 
 // Skip skips n bytes in the buffer and updates the hash table.
 func (m *HashMatcher) Skip(n int) (skipped int, err error) {

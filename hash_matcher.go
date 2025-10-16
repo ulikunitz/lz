@@ -135,6 +135,9 @@ func (m *hashMatcher) Reset(data []byte) error {
 // table accordingly. It returns the actual number of bytes removed which can be
 // less than n if n is greater than the buffer that can be pruned.
 func (m *hashMatcher) Prune(n int) int {
+	if n == 0 {
+		n = max(m.W-m.WindowSize, 3*(m.Buffer.Size/4), 0)
+	}
 	n = m.Buffer.Prune(n)
 	m.hash.shiftOffsets(uint32(n))
 	return n

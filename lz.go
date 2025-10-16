@@ -18,7 +18,7 @@
 // parser will generate a better compression ratio.
 //
 // Parsers may use different matchers to provide their functionality. One
-// Example is [GreedyParser] which can use multiple Matcher implementations.
+// Example is [greedyParser] which can use multiple Matcher implementations.
 //
 // The library supports the implementation of parsers outside of this package.
 //
@@ -100,4 +100,14 @@ type Parser interface {
 	ByteAt(off int64) (c byte, err error)
 
 	Reset(data []byte) error
+}
+
+type ParserOptions interface {
+	SetWindowSize(s int)
+	NewParser() (Parser, error)
+}
+
+type MatcherOptions interface {
+	SetWindowSize(s int)
+	NewMatcher() (Matcher, error)
 }

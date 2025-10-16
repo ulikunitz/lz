@@ -8,17 +8,30 @@ import (
 // the default block size can be configured.
 type GreedyParserOptions struct {
 	BlockSize int
+
+	MatcherOptions MatcherOptions
+}
+
+// SetWindowSize sets the window size for the parser and its matcher.
+func (opts *GreedyParserOptions) SetWindowSize(size int) {
+	if opts.MatcherOptions == nil {
+		opts.MatcherOptions = &HashOptions{}
+	}
+	opts.MatcherOptions.SetWindowSize(size)
 }
 
 // SetDefaults sets the default values for the GreedyParser options.
-func (opts *GreedyParserOptions) SetDefaults() {
+func (opts *GreedyParserOptions) setDefaults() {
 	if opts.BlockSize <= 0 {
 		opts.BlockSize = 128 << 10
+	}
+	if opts.MatcherOptions == nil {
+		opts.MatcherOptions = &HashOptions{}
 	}
 }
 
 // Verify checks that the options are valid.
-func (opts *GreedyParserOptions) Verify() error {
+func (opts *GreedyParserOptions) verify() error {
 	if opts.BlockSize <= 0 {
 		return fmt.Errorf("lz: BlockSize=%d; must be > 0",
 			opts.BlockSize)
@@ -26,30 +39,36 @@ func (opts *GreedyParserOptions) Verify() error {
 	return nil
 }
 
-// GreedyParser is a simple parser that always chooses the longest match.
-type GreedyParser struct {
+// greedyParser is a simple parser that always chooses the longest match.
+type greedyParser struct {
 	Matcher
 
 	GreedyParserOptions
 }
 
-// NewGreedyParser creates a new GreedyParser with the given options. If
+// NewParser creates a new GreedyParser with the given options. If
 // opts is nil, the default options are used.
-func NewGreedyParser(m Matcher, opts *GreedyParserOptions) (p *GreedyParser, err error) {
+func (opts *GreedyParserOptions) NewParser() (Parser, error) {
 	if opts == nil {
 		opts = &GreedyParserOptions{}
 	}
-	opts.SetDefaults()
-	if err = opts.Verify(); err != nil {
+	opts.setDefaults()
+	var err error
+	if err = opts.verify(); err != nil {
 		return nil, err
 	}
 
-	p = &GreedyParser{
+	m, err := opts.MatcherOptions.NewMatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	gp := &greedyParser{
 		Matcher:             m,
 		GreedyParserOptions: *opts,
 	}
 
-	return p, nil
+	return gp, nil
 }
 
 // Parse parses up to n bytes from the underlying byte stream and appends the
@@ -60,13 +79,17 @@ func NewGreedyParser(m Matcher, opts *GreedyParserOptions) (p *GreedyParser, err
 // If the NoTrailingLiterals flag is set, the parser will not include
 // trailing literals in the block. This can be used to parse a stream in fixed
 // size blocks without overlapping literals.
-func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
+func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
 
-	if n <= 0 {
-		return 0, fmt.Errorf("lz: n=%d; must be > 0", n)
+	if n < 0 {
+		return 0, fmt.Errorf("lz: n=%d; must be >= 0", n)
 	}
+	if n == 0 {
+		n = p.BlockSize
+	}
+
 	buf := p.Buf()
 	n = min(n, p.BlockSize, len(buf.Data)-buf.W)
 	if n == 0 {
@@ -126,4 +149,4 @@ func (p *GreedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 }
 
 // ensure that GreedyParser implements the Parser interface.
-var _ Parser = (*GreedyParser)(nil)
+var _ Parser = (*greedyParser)(nil)

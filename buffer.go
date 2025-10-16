@@ -148,7 +148,12 @@ func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 // index W it will be set to W. The number of bytes actually pruned is returned.
 func (b *Buffer) Prune(n int) int {
 	if n <= 0 {
-		return 0
+		if n < 0 {
+			return 0
+		}
+		// If the client doesn't provide a value, prune 3/4 of the
+		// buffer.
+		n = 3 * (b.Size / 4)
 	}
 	n = min(n, b.W)
 	k := copy(b.Data, b.Data[n:])

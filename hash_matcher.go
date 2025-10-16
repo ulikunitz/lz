@@ -12,66 +12,73 @@ type HashOptions struct {
 	InputLen int
 	HashBits int
 
-	BufferSize   int
-	WindowSize   int
-	MinMatchSize int
-	MaxMatchSize int
+	BufferSize  int
+	WindowSize  int
+	MinMatchLen int
+	MaxMatchLen int
 }
 
-// SetDefaults sets the default values for the hash options.
-func (opt *HashOptions) SetDefaults() {
-	if opt.InputLen == 0 {
-		opt.InputLen = 4
+// SetWindowSize sets the window size for the matcher.
+func (opts *HashOptions) SetWindowSize(size int) {
+	opts.WindowSize = size
+}
+
+// setDefaults sets the default values for the hash options.
+func (opts *HashOptions) setDefaults() {
+	if opts.InputLen == 0 {
+		opts.InputLen = 4
 	}
-	if opt.HashBits == 0 {
-		opt.HashBits = 16
+	if opts.HashBits == 0 {
+		opts.HashBits = 16
 	}
-	if opt.WindowSize == 0 {
-		opt.WindowSize = 32 << 10
+	if opts.WindowSize == 0 {
+		opts.WindowSize = 32 << 10
 	}
-	if opt.BufferSize == 0 {
-		opt.BufferSize = 64
+	if opts.BufferSize == 0 {
+		opts.BufferSize = opts.WindowSize
 	}
-	if opt.MinMatchSize == 0 {
-		opt.MinMatchSize = 2
+	if opts.MinMatchLen == 0 {
+		opts.MinMatchLen = 2
 	}
-	if opt.MaxMatchSize == 0 {
-		opt.MaxMatchSize = 273
+	if opts.MaxMatchLen == 0 {
+		opts.MaxMatchLen = 273
 	}
 }
 
-// Verify checks that the options are valid.
-func (opt *HashOptions) Verify() error {
-	if !(2 <= opt.InputLen && opt.InputLen <= 8) {
+// verify checks that the options are valid.
+func (opts *HashOptions) verify() error {
+	if !(2 <= opts.InputLen && opts.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in range [2,8]")
 	}
 	maxHashBits := 24
-	if t := 8 * opt.InputLen; t < maxHashBits {
+	if t := 8 * opts.InputLen; t < maxHashBits {
 		maxHashBits = t
 	}
-	if !(0 <= opt.HashBits && opt.HashBits <= maxHashBits) {
+	if !(0 <= opts.HashBits && opts.HashBits <= maxHashBits) {
 		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
-			opt.HashBits, maxHashBits)
+			opts.HashBits, maxHashBits)
 	}
-	if !(0 <= opt.WindowSize && int64(opt.WindowSize) <= math.MaxUint32) {
+	if !(0 <= opts.WindowSize && int64(opts.WindowSize) <= math.MaxUint32) {
 		return fmt.Errorf("lz: WindowSize=%d; must be in range [0..%d]",
-			opt.WindowSize, math.MaxUint32)
+			opts.WindowSize, math.MaxUint32)
 	}
-	if !(2 <= opt.MinMatchSize && opt.MinMatchSize <= opt.MaxMatchSize) {
+	if !(2 <= opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
 		return fmt.Errorf(
-			"lz: MinMatchSize=%d; must be in range [2..MaxMatchSize=%d]",
-			opt.MinMatchSize, opt.MaxMatchSize)
+			"lz: MinMatchLen=%d; must be in range [2..MaxMatchLen=%d]",
+			opts.MinMatchLen, opts.MaxMatchLen)
 	}
-	if !(1 < opt.BufferSize && int64(opt.BufferSize) <= math.MaxUint32) {
+	if !(1 < opts.BufferSize && int64(opts.BufferSize) <= math.MaxUint32) {
 		return fmt.Errorf("lz: BufferSize=%d; must be in range [2..%d]",
-			opt.BufferSize, math.MaxUint32)
+			opts.BufferSize, math.MaxUint32)
 	}
 	return nil
 }
 
-// HashMatcher implements matcher of a simple hash with one entry per hash
+var _ = (MatcherOptions)(&HashOptions{})
+
+// hashMatcher implements matcher of a simple hash with one entry per hash
 // value.
-type HashMatcher struct {
+type hashMatcher struct {
 	hash hash
 
 	Buffer
@@ -81,37 +88,39 @@ type HashMatcher struct {
 	HashOptions
 }
 
-// NewHashMatcher creates a new HashMatcher with the given options.
-func NewHashMatcher(opts *HashOptions) (m *HashMatcher, err error) {
+// NewMatcher creates a new HashMatcher with the given options.
+func (opts *HashOptions) NewMatcher() (Matcher, error) {
 	if opts == nil {
 		opts = &HashOptions{}
 	}
-	opts.SetDefaults()
-	if err = opts.Verify(); err != nil {
+	opts.setDefaults()
+
+	var err error
+	if err = opts.verify(); err != nil {
 		return nil, err
 	}
 
-	m = &HashMatcher{
+	hm := &hashMatcher{
 		HashOptions: *opts,
 	}
-	if err = m.Buffer.Init(m.BufferSize); err != nil {
+	if err = hm.Buffer.Init(hm.BufferSize); err != nil {
 		return nil, err
 	}
-	if err = m.hash.init(m.InputLen, m.HashBits); err != nil {
+	if err = hm.hash.init(hm.InputLen, hm.HashBits); err != nil {
 		return nil, err
 	}
 
-	return m, nil
+	return hm, nil
 }
 
 // Buf returns the buffer used by the matcher.
-func (m *HashMatcher) Buf() *Buffer {
+func (m *hashMatcher) Buf() *Buffer {
 	return &m.Buffer
 }
 
 // Reset resets the matcher to the initial state and uses the data slice into
 // the buffer.
-func (m *HashMatcher) Reset(data []byte) error {
+func (m *hashMatcher) Reset(data []byte) error {
 	if err := m.Buffer.Reset(data); err != nil {
 		return err
 	}
@@ -125,7 +134,7 @@ func (m *HashMatcher) Reset(data []byte) error {
 // Prune removes n bytes from the beginning of the buffer and updates the hash
 // table accordingly. It returns the actual number of bytes removed which can be
 // less than n if n is greater than the buffer that can be pruned.
-func (m *HashMatcher) Prune(n int) int {
+func (m *hashMatcher) Prune(n int) int {
 	n = m.Buffer.Prune(n)
 	m.hash.shiftOffsets(uint32(n))
 	return n
@@ -138,7 +147,7 @@ var ErrEndOfBuffer = errors.New("lz: end of buffer")
 var ErrStartOfBuffer = errors.New("lz: start of buffer")
 
 // Skip skips n bytes in the buffer and updates the hash table.
-func (m *HashMatcher) Skip(n int) (skipped int, err error) {
+func (m *hashMatcher) Skip(n int) (skipped int, err error) {
 	if n < 0 {
 		if n < -m.W {
 			n = -m.W
@@ -178,9 +187,9 @@ func (m *HashMatcher) Skip(n int) (skipped int, err error) {
 //
 // n limits the maximum length for a match and can be used to restrict the
 // matches to the end of the block to parse.
-func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
+func (m *hashMatcher) AppendEdges(q []Seq, n int) []Seq {
 	i := m.W
-	n = min(n, m.MaxMatchSize, len(m.Data)-i)
+	n = min(n, m.MaxMatchLen, len(m.Data)-i)
 	if n <= 0 {
 		return q
 	}
@@ -189,7 +198,7 @@ func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
 	p := m.Data[:i+n]
 	y := _getLE64(p[i : i+8])
 	q = append(q, Seq{LitLen: 1, Aux: uint32(y) & 0xff})
-	if i >= b || n < m.MinMatchSize {
+	if i >= b || n < m.MinMatchLen {
 		return q
 	}
 
@@ -206,7 +215,7 @@ func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
 		return q
 	}
 	k := min(bits.TrailingZeros64(_getLE64(p[j:])^y)>>3, len(p)-i)
-	if k < m.MinMatchSize {
+	if k < m.MinMatchLen {
 		return q
 	}
 	if k == 8 {
@@ -217,4 +226,4 @@ func (m *HashMatcher) AppendEdges(q []Seq, n int) []Seq {
 }
 
 // ensure that the HashMatcher implements the Matcher interface.
-var _ Matcher = (*HashMatcher)(nil)
+var _ Matcher = (*hashMatcher)(nil)

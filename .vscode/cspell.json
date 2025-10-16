@@ -55,6 +55,7 @@
         "foofoobarfoobar",
         "foohello",
         "fout",
+        "golint",
         "gsum",
         "hbits",
         "hcfg",
@@ -78,6 +79,7 @@
         "testdata",
         "ulikunitz",
         "xxxhello",
+        "xztune",
         "zstd"
     ],
     "import": []

@@ -5,27 +5,27 @@ import "testing"
 func TestGreedyParser(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	hashOptions := HashOptions{
-		InputLen: 3,
-		HashBits: 16,
-
-		BufferSize:   64,
-		WindowSize:   32,
-		MinMatchSize: 3,
-		MaxMatchSize: 64,
-	}
-
-	hm, err := NewHashMatcher(&hashOptions)
-	if err != nil {
-		t.Fatalf("NewHashMatcher: %v", err)
-	}
-
-	gpOptions := GreedyParserOptions{
+	opts := GreedyParserOptions{
 		BlockSize: 128,
+		MatcherOptions: &HashOptions{
+			InputLen: 3,
+			HashBits: 16,
+
+			BufferSize:  64,
+			WindowSize:  32,
+			MinMatchLen: 3,
+			MaxMatchLen: 64,
+		},
 	}
-	gp, err := NewGreedyParser(hm, &gpOptions)
+	hashOptions := opts.MatcherOptions.(*HashOptions)
+
+	p, err := opts.NewParser()
 	if err != nil {
 		t.Fatalf("NewGreedyParser: %v", err)
+	}
+	gp, ok := p.(*greedyParser)
+	if !ok {
+		t.Fatalf("NewGreedyParser returned type %T; want *greedyParser", p)
 	}
 
 	buf := gp.Buf()
@@ -61,15 +61,15 @@ func TestGreedyParser(t *testing.T) {
 	if n != len(str) {
 		t.Fatalf("d.WriteBlock returned n=%d; want %d", n, len(str))
 	}
-	p := make([]byte, len(str))
-	n, err = d.Read(p)
+	q := make([]byte, len(str))
+	n, err = d.Read(q)
 	if err != nil {
 		t.Fatalf("d.Read: %v", err)
 	}
 	if n != len(str) {
 		t.Fatalf("d.Read returned n=%d; want %d", n, len(str))
 	}
-	if string(p) != str {
-		t.Fatalf("decoded string = %q; want %q", string(p), str)
+	if string(q) != str {
+		t.Fatalf("decoded string = %q; want %q", string(q), str)
 	}
 }

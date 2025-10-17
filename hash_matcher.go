@@ -83,6 +83,7 @@ type hashMatcher struct {
 
 	Buffer
 
+	q        []Seq
 	trailing int
 
 	HashOptions
@@ -102,6 +103,7 @@ func (opts *HashOptions) NewMatcher() (Matcher, error) {
 
 	hm := &hashMatcher{
 		HashOptions: *opts,
+		q:           make([]Seq, 0, 2),
 	}
 	if err = hm.Buffer.Init(hm.BufferSize); err != nil {
 		return nil, err
@@ -190,7 +192,8 @@ func (m *hashMatcher) Skip(n int) (skipped int, err error) {
 //
 // n limits the maximum length for a match and can be used to restrict the
 // matches to the end of the block to parse.
-func (m *hashMatcher) AppendEdges(q []Seq, n int) []Seq {
+func (m *hashMatcher) Edges(n int) []Seq {
+	q := m.q[:0]
 	i := m.W
 	n = min(n, m.MaxMatchLen, len(m.Data)-i)
 	if n <= 0 {
@@ -201,6 +204,7 @@ func (m *hashMatcher) AppendEdges(q []Seq, n int) []Seq {
 	p := m.Data[:i+n]
 	y := _getLE64(p[i : i+8])
 	q = append(q, Seq{LitLen: 1, Aux: uint32(y) & 0xff})
+	m.q = q
 	if i >= b || n < m.MinMatchLen {
 		return q
 	}
@@ -225,6 +229,7 @@ func (m *hashMatcher) AppendEdges(q []Seq, n int) []Seq {
 		k += lcp(p[i+8:], p[j+8:])
 	}
 	q = append(q, Seq{Offset: uint32(o), MatchLen: uint32(k)})
+	m.q = q
 	return q
 }
 

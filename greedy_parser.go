@@ -80,8 +80,6 @@ func (opts *GreedyParserOptions) NewParser() (Parser, error) {
 // trailing literals in the block. This can be used to parse a stream in fixed
 // size blocks without overlapping literals.
 func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
-	blk.Sequences = blk.Sequences[:0]
-	blk.Literals = blk.Literals[:0]
 
 	if n < 0 {
 		return 0, fmt.Errorf("lz: n=%d; must be >= 0", n)
@@ -99,16 +97,17 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	if blk == nil {
 		return p.Matcher.Skip(n)
 	}
+	blk.Sequences = blk.Sequences[:0]
+	blk.Literals = blk.Literals[:0]
 
 	iLit := 0
-	q := make([]Seq, 0, 128)
 	b := buf.W + n
 	for {
 		k := b - buf.W
 		if k <= 0 {
 			break
 		}
-		q = p.AppendEdges(q[:0], k)
+		q := p.Edges(k)
 		if len(q) == 0 {
 			panic("lz: no edges returned by matcher")
 		}

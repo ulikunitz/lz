@@ -65,7 +65,7 @@ func (b *Block) Len() int64 {
 
 // Matcher is responsible to find matches or Literal bytes in the byte stream.
 type Matcher interface {
-	AppendEdges(q []Seq, n int) []Seq
+	Edges(n int) []Seq
 	Skip(n int) (skipped int, err error)
 
 	Prune(n int) int

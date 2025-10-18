@@ -79,6 +79,11 @@ type Matcher interface {
 	Buf() *Buffer
 }
 
+type MatcherOptions interface {
+	SetWindowSize(s int)
+	NewMatcher() (Matcher, error)
+}
+
 // ParserFlags define optional parser behavior.
 type ParserFlags int
 
@@ -107,7 +112,15 @@ type ParserOptions interface {
 	NewParser() (Parser, error)
 }
 
-type MatcherOptions interface {
-	SetWindowSize(s int)
-	NewMatcher() (Matcher, error)
+type Entry struct{ i, v uint32 }
+
+// Mapper will be typically implemented by hash tables.
+//
+// The Put method return the number of trailing bytes that could not be hashed.
+type Mapper interface {
+	InputLen() int
+	Reset()
+	Shift(delta int)
+	Put(a, w int, p []byte) int
+	Get(v uint64) []Entry
 }

@@ -151,7 +151,7 @@ func (cfg config) trIntroSort(sa, isa []int32, depth, first, last int, budget *b
 				if 0 <= trlink {
 					s[trlink].d = -1
 				}
-				trPartialCopy(sa, isa, first, a, b, last, depth)
+				trPartialCopy(sa, isa, first, a, b, depth)
 			}
 			if len(s) == 0 {
 				return
@@ -755,7 +755,7 @@ func trCopy(sa, isa []int32, first, a, b, last, depth int) {
 	}
 }
 
-func trPartialCopy(sa, isa []int32, first, a, b, last, depth int) {
+func trPartialCopy(sa, isa []int32, first, a, b, depth int) {
 	v := int32(b - 1)
 	newrank := int32(-1)
 	lastrank := int32(-1)

@@ -1,4 +1,11 @@
 # Changelog lz module
+
+## v0.6.3
+
+* Introduced abstract Mapper, which will not require to rewrite all
+  Matcher code all the time.
+* AppendEdges became Edges simplifying its interface
+* code fixes
  
 ## v0.6.2 
  

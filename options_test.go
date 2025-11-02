@@ -24,6 +24,6 @@ func TestParserOptionsJSON(t *testing.T) {
 	}
 
 	if optsG != opts {
-		t.Fatalf("json.Unmarshl: got %+v; want %+v", optsG, opts)
+		t.Fatalf("json.Unmarshal: got %+v; want %+v", optsG, opts)
 	}
 }

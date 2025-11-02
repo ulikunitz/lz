@@ -70,6 +70,7 @@
         "lzold",
         "nlz",
         "noinline",
+        "omitzero",
         "pcfg",
         "pdata",
         "proot",

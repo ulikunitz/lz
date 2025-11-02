@@ -57,7 +57,7 @@ type ParserOptions struct {
 	BlockSize      int  `json:",omitzero"`
 	WindowSize     int  `json:",omitzero"`
 	BufferSize     int  `json:",omitzero"`
-	NoPurges       bool `json:",omitzero"`
+	NoPruning       bool `json:",omitzero"`
 	MaintainWindow bool `json:",omitzero"`
 	MinMatchLen    int  `json:",omitzero"`
 	MaxMatchLen    int  `json:",omitzero"`
@@ -120,12 +120,12 @@ func (opts *ParserOptions) verify() error {
 		return fmt.Errorf("lz: invalid BufferSize=%d; must be > 0", opts.BufferSize)
 	}
 	if opts.MaintainWindow {
-		if opts.NoPurges && opts.BufferSize < opts.WindowSize {
+		if opts.NoPruning && opts.BufferSize < opts.WindowSize {
 			return fmt.Errorf(
 				"lz: invalid options; BufferSize=%d must be >= WindowSize=%d when MaintainWindow is true and NoPurges is true",
 				opts.BufferSize, opts.WindowSize)
 		}
-		if !opts.NoPurges && opts.BufferSize <= opts.WindowSize {
+		if !opts.NoPruning && opts.BufferSize <= opts.WindowSize {
 			return fmt.Errorf(
 				"lz: invalid options; BufferSize=%d must be > WindowSize=%d when MaintainWindow is true",
 				opts.BufferSize, opts.WindowSize)

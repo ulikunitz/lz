@@ -31,9 +31,11 @@ type genericMatcher[M mapper] struct {
 	q        []Seq
 	trailing int
 
-	MinMatchLen int
-	MaxMatchLen int
-	WindowSize  int
+	MinMatchLen    int
+	MaxMatchLen    int
+	WindowSize     int
+	NoPruning      bool
+	MaintainWindow bool
 }
 
 func newMatcher[M mapper](m M, opts *ParserOptions) (*genericMatcher[M], error) {
@@ -43,10 +45,12 @@ func newMatcher[M mapper](m M, opts *ParserOptions) (*genericMatcher[M], error) 
 	}
 
 	matcher := &genericMatcher[M]{
-		mapper:      m,
-		MinMatchLen: opts.MinMatchLen,
-		MaxMatchLen: opts.MaxMatchLen,
-		WindowSize:  opts.WindowSize,
+		mapper:         m,
+		MinMatchLen:    opts.MinMatchLen,
+		MaxMatchLen:    opts.MaxMatchLen,
+		WindowSize:     opts.WindowSize,
+		NoPruning:      opts.NoPruning,
+		MaintainWindow: opts.MaintainWindow,
 	}
 	if err = matcher.Buffer.Init(opts.BufferSize); err != nil {
 		return nil, err
@@ -77,8 +81,14 @@ func (m *genericMatcher[M]) Reset(data []byte) error {
 // table accordingly. It returns the actual number of bytes removed which can be
 // less than n if n is greater than the buffer that can be pruned.
 func (m *genericMatcher[M]) Prune(n int) int {
+	if m.NoPruning {
+		return 0
+	}
 	if n == 0 {
 		n = max(m.W-m.WindowSize, 3*(m.Buffer.Size/4), 0)
+		if !m.MaintainWindow {
+			n = max(n, 3*(m.Buffer.Size/4))
+		}
 	}
 	n = m.Buffer.Prune(n)
 	m.mapper.Shift(n)

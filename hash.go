@@ -94,7 +94,7 @@ func (h *hash) Shift(delta int) {
 }
 
 func (h *hash) Put(a, w int, p []byte) int {
-	b := max(len(p)-h.inputLen+1, w, 0)
+	b := min(w, max(len(p)-h.inputLen+1, 0))
 	_p := p[:b+7]
 	for i := a; i < b; i++ {
 		v := _getLE64(_p[i:])

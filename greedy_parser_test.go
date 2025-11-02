@@ -5,21 +5,21 @@ import "testing"
 func TestGreedyParser(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	opts := GreedyParserOptions{
+	opts := ParserOptions{
+		Parser:    Greedy,
 		BlockSize: 128,
-		MatcherOptions: &HashOptions{
-			InputLen: 3,
-			HashBits: 16,
 
-			BufferSize:  64,
-			WindowSize:  32,
-			MinMatchLen: 3,
-			MaxMatchLen: 64,
-		},
+		Mapper:   Hash,
+		InputLen: 3,
+		HashBits: 16,
+
+		BufferSize:  64,
+		WindowSize:  32,
+		MinMatchLen: 3,
+		MaxMatchLen: 64,
 	}
-	hashOptions := opts.MatcherOptions.(*HashOptions)
 
-	p, err := opts.NewParser()
+	p, err := NewParser(&opts)
 	if err != nil {
 		t.Fatalf("NewGreedyParser: %v", err)
 	}
@@ -47,8 +47,8 @@ func TestGreedyParser(t *testing.T) {
 	}
 
 	decoderOpts := DecoderOptions{
-		WindowSize: hashOptions.WindowSize,
-		BufferSize: 2 * hashOptions.WindowSize,
+		WindowSize: opts.WindowSize,
+		BufferSize: 2 * opts.WindowSize,
 	}
 	d, err := NewDecoder(&decoderOpts)
 	if err != nil {

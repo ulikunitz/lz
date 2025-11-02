@@ -6,6 +6,19 @@ import (
 	"math"
 )
 
+type entry struct{ i, v uint32 }
+
+// mapper will be typically implemented by hash tables.
+//
+// The Put method return the number of trailing bytes that could not be hashed.
+type mapper interface {
+	InputLen() int
+	Reset()
+	Shift(delta int)
+	Put(a, w int, p []byte) int
+	Get(v uint64) []entry
+}
+
 // prime is used by [hashValue].
 const prime = 9920624304325388887
 
@@ -18,7 +31,7 @@ func hashValue(x uint64, shift uint) uint32 {
 
 // The hash implements a match finder and can be directly used in a parser.
 type hash struct {
-	table    []Entry
+	table    []entry
 	mask     uint64
 	shift    uint
 	inputLen int
@@ -41,10 +54,10 @@ func (h *hash) init(inputLen, hashBits int) error {
 	if n <= cap(h.table) {
 		h.table = h.table[:n]
 		for i := range h.table {
-			h.table[i] = Entry{}
+			h.table[i] = entry{}
 		}
 	} else {
-		h.table = make([]Entry, n)
+		h.table = make([]entry, n)
 	}
 
 	h.mask = 1<<(uint(inputLen)*8) - 1
@@ -57,7 +70,7 @@ func (h *hash) init(inputLen, hashBits int) error {
 // Reset clears the hash table.
 func (h *hash) Reset() {
 	for i := range h.table {
-		h.table[i] = Entry{}
+		h.table[i] = entry{}
 	}
 }
 
@@ -73,7 +86,7 @@ func (h *hash) Shift(delta int) {
 	d := uint32(delta)
 	for i, e := range h.table {
 		if e.i < d {
-			h.table[i] = Entry{}
+			h.table[i] = entry{}
 		} else {
 			h.table[i].i = e.i - d
 		}
@@ -86,104 +99,34 @@ func (h *hash) Put(a, w int, p []byte) int {
 	for i := a; i < b; i++ {
 		v := _getLE64(_p[i:])
 		h.table[hashValue(v&h.mask, h.shift)] =
-			Entry{i: uint32(i), v: uint32(v)}
+			entry{i: uint32(i), v: uint32(v)}
 	}
 	return w - b
 }
 
-func (h *hash) Get(v uint64) []Entry {
+func (h *hash) Get(v uint64) []entry {
 	i := hashValue(v&h.mask, h.shift)
 	return h.table[i : i+1]
 }
 
-// HashOptions contains the options for the HashMatcher.
-type HashOptions struct {
-	InputLen int
-	HashBits int
-
-	BufferSize  int
-	WindowSize  int
-	MinMatchLen int
-	MaxMatchLen int
-}
-
-// SetWindowSize sets the window size for the matcher.
-func (opts *HashOptions) SetWindowSize(size int) {
-	opts.WindowSize = size
-}
-
-// setDefaults sets the default values for the hash options.
-func (opts *HashOptions) setDefaults() {
+func setHashDefaults(opts *ParserOptions) {
 	if opts.InputLen == 0 {
 		opts.InputLen = 4
 	}
 	if opts.HashBits == 0 {
 		opts.HashBits = 16
 	}
-	if opts.WindowSize == 0 {
-		opts.WindowSize = 32 << 10
-	}
-	if opts.BufferSize == 0 {
-		opts.BufferSize = opts.WindowSize
-	}
-	if opts.MinMatchLen == 0 {
-		opts.MinMatchLen = 2
-	}
-	if opts.MaxMatchLen == 0 {
-		opts.MaxMatchLen = 273
-	}
 }
 
-// verify checks that the options are valid.
-func (opts *HashOptions) verify() error {
+func verifyHashOptions(opts *ParserOptions) error {
 	if !(2 <= opts.InputLen && opts.InputLen <= 8) {
-		return fmt.Errorf("lz: InputLen must be in range [2,8]")
+		return fmt.Errorf("lz: invalid InputLen=%d; must be 2..8", opts.InputLen)
 	}
-	maxHashBits := 24
-	if t := 8 * opts.InputLen; t < maxHashBits {
-		maxHashBits = t
-	}
-	if !(0 <= opts.HashBits && opts.HashBits <= maxHashBits) {
-		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
-			opts.HashBits, maxHashBits)
-	}
-	if !(0 <= opts.WindowSize && int64(opts.WindowSize) <= math.MaxUint32) {
-		return fmt.Errorf("lz: WindowSize=%d; must be in range [0..%d]",
-			opts.WindowSize, math.MaxUint32)
-	}
-	if !(2 <= opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
+	maxHashBits := min(24, 8*opts.InputLen)
+	if !(opts.HashBits >= 0 && opts.HashBits <= maxHashBits) {
 		return fmt.Errorf(
-			"lz: MinMatchLen=%d; must be in range [2..MaxMatchLen=%d]",
-			opts.MinMatchLen, opts.MaxMatchLen)
-	}
-	if !(1 < opts.BufferSize && int64(opts.BufferSize) <= math.MaxUint32) {
-		return fmt.Errorf("lz: BufferSize=%d; must be in range [2..%d]",
-			opts.BufferSize, math.MaxUint32)
+			"lz: invalid HashBits=%d; must be in range 0..%d",
+			opts.HashBits, maxHashBits)
 	}
 	return nil
 }
-
-func (opts *HashOptions) NewMatcher() (Matcher, error) {
-	var err error
-
-	opts.setDefaults()
-	if err = opts.verify(); err != nil {
-		return nil, err
-	}
-
-	h := new(hash)
-	if err = h.init(opts.InputLen, opts.HashBits); err != nil {
-		return nil, err
-	}
-
-	matcherOpts := &matcherOptions{
-		WindowSize:  opts.WindowSize,
-		BufferSize:  opts.BufferSize,
-		MinMatchLen: opts.MinMatchLen,
-		MaxMatchLen: opts.MaxMatchLen,
-	}
-
-	return newMatcher(h, matcherOpts)
-}
-
-var _ = (MatcherOptions)(&HashOptions{})

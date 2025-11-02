@@ -2,14 +2,28 @@ package lz
 
 import (
 	"errors"
-	"fmt"
-	"math"
+	"io"
 	"math/bits"
 )
 
-// matcher[M] implements matcher of a simple hash with one entry per hash
-// value.
-type matcher[M Mapper] struct {
+// matcher is responsible to find matches or Literal bytes in the byte stream.
+type matcher interface {
+	Edges(n int) []Seq
+	Skip(n int) (skipped int, err error)
+
+	Prune(n int) int
+	Write(p []byte) (n int, err error)
+	ReadFrom(r io.Reader) (n int64, err error)
+
+	ReadAt(p []byte, off int64) (n int, err error)
+	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
+	Buf() *Buffer
+}
+
+// genericMatcher[M] implements a matcher using the provided mapper M.
+type genericMatcher[M mapper] struct {
 	mapper M
 
 	Buffer
@@ -17,69 +31,22 @@ type matcher[M Mapper] struct {
 	q        []Seq
 	trailing int
 
-	matcherOptions
-}
-
-type matcherOptions struct {
-	WindowSize  int
-	BufferSize  int
 	MinMatchLen int
 	MaxMatchLen int
+	WindowSize  int
 }
 
-func (opts *matcherOptions) setDefaults() {
-	if opts.WindowSize == 0 {
-		opts.WindowSize = 32 << 10
-	}
-	if opts.BufferSize == 0 {
-		opts.BufferSize = 8 << 20
-	}
-	if opts.MinMatchLen == 0 {
-		opts.MinMatchLen = 2
-	}
-	if opts.MaxMatchLen == 0 {
-		opts.MaxMatchLen = 273
-	}
-}
-
-func (opts *matcherOptions) verify() error {
-	if !(0 <= opts.WindowSize && int64(opts.WindowSize) <= math.MaxUint32) {
-		return fmt.Errorf("lz: WindowSize=%d; must be in range [0..%d]",
-			opts.WindowSize, math.MaxUint32)
-	}
-	if !(1 < opts.BufferSize && int64(opts.BufferSize) <= math.MaxUint32) {
-		return fmt.Errorf("lz: BufferSize=%d; must be in range [2..%d]",
-			opts.BufferSize, math.MaxUint32)
-	}
-	if !(0 < opts.MinMatchLen && int64(opts.MinMatchLen) <= math.MaxUint32) {
-		return fmt.Errorf("lz: MinMatchLen=%d; must be in range [1..%d]",
-			opts.MinMatchLen, math.MaxUint32)
-	}
-	if !(0 < opts.MaxMatchLen && int64(opts.MaxMatchLen) <= math.MaxUint32) {
-		return fmt.Errorf("lz: MaxMatchLen=%d; must be in range [1..%d]",
-			opts.MaxMatchLen, math.MaxUint32)
-	}
-	if !(opts.MinMatchLen <= opts.MaxMatchLen) {
-		return fmt.Errorf(
-			"lz: MinMatchLen=%d; must be <= MaxMatchLen=%d",
-			opts.MinMatchLen, opts.MaxMatchLen)
-	}
-	return nil
-}
-
-func newMatcher[M Mapper](m M, opts *matcherOptions) (*matcher[M], error) {
+func newMatcher[M mapper](m M, opts *ParserOptions) (*genericMatcher[M], error) {
 	var err error
 	if opts == nil {
-		opts = &matcherOptions{}
-	}
-	opts.setDefaults()
-	if err = opts.verify(); err != nil {
-		return nil, err
+		return nil, errors.New("lz: matcher options missing")
 	}
 
-	matcher := &matcher[M]{
-		mapper:         m,
-		matcherOptions: *opts,
+	matcher := &genericMatcher[M]{
+		mapper:      m,
+		MinMatchLen: opts.MinMatchLen,
+		MaxMatchLen: opts.MaxMatchLen,
+		WindowSize:  opts.WindowSize,
 	}
 	if err = matcher.Buffer.Init(opts.BufferSize); err != nil {
 		return nil, err
@@ -89,13 +56,13 @@ func newMatcher[M Mapper](m M, opts *matcherOptions) (*matcher[M], error) {
 }
 
 // Buf returns the buffer used by the matcher.
-func (m *matcher[M]) Buf() *Buffer {
+func (m *genericMatcher[M]) Buf() *Buffer {
 	return &m.Buffer
 }
 
 // Reset resets the matcher to the initial state and uses the data slice into
 // the buffer.
-func (m *matcher[M]) Reset(data []byte) error {
+func (m *genericMatcher[M]) Reset(data []byte) error {
 	if err := m.Buffer.Reset(data); err != nil {
 		return err
 	}
@@ -109,7 +76,7 @@ func (m *matcher[M]) Reset(data []byte) error {
 // Prune removes n bytes from the beginning of the buffer and updates the hash
 // table accordingly. It returns the actual number of bytes removed which can be
 // less than n if n is greater than the buffer that can be pruned.
-func (m *matcher[M]) Prune(n int) int {
+func (m *genericMatcher[M]) Prune(n int) int {
 	if n == 0 {
 		n = max(m.W-m.WindowSize, 3*(m.Buffer.Size/4), 0)
 	}
@@ -125,7 +92,7 @@ var ErrEndOfBuffer = errors.New("lz: end of buffer")
 var ErrStartOfBuffer = errors.New("lz: start of buffer")
 
 // Skip skips n bytes in the buffer and updates the hash table.
-func (m *matcher[M]) Skip(n int) (skipped int, err error) {
+func (m *genericMatcher[M]) Skip(n int) (skipped int, err error) {
 	if n < 0 {
 		if n < -m.W {
 			n = -m.W
@@ -155,7 +122,7 @@ func (m *matcher[M]) Skip(n int) (skipped int, err error) {
 //
 // n limits the maximum length for a match and can be used to restrict the
 // matches to the end of the block to parse.
-func (m *matcher[M]) Edges(n int) []Seq {
+func (m *genericMatcher[M]) Edges(n int) []Seq {
 	q := m.q[:0]
 	i := m.W
 	n = min(n, m.MaxMatchLen, len(m.Data)-i)
@@ -193,5 +160,4 @@ func (m *matcher[M]) Edges(n int) []Seq {
 	return q
 }
 
-// ensure that the matcher[M] implements the Matcher interface.
-var _ Matcher = (*matcher[*hash])(nil)
+var _ matcher = (*genericMatcher[*hash])(nil)

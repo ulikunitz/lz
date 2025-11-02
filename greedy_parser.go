@@ -4,71 +4,11 @@ import (
 	"fmt"
 )
 
-// GreedyParserOptions contains the options for the GreedyParser. Right now only
-// the default block size can be configured.
-type GreedyParserOptions struct {
-	BlockSize int
-
-	MatcherOptions MatcherOptions
-}
-
-// SetWindowSize sets the window size for the parser and its matcher.
-func (opts *GreedyParserOptions) SetWindowSize(size int) {
-	if opts.MatcherOptions == nil {
-		opts.MatcherOptions = &HashOptions{}
-	}
-	opts.MatcherOptions.SetWindowSize(size)
-}
-
-// SetDefaults sets the default values for the GreedyParser options.
-func (opts *GreedyParserOptions) setDefaults() {
-	if opts.BlockSize <= 0 {
-		opts.BlockSize = 128 << 10
-	}
-	if opts.MatcherOptions == nil {
-		opts.MatcherOptions = &HashOptions{}
-	}
-}
-
-// Verify checks that the options are valid.
-func (opts *GreedyParserOptions) verify() error {
-	if opts.BlockSize <= 0 {
-		return fmt.Errorf("lz: BlockSize=%d; must be > 0",
-			opts.BlockSize)
-	}
-	return nil
-}
-
 // greedyParser is a simple parser that always chooses the longest match.
 type greedyParser struct {
-	Matcher
+	matcher
 
-	GreedyParserOptions
-}
-
-// NewParser creates a new GreedyParser with the given options. If
-// opts is nil, the default options are used.
-func (opts *GreedyParserOptions) NewParser() (Parser, error) {
-	if opts == nil {
-		opts = &GreedyParserOptions{}
-	}
-	opts.setDefaults()
-	var err error
-	if err = opts.verify(); err != nil {
-		return nil, err
-	}
-
-	m, err := opts.MatcherOptions.NewMatcher()
-	if err != nil {
-		return nil, err
-	}
-
-	gp := &greedyParser{
-		Matcher:             m,
-		GreedyParserOptions: *opts,
-	}
-
-	return gp, nil
+	ParserOptions
 }
 
 // Parse parses up to n bytes from the underlying byte stream and appends the
@@ -95,7 +35,7 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	}
 
 	if blk == nil {
-		return p.Matcher.Skip(n)
+		return p.matcher.Skip(n)
 	}
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
@@ -128,7 +68,7 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 			blk.Sequences = append(blk.Sequences, seq)
 		}
 
-		_, err = p.Matcher.Skip(int(seqLen))
+		_, err = p.matcher.Skip(int(seqLen))
 		if err != nil {
 			panic(fmt.Errorf(
 				"lz: unexpected error from Skip: %w", err))
@@ -137,7 +77,7 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 
 	if flags&NoTrailingLiterals != 0 {
 		l := len(blk.Literals) - iLit
-		_, err := p.Matcher.Skip(-l)
+		_, err := p.matcher.Skip(-l)
 		if err != nil {
 			panic(err)
 		}
@@ -147,5 +87,21 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	return n, err
 }
 
+func (p *greedyParser) Options() ParserOptions {
+	return p.ParserOptions
+}
+
 // ensure that GreedyParser implements the Parser interface.
 var _ Parser = (*greedyParser)(nil)
+
+func newGreedyParser(opts *ParserOptions) (Parser, error) {
+	var err error
+
+	gp := &greedyParser{
+		ParserOptions: *opts,
+	}
+	if gp.matcher, err = newMatcherOptions(opts); err != nil {
+		return nil, err
+	}
+	return gp, nil
+}

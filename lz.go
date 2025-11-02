@@ -63,27 +63,6 @@ func (b *Block) Len() int64 {
 	return n
 }
 
-// Matcher is responsible to find matches or Literal bytes in the byte stream.
-type Matcher interface {
-	Edges(n int) []Seq
-	Skip(n int) (skipped int, err error)
-
-	Prune(n int) int
-	Write(p []byte) (n int, err error)
-	ReadFrom(r io.Reader) (n int64, err error)
-
-	ReadAt(p []byte, off int64) (n int, err error)
-	ByteAt(off int64) (c byte, err error)
-
-	Reset(data []byte) error
-	Buf() *Buffer
-}
-
-type MatcherOptions interface {
-	SetWindowSize(s int)
-	NewMatcher() (Matcher, error)
-}
-
 // ParserFlags define optional parser behavior.
 type ParserFlags int
 
@@ -105,22 +84,6 @@ type Parser interface {
 	ByteAt(off int64) (c byte, err error)
 
 	Reset(data []byte) error
-}
 
-type ParserOptions interface {
-	SetWindowSize(s int)
-	NewParser() (Parser, error)
-}
-
-type Entry struct{ i, v uint32 }
-
-// Mapper will be typically implemented by hash tables.
-//
-// The Put method return the number of trailing bytes that could not be hashed.
-type Mapper interface {
-	InputLen() int
-	Reset()
-	Shift(delta int)
-	Put(a, w int, p []byte) int
-	Get(v uint64) []Entry
+	Options() ParserOptions
 }

@@ -91,7 +91,6 @@ func lcp(p, q []byte) int {
 		p = p[4:]
 	}
 	// len(q) < 4
-	_ = p[len(q)-1]
 	for i, b := range q {
 		if p[i] != b {
 			break

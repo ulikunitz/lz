@@ -25,7 +25,10 @@
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
 package lz
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
 // consisting of the offset, the length of the match, and the number of
@@ -61,6 +64,26 @@ func (b *Block) Len() int64 {
 		n += int64(s.MatchLen)
 	}
 	return n
+}
+
+// LenCheck computes the length of the block in bytes and checks that the sum
+// of the literal lengths in the sequences matches the length of the Literals
+// byte slice. If they do not match, an error is returned.
+func (b *Block) LenCheck() (n int64, err error) {
+	litSum := int64(0)
+	matchLen := int64(0)
+	for _, s := range b.Sequences {
+		litSum += int64(s.LitLen)
+		matchLen += int64(s.MatchLen)
+	}
+
+	litLen := int64(len(b.Literals))
+	if litSum > litLen {
+		return 0, fmt.Errorf(
+			"lz: block sequence literal lengths %d > literals length %d",
+			litSum, litLen)
+	}
+	return litLen + matchLen, nil
 }
 
 // ParserFlags define optional parser behavior.

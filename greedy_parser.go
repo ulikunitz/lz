@@ -11,6 +11,8 @@ type greedyParser struct {
 	ParserOptions
 }
 
+const debugGreedyParser = true
+
 // Parse parses up to n bytes from the underlying byte stream and appends the
 // resulting sequences and literals to blk. If blk is nil, the parser will skip
 // n bytes in the input stream. The number of bytes parsed or skipped is
@@ -29,7 +31,8 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	}
 
 	buf := p.Buf()
-	n = min(n, p.BlockSize, len(buf.Data)-buf.W)
+	w := buf.W
+	n = min(n, p.BlockSize, len(buf.Data)-w)
 	if n == 0 {
 		return 0, ErrEndOfBuffer
 	}
@@ -84,6 +87,25 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 		n -= l
 		blk.Literals = blk.Literals[:iLit]
 	}
+
+	if debugGreedyParser {
+		nBuf := buf.W - w
+		if nBuf != n {
+			return n, fmt.Errorf(
+				"lz: greedyParser.Parse: nBuf=%d != n=%d",
+				nBuf, n)
+		}
+		nBlk, err := blk.LenCheck()
+		if err != nil {
+			return n, err
+		}
+		if nBlk != int64(n) {
+			return n, fmt.Errorf(
+				"lz: greedyParser.Parse: nBlk=%d != n=%d",
+				nBlk, n)
+		}
+	}
+
 	return n, err
 }
 

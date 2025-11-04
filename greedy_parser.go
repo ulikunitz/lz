@@ -11,6 +11,7 @@ type greedyParser struct {
 	ParserOptions
 }
 
+// TODO: remove debug code or at least disable it by default.
 const debugGreedyParser = true
 
 // Parse parses up to n bytes from the underlying byte stream and appends the

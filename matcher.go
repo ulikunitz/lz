@@ -85,10 +85,10 @@ func (m *genericMatcher[M]) Prune(n int) int {
 		return 0
 	}
 	if n == 0 {
-		n = max(m.W-m.WindowSize, 3*(m.Buffer.Size/4), 0)
-		if !m.MaintainWindow {
-			n = max(n, 3*(m.Buffer.Size/4))
-		}
+		n = 3 * (m.Buffer.Size / 4)
+	}
+	if m.MaintainWindow {
+		n = min(n, m.W-m.WindowSize)
 	}
 	n = m.Buffer.Prune(n)
 	m.mapper.Shift(n)

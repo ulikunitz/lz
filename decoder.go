@@ -21,28 +21,41 @@ type DecoderOptions struct {
 	BufferSize int
 }
 
-// setDefaults assigns default values to zero fields in DecoderConfig.
-func (cfg *DecoderOptions) setDefaults() {
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 << 20
+func (opts *DecoderOptions) NewDecoder() (*Decoder, error) {
+	var err error
+	opts.setDefaults()
+	if err = opts.verify(); err != nil {
+		return nil, err
 	}
-	if cfg.BufferSize == 0 {
-		cfg.BufferSize = 2 * cfg.WindowSize
+	d := &Decoder{}
+	if err = d.Init(*opts); err != nil {
+		return nil, err
+	}
+	return d, nil
+}
+
+// setDefaults assigns default values to zero fields in DecoderConfig.
+func (opts *DecoderOptions) setDefaults() {
+	if opts.WindowSize == 0 {
+		opts.WindowSize = 8 << 20
+	}
+	if opts.BufferSize == 0 {
+		opts.BufferSize = 2 * opts.WindowSize
 	}
 }
 
 // verify checks the parameters of the DecoderConfig value and returns an error
 // for the first issue found.
-func (cfg *DecoderOptions) verify() error {
-	if !(0 <= cfg.WindowSize && cfg.WindowSize <= math.MaxUint32) {
+func (opts *DecoderOptions) verify() error {
+	if !(0 <= opts.WindowSize && opts.WindowSize <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: WindowSize=%d out of range [%d..%d]",
-			cfg.WindowSize, 0, math.MaxUint32)
+			opts.WindowSize, 0, math.MaxUint32)
 	}
-	if !(cfg.WindowSize < cfg.BufferSize) {
+	if !(opts.WindowSize < opts.BufferSize) {
 		return fmt.Errorf(
 			"lz.DecConfig: BufferSize=%d must be greater than WindowSize=%d",
-			cfg.BufferSize, cfg.WindowSize)
+			opts.BufferSize, opts.WindowSize)
 	}
 	return nil
 }
@@ -71,98 +84,91 @@ type Decoder struct {
 }
 
 // Init initializes the DecoderBuffer.
-func (b *Decoder) Init(opts DecoderOptions) error {
+func (d *Decoder) Init(opts DecoderOptions) error {
 	opts.setDefaults()
 	if err := opts.verify(); err != nil {
 		return err
 	}
-	*b = Decoder{
-		Data:           b.Data[:0],
+	*d = Decoder{
+		Data:           d.Data[:0],
 		DecoderOptions: opts,
 	}
-	if cap(b.Data) > b.BufferSize {
-		b.BufferSize = cap(b.Data)
+	if cap(d.Data) > d.BufferSize {
+		d.BufferSize = cap(d.Data)
 	}
 	return nil
 }
 
-// NewDecoder creates and initializes a new Decoder.
-func NewDecoder(opts *DecoderOptions) (b *Decoder, err error) {
-	b = new(Decoder)
-	err = b.Init(*opts)
-	return b, err
-}
-
 // Reset returns the DecoderBuffer to its initialized state.
-func (b *Decoder) Reset() {
-	*b = Decoder{
-		Data:           b.Data[:0],
-		DecoderOptions: b.DecoderOptions,
+func (d *Decoder) Reset() {
+	*d = Decoder{
+		Data:           d.Data[:0],
+		DecoderOptions: d.DecoderOptions,
 	}
-	if cap(b.Data) > b.BufferSize {
+	if cap(d.Data) > d.BufferSize {
 		// The default BufferSize is twice the WindowSize.
-		b.BufferSize = cap(b.Data)
+		d.BufferSize = cap(d.Data)
 	}
 }
 
 // ByteAtEnd returns the byte at the end of the buffer.
-func (b *Decoder) ByteAtEnd(off int) byte {
-	i := len(b.Data) - off
-	if !(0 <= i && i < len(b.Data)) {
+func (d *Decoder) ByteAtEnd(off int) byte {
+	i := len(d.Data) - off
+	if !(0 <= i && i < len(d.Data)) {
 		return 0
 	}
-	return b.Data[i]
+	return d.Data[i]
 }
 
 // Read reads decoded data from the buffer.
-func (b *Decoder) Read(p []byte) (n int, err error) {
-	n = copy(p, b.Data[b.R:])
-	b.R += n
+func (d *Decoder) Read(p []byte) (n int, err error) {
+	n = copy(p, d.Data[d.R:])
+	d.R += n
 	return n, nil
 }
 
 // WriteTo writes the decoded data to the writer.
-func (b *Decoder) WriteTo(w io.Writer) (n int64, err error) {
-	k, err := w.Write(b.Data[b.R:])
-	b.R += k
+func (d *Decoder) WriteTo(w io.Writer) (n int64, err error) {
+	k, err := w.Write(d.Data[d.R:])
+	d.R += k
 	return int64(k), err
 }
 
 // prune evicts data from the buffer and returns the available space.
-func (b *Decoder) prune() int {
+func (d *Decoder) prune() int {
 	// space that can be pruned
-	n := min(b.R, max(len(b.Data)-b.WindowSize, 0))
+	n := min(d.R, max(len(d.Data)-d.WindowSize, 0))
 	if n > 0 {
-		l := copy(b.Data, b.Data[n:])
-		b.Data = b.Data[:l]
-		b.R -= n
+		l := copy(d.Data, d.Data[n:])
+		d.Data = d.Data[:l]
+		d.R -= n
 	}
-	return b.BufferSize - len(b.Data)
+	return d.BufferSize - len(d.Data)
 }
 
 // WriteByte writes a single byte into the buffer.
-func (b *Decoder) WriteByte(c byte) error {
-	if a := b.BufferSize - len(b.Data); a < 1 {
-		if b.prune() < 1 {
+func (d *Decoder) WriteByte(c byte) error {
+	if a := d.BufferSize - len(d.Data); a < 1 {
+		if d.prune() < 1 {
 			return ErrFullBuffer
 		}
 	}
-	b.Data = append(b.Data, c)
-	b.Off++
+	d.Data = append(d.Data, c)
+	d.Off++
 	return nil
 }
 
 // Write inserts the slice into the buffer. The method will write the entire
 // slice or return 0 and ErrFullBuffer.
-func (b *Decoder) Write(p []byte) (n int, err error) {
+func (d *Decoder) Write(p []byte) (n int, err error) {
 	n = len(p)
-	if a := b.BufferSize - len(b.Data); n > a {
-		if n > b.prune() {
+	if a := d.BufferSize - len(d.Data); n > a {
+		if n > d.prune() {
 			return 0, ErrFullBuffer
 		}
 	}
-	b.Data = append(b.Data, p...)
-	b.Off += int64(n)
+	d.Data = append(d.Data, p...)
+	d.Off += int64(n)
 	return n, nil
 }
 
@@ -175,27 +181,27 @@ var (
 
 // WriteMatch appends the ma tch to the end of the buffer. The match will be
 // written completely, or n=0 and ErrFullBuffer will be returned.
-func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
+func (d *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	if ou == 0 && mu > 0 {
 		return 0, errOffset
 	}
-	winLen := min(len(b.Data), b.WindowSize)
+	winLen := min(len(d.Data), d.WindowSize)
 	if int64(ou) > int64(winLen) {
 		return 0, errOffset
 	}
 	o := int(ou)
-	if int64(mu) > int64(b.WindowSize) {
+	if int64(mu) > int64(d.WindowSize) {
 		return 0, errMatchLen
 	}
 	m := int(mu)
-	if a := b.BufferSize - len(b.Data); m > a {
-		if m > b.prune() {
+	if a := d.BufferSize - len(d.Data); m > a {
+		if m > d.prune() {
 			return 0, ErrFullBuffer
 		}
 	}
 	n = m
 	for m > o {
-		b.Data = append(b.Data, b.Data[len(b.Data)-o:]...)
+		d.Data = append(d.Data, d.Data[len(d.Data)-o:]...)
 		m -= o
 		if m <= o {
 			break
@@ -203,9 +209,9 @@ func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 		o <<= 1
 	}
 	// m <= o
-	i := len(b.Data) - o
-	b.Data = append(b.Data, b.Data[i:i+m]...)
-	b.Off += int64(n)
+	i := len(d.Data) - o
+	d.Data = append(d.Data, d.Data[i:i+m]...)
+	d.Off += int64(n)
 	return n, nil
 }
 
@@ -220,7 +226,7 @@ func (b *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 // The growth of the array is limited to BufferSize.
 //
 // The function returns the number of bytes written.
-func (b *Decoder) WriteBlock(blk *Block) (n int, err error) {
+func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 	var (
 		k int
 		s Seq
@@ -231,13 +237,13 @@ func (b *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			goto end
 		}
 		l := int(s.LitLen)
-		winLen := min(len(b.Data)+l, b.WindowSize)
+		winLen := min(len(d.Data)+l, d.WindowSize)
 		if int64(s.Offset) > int64(winLen) {
 			err = errOffset
 			goto end
 		}
 		o := int(s.Offset)
-		if int64(s.MatchLen) > int64(b.WindowSize) {
+		if int64(s.MatchLen) > int64(d.WindowSize) {
 			err = errMatchLen
 			goto end
 		}
@@ -251,17 +257,17 @@ func (b *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			err = errMatchLen
 			goto end
 		}
-		if a := b.BufferSize - len(b.Data); g > a {
-			if g > b.prune() {
+		if a := d.BufferSize - len(d.Data); g > a {
+			if g > d.prune() {
 				err = ErrFullBuffer
 				goto end
 			}
 		}
 		n += g
-		b.Data = append(b.Data, blk.Literals[:s.LitLen]...)
+		d.Data = append(d.Data, blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
 		for m > o {
-			b.Data = append(b.Data, b.Data[len(b.Data)-o:]...)
+			d.Data = append(d.Data, d.Data[len(d.Data)-o:]...)
 			m -= o
 			if m <= o {
 				break
@@ -269,21 +275,21 @@ func (b *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			o <<= 1
 		}
 		// m <= o
-		i := len(b.Data) - o
-		b.Data = append(b.Data, b.Data[i:i+m]...)
+		i := len(d.Data) - o
+		d.Data = append(d.Data, d.Data[i:i+m]...)
 	}
 	k = len(blk.Sequences)
-	if a := b.BufferSize - len(b.Data); len(blk.Literals) > a {
-		if len(blk.Literals) > b.prune() {
+	if a := d.BufferSize - len(d.Data); len(blk.Literals) > a {
+		if len(blk.Literals) > d.prune() {
 			err = ErrFullBuffer
 			goto end
 		}
 	}
-	b.Data = append(b.Data, blk.Literals...)
+	d.Data = append(d.Data, blk.Literals...)
 	n += len(blk.Literals)
 	blk.Literals = blk.Literals[:0]
 end:
 	blk.Sequences = blk.Sequences[k:]
-	b.Off += int64(n)
+	d.Off += int64(n)
 	return n, err
 }

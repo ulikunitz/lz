@@ -26,6 +26,8 @@
 package lz
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -67,8 +69,8 @@ func (b *Block) Len() int64 {
 }
 
 // LenCheck computes the length of the block in bytes and checks that the sum
-// of the literal lengths in the sequences matches the length of the Literals
-// byte slice. If they do not match, an error is returned.
+// of the literal lengths in the sequences is less than the bytes in the Literals
+// field. If that is not the case an error is returned.
 func (b *Block) LenCheck() (n int64, err error) {
 	litSum := int64(0)
 	matchLen := int64(0)
@@ -97,9 +99,9 @@ const (
 
 // Parser can parse the underlying byte stream into blocks of sequences.
 type Parser interface {
-	Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error)
+	Parse(blk *Block, flags ParserFlags) (parsed int, err error)
 
-	Prune(n int) int
+	Prune(keep int) int
 	Write(p []byte) (n int, err error)
 	ReadFrom(r io.Reader) (n int64, err error)
 
@@ -109,5 +111,129 @@ type Parser interface {
 	Reset(data []byte) error
 	Buf() *Buffer
 
-	Options() ParserOptions
+	Options() Configurator
+}
+
+// MatcherOptions is a set of options every matcher must support.
+type MatcherOptions struct {
+	BufferSize  int
+	WindowSize  int
+	MinMatchLen int
+	MaxMatchLen int
+}
+
+// Configurator creates a parser. Usually an Options type implements the
+// interface.
+type Configurator interface {
+	BlockSize() int
+	MatcherOptions() MatcherOptions
+	NewParser() (Parser, error)
+}
+
+// Matcher is responsible to find matches or Literal bytes in the byte stream.
+type Matcher interface {
+	Edges(n int) []Seq
+	Skip(n int) (skipped int, err error)
+
+	Prune(keep int) int
+	Write(p []byte) (n int, err error)
+	ReadFrom(r io.Reader) (n int64, err error)
+
+	ReadAt(p []byte, off int64) (n int, err error)
+	ByteAt(off int64) (c byte, err error)
+
+	Reset(data []byte) error
+	Buf() *Buffer
+
+	Options() MatcherConfigurator
+}
+
+// MatcherConfigurator creates a matcher, usually an Options type implements
+// the interface.
+type MatcherConfigurator interface {
+	MatcherOptions() MatcherOptions
+	NewMatcher() (Matcher, error)
+}
+
+// UnmarshalJSONMatcherOptions unmarshals matcher options from JSON data. The
+// function looks first for the MatcherType field to determine the type of
+// matcher to create.
+func UnmarshalJSONMatcherOptions(data []byte) (MatcherConfigurator, error) {
+	var d struct{ MatcherType string }
+	if err := json.Unmarshal(data, &d); err != nil {
+		return nil, err
+	}
+	switch d.MatcherType {
+	case "generic":
+		var opts GenericMatcherOptions
+		if err := json.Unmarshal(data, &opts); err != nil {
+			return nil, err
+		}
+		return &opts, nil
+	default:
+		return nil, errors.New(
+			"lz: unknown matcher type: " + d.MatcherType)
+	}
+}
+
+// Entry is returned by a Mapper for a found match.
+type Entry struct{ i, v uint32 }
+
+// Mapper will be typically implemented by hash tables.
+//
+// The Put method returns the number of trailing bytes that could not be hashed.
+// Shift is called, when n bytes have been pruned from the buffer.
+type Mapper interface {
+	InputLen() int
+	Reset()
+	// Shift is called by the number of bytes pruned from the buffer.
+	Shift(delta int)
+	Put(a, w int, p []byte) int
+	Get(v uint64) []Entry
+}
+
+// MapperConfigurator creates a mapper, usually an Options type implements this
+// function.
+type MapperConfigurator interface {
+	GetInputLen() int
+	NewMapper() (Mapper, error)
+}
+
+// UnmarshalJSONMapperOptions unmarshals mapper options from JSON data. The
+// function looks first for the MapperType field to determine the type of mapper
+// to create.
+func UnmarshalJSONMapperOptions(data []byte) (MapperConfigurator, error) {
+	var d struct{ MapperType string }
+	if err := json.Unmarshal(data, &d); err != nil {
+		return nil, err
+	}
+	switch d.MapperType {
+	case "hash":
+		var opts HashOptions
+		if err := json.Unmarshal(data, &opts); err != nil {
+			return nil, err
+		}
+		return &opts, nil
+	default:
+		return nil, errors.New(
+			"lz: unknown mapper type: " + d.MapperType)
+	}
+}
+
+func UnmarshalJSONParserOptions(data []byte) (Configurator, error) {
+	var d struct{ ParserType string }
+	if err := json.Unmarshal(data, &d); err != nil {
+		return nil, err
+	}
+	switch d.ParserType {
+	case "greedy":
+		var opts GreedyParserOptions
+		if err := json.Unmarshal(data, &opts); err != nil {
+			return nil, err
+		}
+		return &opts, nil
+	default:
+		return nil, errors.New(
+			"lz: unknown parser type: " + d.ParserType)
+	}
 }

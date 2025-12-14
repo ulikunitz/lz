@@ -5,21 +5,20 @@ import "testing"
 func TestGreedyParser(t *testing.T) {
 	const str = "=====foofoobarfoobar bartender===="
 
-	opts := ParserOptions{
-		Parser:    Greedy,
-		BlockSize: 128,
-
-		Mapper:   Hash,
-		InputLen: 3,
-		HashBits: 16,
-
-		BufferSize:  64,
-		WindowSize:  32,
-		MinMatchLen: 3,
-		MaxMatchLen: 64,
-	}
-
-	p, err := NewParser(&opts)
+	opts := GreedyParserOptions{
+		BlkSize: 128,
+		Matcher: &GenericMatcherOptions{
+			BufferSize : 64,
+			WindowSize : 32,
+			MinMatchLen: 3,
+			MaxMatchLen: 64,
+			MapperOptions: &HashOptions{
+				InputLen: 3,
+				HashBits: 16,
+			},
+		},
+	}	
+	p, err := opts.NewParser()
 	if err != nil {
 		t.Fatalf("NewGreedyParser: %v", err)
 	}
@@ -38,7 +37,7 @@ func TestGreedyParser(t *testing.T) {
 	}
 
 	var blk Block
-	parsed, err := gp.Parse(&blk, len(str), 0)
+	parsed, err := gp.Parse(&blk, 0)
 	if err != nil {
 		t.Fatalf("gp.Parse: %v", err)
 	}
@@ -46,11 +45,12 @@ func TestGreedyParser(t *testing.T) {
 		t.Fatalf("gp.Parse returned parsed=%d; want %d", parsed, len(str))
 	}
 
+	winSize := opts.MatcherOptions().WindowSize
 	decoderOpts := DecoderOptions{
-		WindowSize: opts.WindowSize,
-		BufferSize: 2 * opts.WindowSize,
+		WindowSize: winSize,
+		BufferSize: 2 * winSize,
 	}
-	d, err := NewDecoder(&decoderOpts)
+	d, err := decoderOpts.NewDecoder()
 	if err != nil {
 		t.Fatalf("NewDecoder: %v", err)
 	}

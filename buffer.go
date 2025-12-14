@@ -27,7 +27,7 @@ type Buffer struct {
 // Init initializes the buffer. The old data slice is reused and the capacity
 // might be larger than the new buffer size.
 func (b *Buffer) Init(size int) error {
-	if size <= 0 {
+	if !(size > 0) {
 		return fmt.Errorf("lz: invalid buffer size: %d", size)
 	}
 	*b = Buffer{
@@ -46,9 +46,9 @@ func (b *Buffer) Reset(data []byte) error {
 		b.Size = len(data)
 	}
 	switch {
-	case len(data) < cap(data)-7:
+	case len(data) <= cap(data)-7:
 		b.Data = data
-	case len(data) < cap(b.Data)-7:
+	case len(data) <= cap(b.Data)-7:
 		b.Data = b.Data[:len(data)]
 		copy(b.Data, data)
 	default:
@@ -144,18 +144,18 @@ func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 	return b.Data[i], nil
 }
 
-// Prune cuts the first n bytes from the buffer. If n is larger than the window
-// index W it will be set to W. The number of bytes actually pruned is returned.
-func (b *Buffer) Prune(n int) int {
-	if n <= 0 {
-		if n < 0 {
-			return 0
-		}
-		// If the client doesn't provide a value, prune 3/4 of the
-		// buffer.
-		n = 3 * (b.Size / 4)
+// Prune cuts bytes from the start of the buffer to make more space available.
+// The number of bytes to keep can be provided. If the parameter is zero, 25% of
+// the buffer size is kept. If the parameter is negative it is handled like the
+// zero value.
+func (b *Buffer) Prune(keep int) int {
+	if keep < 0 {
+		keep = 0
 	}
-	n = min(n, b.W)
+	n := max(b.W-keep, 0)
+	if n == 0 {
+		return 0
+	}
 	k := copy(b.Data, b.Data[n:])
 	b.Data = b.Data[:k]
 	b.Off += int64(n)

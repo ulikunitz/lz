@@ -1,72 +1,37 @@
 package lz
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
 	"math/bits"
 )
 
-// matcher is responsible to find matches or Literal bytes in the byte stream.
-type matcher interface {
-	Edges(n int) []Seq
-	Skip(n int) (skipped int, err error)
-
-	Prune(n int) int
-	Write(p []byte) (n int, err error)
-	ReadFrom(r io.Reader) (n int64, err error)
-
-	ReadAt(p []byte, off int64) (n int, err error)
-	ByteAt(off int64) (c byte, err error)
-
-	Reset(data []byte) error
-	Buf() *Buffer
-}
-
-// genericMatcher[M] implements a matcher using the provided mapper M.
-type genericMatcher[M mapper] struct {
-	mapper M
+// genericMatcher implements a matcher using the provided mapper^.
+type genericMatcher struct {
+	mapper Mapper
 
 	Buffer
 
 	q        []Seq
 	trailing int
 
-	MinMatchLen    int
-	MaxMatchLen    int
-	WindowSize     int
-	NoPruning      bool
-	MaintainWindow bool
+	GenericMatcherOptions
 }
 
-func newMatcher[M mapper](m M, opts *ParserOptions) (*genericMatcher[M], error) {
-	var err error
-	if opts == nil {
-		return nil, errors.New("lz: matcher options missing")
-	}
-
-	matcher := &genericMatcher[M]{
-		mapper:         m,
-		MinMatchLen:    opts.MinMatchLen,
-		MaxMatchLen:    opts.MaxMatchLen,
-		WindowSize:     opts.WindowSize,
-		NoPruning:      opts.NoPruning,
-		MaintainWindow: opts.MaintainWindow,
-	}
-	if err = matcher.Buffer.Init(opts.BufferSize); err != nil {
-		return nil, err
-	}
-	return matcher, nil
-
+// Options returns a copy of the stored options.
+func (m *genericMatcher) Options() MatcherConfigurator {
+	opts := m.GenericMatcherOptions
+	return &opts
 }
 
 // Buf returns the buffer used by the matcher.
-func (m *genericMatcher[M]) Buf() *Buffer {
+func (m *genericMatcher) Buf() *Buffer {
 	return &m.Buffer
 }
 
 // Reset resets the matcher to the initial state and uses the data slice into
 // the buffer.
-func (m *genericMatcher[M]) Reset(data []byte) error {
+func (m *genericMatcher) Reset(data []byte) error {
 	if err := m.Buffer.Reset(data); err != nil {
 		return err
 	}
@@ -77,20 +42,10 @@ func (m *genericMatcher[M]) Reset(data []byte) error {
 	return nil
 }
 
-// Prune removes n bytes from the beginning of the buffer and updates the hash
-// table accordingly. It returns the actual number of bytes removed which can be
-// less than n if n is greater than the buffer that can be pruned.
-func (m *genericMatcher[M]) Prune(n int) int {
-	if m.NoPruning {
-		return 0
-	}
-	if n == 0 {
-		n = 3 * (m.Buffer.Size / 4)
-	}
-	if m.MaintainWindow {
-		n = min(n, m.W-m.WindowSize)
-	}
-	n = m.Buffer.Prune(n)
+// Prune removes bytes from the beginning of the buffer and updates the mapper.
+// It will try to keep at least keep bytes from the window.
+func (m *genericMatcher) Prune(keep int) int {
+	n := m.Buffer.Prune(keep)
 	m.mapper.Shift(n)
 	return n
 }
@@ -102,7 +57,7 @@ var ErrEndOfBuffer = errors.New("lz: end of buffer")
 var ErrStartOfBuffer = errors.New("lz: start of buffer")
 
 // Skip skips n bytes in the buffer and updates the hash table.
-func (m *genericMatcher[M]) Skip(n int) (skipped int, err error) {
+func (m *genericMatcher) Skip(n int) (skipped int, err error) {
 	if n < 0 {
 		if n < -m.W {
 			n = -m.W
@@ -132,7 +87,7 @@ func (m *genericMatcher[M]) Skip(n int) (skipped int, err error) {
 //
 // n limits the maximum length for a match and can be used to restrict the
 // matches to the end of the block to parse.
-func (m *genericMatcher[M]) Edges(n int) []Seq {
+func (m *genericMatcher) Edges(n int) []Seq {
 	q := m.q[:0]
 	i := m.W
 	n = min(n, m.MaxMatchLen, len(m.Data)-i)
@@ -170,4 +125,140 @@ func (m *genericMatcher[M]) Edges(n int) []Seq {
 	return q
 }
 
-var _ matcher = (*genericMatcher[*hash])(nil)
+// check whether genericMatcher implements Matcher.
+var _ Matcher = (*genericMatcher)(nil)
+
+// GenericMatcherOptions provide the options for a generic matcher.
+type GenericMatcherOptions struct {
+	BufferSize  int
+	WindowSize  int
+	MinMatchLen int
+	MaxMatchLen int
+
+	MapperOptions MapperConfigurator
+}
+
+func (opts *GenericMatcherOptions) setDefaults() {
+	if opts.BufferSize == 0 {
+		opts.BufferSize = 128 << 10
+	}
+	if opts.WindowSize == 0 {
+		opts.WindowSize = 64 << 10
+	}
+	if opts.MinMatchLen == 0 {
+		opts.MinMatchLen = 3
+	}
+	if opts.MaxMatchLen == 0 {
+		opts.MaxMatchLen = 273
+	}
+	if opts.MapperOptions == nil {
+		opts.MapperOptions = &HashOptions{}
+	}
+}
+
+func (opts *GenericMatcherOptions) verify() error {
+	if !(0 < opts.BufferSize) {
+		return errors.New("lz: matcher buffer size must be positive")
+	}
+	if !(0 < opts.WindowSize) {
+		return errors.New("lz: matcher window size must be positive")
+	}
+	if !(1 < opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
+		return errors.New("lz: matcher min/max match length invalid")
+	}
+	return nil
+}
+
+// MatcherOptions returns the general matcher options.
+func (opts *GenericMatcherOptions) MatcherOptions() MatcherOptions {
+	return MatcherOptions{
+		BufferSize:  opts.BufferSize,
+		WindowSize:  opts.WindowSize,
+		MinMatchLen: opts.MinMatchLen,
+		MaxMatchLen: opts.MaxMatchLen,
+	}
+}
+
+// NewMatcher creates a new generic matcher using the generic matcher options.
+func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
+	var err error
+	if opts == nil {
+		opts = &GenericMatcherOptions{}
+	}
+	opts.setDefaults()
+	if err = opts.verify(); err != nil {
+		return nil, err
+	}
+	mapper, err := opts.MapperOptions.NewMapper()
+	if err != nil {
+		return nil, err
+	}
+
+	m := &genericMatcher{
+		mapper:                mapper,
+		GenericMatcherOptions: *opts,
+	}
+	if err = m.Buffer.Init(opts.BufferSize); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+var _ MatcherConfigurator = (*GenericMatcherOptions)(nil)
+
+// MarshalJSON marshals the matcher options into JSON and adds the MatcherType
+// field.
+func (opts *GenericMatcherOptions) MarshalJSON() ([]byte, error) {
+	jOpts := &struct {
+		MatcherType string
+
+		BufferSize  int `json:",omitzero"`
+		WindowSize  int `json:",omitzero"`
+		MinMatchLen int `json:",omitzero"`
+		MaxMatchLen int `json:",omitzero"`
+
+		MapperOptions MapperConfigurator `json:",omitzero"`
+	}{
+		MatcherType:   "generic",
+		BufferSize:    opts.BufferSize,
+		WindowSize:    opts.WindowSize,
+		MinMatchLen:   opts.MinMatchLen,
+		MaxMatchLen:   opts.MaxMatchLen,
+		MapperOptions: opts.MapperOptions,
+	}
+	return json.Marshal(jOpts)
+}
+
+func (opts *GenericMatcherOptions) UnmarshalJSON(data []byte) error {
+	jOpts := &struct {
+		MatcherType string
+
+		BufferSize  int `json:",omitzero"`
+		WindowSize  int `json:",omitzero"`
+		MinMatchLen int `json:",omitzero"`
+		MaxMatchLen int `json:",omitzero"`
+
+		MapperOptions json.RawMessage `json:",omitzero"`
+	}{}
+	var err error
+	if err = json.Unmarshal(data, jOpts); err != nil {
+		return err
+	}
+	if jOpts.MatcherType != "generic" {
+		return errors.New(
+			"lz: invalid matcher type for generic matcher options")
+	}
+	opts.BufferSize = jOpts.BufferSize
+	opts.WindowSize = jOpts.WindowSize
+	opts.MinMatchLen = jOpts.MinMatchLen
+	opts.MaxMatchLen = jOpts.MaxMatchLen
+
+	if len(jOpts.MapperOptions) > 0 {
+		opts.MapperOptions, err = UnmarshalJSONMapperOptions(
+			jOpts.MapperOptions)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

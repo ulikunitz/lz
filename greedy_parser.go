@@ -1,14 +1,53 @@
 package lz
 
-import (
-	"fmt"
-)
+import "fmt"
 
-// greedyParser is a simple parser that always chooses the longest match.
+// defaultBlockSize defines the standard block size for a Parser.
+const defaultBlockSize = 1 << 17 // 128 KiB
+
+type GreedyParserOptions struct {
+	BlkSize int
+	Matcher MatcherConfigurator
+}
+
+func (gpo *GreedyParserOptions) BlockSize() int {
+	return gpo.BlkSize
+}
+
+func (gpo *GreedyParserOptions) MatcherOptions() MatcherOptions {
+	return gpo.Matcher.MatcherOptions()
+}
+
+func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
+	if gpo.BlkSize <= 0 {
+		if gpo.BlkSize < 0 {
+			return nil, fmt.Errorf(
+				"lz: greedy parser block size cannot be negative: %d",
+				gpo.BlkSize)
+		}
+		gpo.BlkSize = defaultBlockSize
+	}
+
+	matcher, err := gpo.Matcher.NewMatcher()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"lz: cannot create matcher for greedy parser: %w", err)
+	}
+	return &greedyParser{
+		Matcher: matcher,
+		options: *gpo,
+	}, nil
+}
+
 type greedyParser struct {
-	matcher
+	Matcher
 
-	ParserOptions
+	options GreedyParserOptions
+}
+
+func (p *greedyParser) Options() Configurator {
+	opts := p.options
+	return &opts
 }
 
 // TODO: remove debug code or at least disable it by default.
@@ -22,24 +61,19 @@ const debugGreedyParser = true
 // If the NoTrailingLiterals flag is set, the parser will not include
 // trailing literals in the block. This can be used to parse a stream in fixed
 // size blocks without overlapping literals.
-func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
+func (p *greedyParser) Parse(blk *Block, flags ParserFlags) (parsed int, err error) {
+	blockSize := p.options.BlkSize
 
-	if n < 0 {
-		return 0, fmt.Errorf("lz: n=%d; must be >= 0", n)
-	}
-	if n == 0 {
-		n = p.BlockSize
-	}
-
+	n := blockSize
 	buf := p.Buf()
 	w := buf.W
-	n = min(n, p.BlockSize, len(buf.Data)-w)
+	n = min(n, len(buf.Data)-w)
 	if n == 0 {
 		return 0, ErrEndOfBuffer
 	}
 
 	if blk == nil {
-		return p.matcher.Skip(n)
+		return p.Matcher.Skip(n)
 	}
 	blk.Sequences = blk.Sequences[:0]
 	blk.Literals = blk.Literals[:0]
@@ -72,7 +106,7 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 			blk.Sequences = append(blk.Sequences, seq)
 		}
 
-		_, err = p.matcher.Skip(int(seqLen))
+		_, err = p.Matcher.Skip(int(seqLen))
 		if err != nil {
 			panic(fmt.Errorf(
 				"lz: unexpected error from Skip: %w", err))
@@ -81,7 +115,7 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 
 	if flags&NoTrailingLiterals != 0 {
 		l := len(blk.Literals) - iLit
-		_, err := p.matcher.Skip(-l)
+		_, err := p.Matcher.Skip(-l)
 		if err != nil {
 			panic(err)
 		}
@@ -110,21 +144,4 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	return n, err
 }
 
-func (p *greedyParser) Options() ParserOptions {
-	return p.ParserOptions
-}
-
-// ensure that GreedyParser implements the Parser interface.
 var _ Parser = (*greedyParser)(nil)
-
-func newGreedyParser(opts *ParserOptions) (Parser, error) {
-	var err error
-
-	gp := &greedyParser{
-		ParserOptions: *opts,
-	}
-	if gp.matcher, err = newMatcherOptions(opts); err != nil {
-		return nil, err
-	}
-	return gp, nil
-}

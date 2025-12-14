@@ -1,23 +1,10 @@
 package lz
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"math"
 )
-
-type entry struct{ i, v uint32 }
-
-// mapper will be typically implemented by hash tables.
-//
-// The Put method return the number of trailing bytes that could not be hashed.
-type mapper interface {
-	InputLen() int
-	Reset()
-	Shift(delta int)
-	Put(a, w int, p []byte) int
-	Get(v uint64) []entry
-}
 
 // prime is used by [hashValue].
 const prime = 9920624304325388887
@@ -31,7 +18,7 @@ func hashValue(x uint64, shift uint) uint32 {
 
 // The hash implements a match finder and can be directly used in a parser.
 type hash struct {
-	table    []entry
+	table    []Entry
 	mask     uint64
 	shift    uint
 	inputLen int
@@ -40,24 +27,21 @@ type hash struct {
 func (h *hash) InputLen() int { return h.inputLen }
 
 // init initializes the hash structure.
-func (h *hash) init(inputLen, hashBits int) error {
-	if !(2 <= inputLen && inputLen <= 8) {
-		return errors.New("lz: invalid inputLen")
+func (h *hash) init(hopts HashOptions) error {
+	if err := hopts.verify(); err != nil {
+		return err
 	}
-	maxBits := max(24, 8*inputLen)
-	if !(0 <= hashBits && hashBits <= maxBits) {
-		return fmt.Errorf("lz: hashBits=%d; must be <= %d",
-			hashBits, maxBits)
-	}
+	hashBits := hopts.HashBits
+	inputLen := hopts.InputLen
 
 	n := 1 << hashBits
 	if n <= cap(h.table) {
 		h.table = h.table[:n]
 		for i := range h.table {
-			h.table[i] = entry{}
+			h.table[i] = Entry{}
 		}
 	} else {
-		h.table = make([]entry, n)
+		h.table = make([]Entry, n)
 	}
 
 	h.mask = 1<<(uint(inputLen)*8) - 1
@@ -70,7 +54,7 @@ func (h *hash) init(inputLen, hashBits int) error {
 // Reset clears the hash table.
 func (h *hash) Reset() {
 	for i := range h.table {
-		h.table[i] = entry{}
+		h.table[i] = Entry{}
 	}
 }
 
@@ -86,7 +70,7 @@ func (h *hash) Shift(delta int) {
 	d := uint32(delta)
 	for i, e := range h.table {
 		if e.i < d {
-			h.table[i] = entry{}
+			h.table[i] = Entry{}
 		} else {
 			h.table[i].i = e.i - d
 		}
@@ -99,34 +83,75 @@ func (h *hash) Put(a, w int, p []byte) int {
 	for i := a; i < b; i++ {
 		v := _getLE64(_p[i:])
 		h.table[hashValue(v&h.mask, h.shift)] =
-			entry{i: uint32(i), v: uint32(v)}
+			Entry{i: uint32(i), v: uint32(v)}
 	}
 	return w - b
 }
 
-func (h *hash) Get(v uint64) []entry {
+func (h *hash) Get(v uint64) []Entry {
 	i := hashValue(v&h.mask, h.shift)
 	return h.table[i : i+1]
 }
 
-func setHashDefaults(opts *ParserOptions) {
-	if opts.InputLen == 0 {
-		opts.InputLen = 4
+// HashOptions provides the parameters for the Hash Mapper.
+type HashOptions struct {
+	InputLen int
+	HashBits int
+}
+
+// NewMapper creates the hash mapper.
+func (hopts *HashOptions) NewMapper() (Mapper, error) {
+	hopts.setDefaults()
+	h := &hash{}
+	if err := h.init(*hopts); err != nil {
+		return nil, err
 	}
-	if opts.HashBits == 0 {
-		opts.HashBits = 16
+	return h, nil
+}
+
+func (hopts *HashOptions) setDefaults() {
+	if hopts.InputLen == 0 {
+		hopts.InputLen = 4
+	}
+	if hopts.HashBits == 0 {
+		hopts.HashBits = 16
 	}
 }
 
-func verifyHashOptions(opts *ParserOptions) error {
-	if !(2 <= opts.InputLen && opts.InputLen <= 8) {
-		return fmt.Errorf("lz: invalid InputLen=%d; must be 2..8", opts.InputLen)
+func (hopts *HashOptions) verify() error {
+	if !(2 <= hopts.InputLen && hopts.InputLen <= 8) {
+		return fmt.Errorf("lz: invalid InputLen=%d; must be 2..8",
+			hopts.InputLen)
 	}
-	maxHashBits := min(24, 8*opts.InputLen)
-	if !(opts.HashBits >= 0 && opts.HashBits <= maxHashBits) {
+	maxHashBits := min(24, 8*hopts.InputLen)
+	if !(0 <= hopts.HashBits && hopts.HashBits <= maxHashBits) {
 		return fmt.Errorf(
 			"lz: invalid HashBits=%d; must be in range 0..%d",
-			opts.HashBits, maxHashBits)
+			hopts.HashBits, maxHashBits)
 	}
 	return nil
+}
+
+// GetInputLen returns the input length.
+func (hopts *HashOptions) GetInputLen() int {
+	return hopts.InputLen
+}
+
+var _ MapperConfigurator = (*HashOptions)(nil)
+
+type hashJSONOptions struct {
+	MapperType   string
+	InputLen int `json:",omitzero"`
+	HashBits int `json:",omitzero"`
+}
+
+// MarshalJSON generates the JSON representation of HashOptions by adding the
+// Mapper field and set it to "hash".
+func (hopts *HashOptions) MarshalJSON() ([]byte, error) {
+	jopts := hashJSONOptions{
+		MapperType:   "hash",
+		InputLen: hopts.InputLen,
+		HashBits: hopts.HashBits,
+	}
+	return json.Marshal(jopts)
 }

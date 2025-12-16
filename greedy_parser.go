@@ -1,15 +1,20 @@
 package lz
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // defaultBlockSize defines the standard block size for a Parser.
 const defaultBlockSize = 1 << 17 // 128 KiB
 
+// GreedyParserOptions defines the configuration options for a greedy parser.
 type GreedyParserOptions struct {
-	BlockSize int
-	Matcher   MatcherConfigurator
+	BlockSize      int
+	MatcherOptions MatcherConfigurator
 }
 
+// NewParser creates a new greedy parser using the greedy parser options.
 func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
 	if gpo.BlockSize <= 0 {
 		if gpo.BlockSize < 0 {
@@ -20,7 +25,7 @@ func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
 		gpo.BlockSize = defaultBlockSize
 	}
 
-	matcher, err := gpo.Matcher.NewMatcher()
+	matcher, err := gpo.MatcherOptions.NewMatcher()
 	if err != nil {
 		return nil, fmt.Errorf(
 			"lz: cannot create matcher for greedy parser: %w", err)
@@ -31,12 +36,14 @@ func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
 	}, nil
 }
 
+// greedyParser implements a greedy LZ parser.
 type greedyParser struct {
 	Matcher
 
 	options GreedyParserOptions
 }
 
+// Buf returns the underlying buffer of the parser.
 func (p *greedyParser) Options() Configurator {
 	opts := p.options
 	return &opts
@@ -136,4 +143,51 @@ func (p *greedyParser) Parse(blk *Block, flags ParserFlags) (parsed int, err err
 	return n, err
 }
 
-var _ Parser = (*greedyParser)(nil)
+// MarshalJSON provides a custom JSON marshaller that adds a type field to the
+// JSON structure.
+func (gpo *GreedyParserOptions) MarshalJSON() ([]byte, error) {
+	jOpts := &struct {
+		Type           string
+		BlockSize      int                 `json:",omitzero"`
+		MatcherOptions MatcherConfigurator `json:",omitzero"`
+	}{
+		Type:           "greedy",
+		BlockSize:      gpo.BlockSize,
+		MatcherOptions: gpo.MatcherOptions,
+	}
+	return json.Marshal(jOpts)
+}
+
+// UnmarshalJSON provides a custom JSON unmarshaler that parses the type
+// field from the JSON structure.
+func (gpo *GreedyParserOptions) UnmarshalJSON(data []byte) error {
+	jOpts := &struct {
+		Type           string
+		BlockSize      int             `json:",omitzero"`
+		MatcherOptions json.RawMessage `json:",omitzero"`
+	}{}
+	var err error
+	if err = json.Unmarshal(data, jOpts); err != nil {
+		return err
+	}
+	if jOpts.Type != "greedy" {
+		return fmt.Errorf(
+			"lz: invalid parser type for greedy parser options: %q",
+			jOpts.Type)
+	}
+	gpo.BlockSize = jOpts.BlockSize
+	if len(jOpts.MatcherOptions) > 0 {
+		gpo.MatcherOptions, err = UnmarshalJSONMatcherOptions(
+			jOpts.MatcherOptions)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// test that the implementations satisfy the interfaces.
+var (
+	_ Parser       = (*greedyParser)(nil)
+	_ Configurator = (*GreedyParserOptions)(nil)
+)

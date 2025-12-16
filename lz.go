@@ -226,13 +226,13 @@ func UnmarshalJSONMapperOptions(data []byte) (MapperConfigurator, error) {
 	}
 }
 
-// UnmarshalJSONParserOptions unmarshals parser options from JSON data.
-func UnmarshalJSONParserOptions(data []byte) (Configurator, error) {
-	var d struct{ ParserType string }
+// UnmarshalJSONOptions unmarshals parser options from JSON data.
+func UnmarshalJSONOptions(data []byte) (Configurator, error) {
+	var d struct{ Type string }
 	if err := json.Unmarshal(data, &d); err != nil {
 		return nil, err
 	}
-	switch d.ParserType {
+	switch d.Type {
 	case "greedy":
 		var opts GreedyParserOptions
 		if err := json.Unmarshal(data, &opts); err != nil {
@@ -241,7 +241,7 @@ func UnmarshalJSONParserOptions(data []byte) (Configurator, error) {
 		return &opts, nil
 	default:
 		return nil, errors.New(
-			"lz: unknown parser type: " + d.ParserType)
+			"lz: unknown parser type: " + d.Type)
 	}
 }
 

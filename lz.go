@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -68,7 +69,7 @@ func (b *Block) Len() int64 {
 	return n
 }
 
-// LenCheck computes the length of the block in bytes and checks that the sum
+// LenCheck computes the length of the block in bytes and verifies that the sum
 // of the literal lengths in the sequences is less than the bytes in the Literals
 // field. If that is not the case an error is returned.
 func (b *Block) LenCheck() (n int64, err error) {
@@ -97,36 +98,43 @@ const (
 	NoTrailingLiterals ParserFlags = 1 << iota
 )
 
-// Parser can parse the underlying byte stream into blocks of sequences.
+// Parser provides the possibility to parse a byte stream into LZ77 sequences.
 type Parser interface {
+	// Parse up to block size bytes from the internal buffer and provides
+	// the sequences in the block structure. While slices will be reused,
+	// not old information will be maintained.
 	Parse(blk *Block, flags ParserFlags) (parsed int, err error)
 
-	Prune(keep int) int
+	// Prune removes data from the internal buffer and keeps n bytes of the
+	// buffer. The function returns the number of bytes pruned.
+	Prune(keep int) (pruned int)
+
+	// Write writes data into the internal buffer.
 	Write(p []byte) (n int, err error)
+
+	// ReadFrom reads data from the provided reader into the internal
+	// buffer.
 	ReadFrom(r io.Reader) (n int64, err error)
 
+	// ReadAt reads len(p) bytes from the internal buffer at offset off.
 	ReadAt(p []byte, off int64) (n int, err error)
+
+	// ByteAt returns the byte at offset off in the internal buffer.
 	ByteAt(off int64) (c byte, err error)
 
+	// Reset resets the internal buffer to the provided data.
 	Reset(data []byte) error
+
+	// Buf returns the internal buffer used by the parser.
 	Buf() *Buffer
 
+	// Options returns the options used to create the parser.
 	Options() Configurator
-}
-
-// MatcherOptions is a set of options every matcher must support.
-type MatcherOptions struct {
-	BufferSize  int
-	WindowSize  int
-	MinMatchLen int
-	MaxMatchLen int
 }
 
 // Configurator creates a parser. Usually an Options type implements the
 // interface.
 type Configurator interface {
-	BlockSize() int
-	MatcherOptions() MatcherOptions
 	NewParser() (Parser, error)
 }
 
@@ -151,7 +159,6 @@ type Matcher interface {
 // MatcherConfigurator creates a matcher, usually an Options type implements
 // the interface.
 type MatcherConfigurator interface {
-	MatcherOptions() MatcherOptions
 	NewMatcher() (Matcher, error)
 }
 
@@ -195,7 +202,6 @@ type Mapper interface {
 // MapperConfigurator creates a mapper, usually an Options type implements this
 // function.
 type MapperConfigurator interface {
-	GetInputLen() int
 	NewMapper() (Mapper, error)
 }
 
@@ -220,6 +226,7 @@ func UnmarshalJSONMapperOptions(data []byte) (MapperConfigurator, error) {
 	}
 }
 
+// UnmarshalJSONParserOptions unmarshals parser options from JSON data.
 func UnmarshalJSONParserOptions(data []byte) (Configurator, error) {
 	var d struct{ ParserType string }
 	if err := json.Unmarshal(data, &d); err != nil {
@@ -236,4 +243,70 @@ func UnmarshalJSONParserOptions(data []byte) (Configurator, error) {
 		return nil, errors.New(
 			"lz: unknown parser type: " + d.ParserType)
 	}
+}
+
+// intValue looks recursively for an integer field with the provided name.
+func intValue(opts any, name string) (v reflect.Value, err error) {
+	if opts == nil {
+		return reflect.Value{},
+			fmt.Errorf("lz: cannot get %s from nil options", name)
+	}
+
+	v = reflect.Indirect(reflect.ValueOf(opts))
+
+	if v.Kind() != reflect.Struct {
+		return reflect.Value{},
+			fmt.Errorf(
+				"lz: cannot get %s from non-struct options type %T",
+				name, opts)
+	}
+
+	f := v.FieldByName(name)
+	if !f.IsValid() {
+		for i := range v.NumField() {
+			sf := v.Field(i)
+			v, err := intValue(sf.Interface(), name)
+			if err == nil {
+				return v, nil
+			}
+		}
+		return v, fmt.Errorf(
+			"lz: options type %T has no WindowSize field", opts)
+	}
+	if !(f.Kind() == reflect.Int) {
+		return reflect.Value{},
+			fmt.Errorf(
+				"lz: options type %T field %s is not an int",
+				opts, name)
+	}
+	return f, nil
+}
+
+// WindowSize returns the window size from the provided options.
+func WindowSize(opts Configurator) int {
+	v, err := intValue(opts, "WindowSize")
+	if err != nil {
+		panic(err)
+	}
+	return int(v.Int())
+}
+
+// SetWindowSize sets the window size in the provided options.
+func SetWindowSize(opts Configurator, windowSize int) error {
+	if windowSize < 0 {
+		return fmt.Errorf(
+			"lz: window size cannot be negative: %d",
+			windowSize)
+	}
+	v, err := intValue(opts, "WindowSize")
+	if err != nil {
+		return err
+	}
+	if !v.CanSet() {
+		return fmt.Errorf(
+			"lz: cannot set WindowSize field in options type %T",
+			opts)
+	}
+	v.SetInt(int64(windowSize))
+	return nil
 }

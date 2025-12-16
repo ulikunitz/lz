@@ -169,16 +169,6 @@ func (opts *GenericMatcherOptions) verify() error {
 	return nil
 }
 
-// MatcherOptions returns the general matcher options.
-func (opts *GenericMatcherOptions) MatcherOptions() MatcherOptions {
-	return MatcherOptions{
-		BufferSize:  opts.BufferSize,
-		WindowSize:  opts.WindowSize,
-		MinMatchLen: opts.MinMatchLen,
-		MaxMatchLen: opts.MaxMatchLen,
-	}
-}
-
 // NewMatcher creates a new generic matcher using the generic matcher options.
 func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
 	var err error

@@ -6,26 +6,18 @@ import "fmt"
 const defaultBlockSize = 1 << 17 // 128 KiB
 
 type GreedyParserOptions struct {
-	BlkSize int
-	Matcher MatcherConfigurator
-}
-
-func (gpo *GreedyParserOptions) BlockSize() int {
-	return gpo.BlkSize
-}
-
-func (gpo *GreedyParserOptions) MatcherOptions() MatcherOptions {
-	return gpo.Matcher.MatcherOptions()
+	BlockSize int
+	Matcher   MatcherConfigurator
 }
 
 func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
-	if gpo.BlkSize <= 0 {
-		if gpo.BlkSize < 0 {
+	if gpo.BlockSize <= 0 {
+		if gpo.BlockSize < 0 {
 			return nil, fmt.Errorf(
 				"lz: greedy parser block size cannot be negative: %d",
-				gpo.BlkSize)
+				gpo.BlockSize)
 		}
-		gpo.BlkSize = defaultBlockSize
+		gpo.BlockSize = defaultBlockSize
 	}
 
 	matcher, err := gpo.Matcher.NewMatcher()
@@ -62,7 +54,7 @@ const debugGreedyParser = true
 // trailing literals in the block. This can be used to parse a stream in fixed
 // size blocks without overlapping literals.
 func (p *greedyParser) Parse(blk *Block, flags ParserFlags) (parsed int, err error) {
-	blockSize := p.options.BlkSize
+	blockSize := p.options.BlockSize
 
 	n := blockSize
 	buf := p.Buf()

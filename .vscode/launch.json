@@ -5,15 +5,15 @@
         "version": "0.2.0",
         "configurations": [
                 {
-                        "name": "Fuzz problem",
+                        "name": "Test GreedyParser problem",
                         "type": "go",
                         "request": "launch",
                         "mode": "test",
-                        "program": "hs_test.go",
+                        "program": "${workspaceFolder}",
                         "args": [
                                 "-test.run",
-                                "FuzzGSAS/76204f180cc0e3da"
-                        ]
+                                "FuzzGreedyParser/^0"
+                        ],
                 }
         ]
 }

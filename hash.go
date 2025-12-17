@@ -82,15 +82,22 @@ func (h *hash) Put(a, w int, p []byte) int {
 	_p := p[:b+7]
 	for i := a; i < b; i++ {
 		v := _getLE64(_p[i:])
-		h.table[hashValue(v&h.mask, h.shift)] =
+		v &= h.mask
+		h.table[hashValue(v, h.shift)] =
 			Entry{i: uint32(i), v: uint32(v)}
 	}
 	return w - b
 }
 
 func (h *hash) Get(v uint64) []Entry {
-	i := hashValue(v&h.mask, h.shift)
-	return h.table[i : i+1]
+	v &= h.mask
+	i := hashValue(v, h.shift)
+	r := h.table[i : i+1]
+	e := r[0]
+	if e.v != uint32(v) {
+		return nil
+	}
+	return r
 }
 
 // HashOptions provides the parameters for the Hash Mapper.
@@ -140,18 +147,18 @@ func (hopts *HashOptions) GetInputLen() int {
 var _ MapperConfigurator = (*HashOptions)(nil)
 
 type hashJSONOptions struct {
-	MapperType   string
-	InputLen int `json:",omitzero"`
-	HashBits int `json:",omitzero"`
+	MapperType string
+	InputLen   int `json:",omitzero"`
+	HashBits   int `json:",omitzero"`
 }
 
 // MarshalJSON generates the JSON representation of HashOptions by adding the
 // Mapper field and set it to "hash".
 func (hopts *HashOptions) MarshalJSON() ([]byte, error) {
 	jopts := hashJSONOptions{
-		MapperType:   "hash",
-		InputLen: hopts.InputLen,
-		HashBits: hopts.HashBits,
+		MapperType: "hash",
+		InputLen:   hopts.InputLen,
+		HashBits:   hopts.HashBits,
 	}
 	return json.Marshal(jopts)
 }

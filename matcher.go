@@ -3,7 +3,6 @@ package lz
 import (
 	"encoding/json"
 	"errors"
-	"math/bits"
 )
 
 // genericMatcher implements a matcher using the provided mapper^.
@@ -105,19 +104,15 @@ func (m *genericMatcher) Edges(n int) []Seq {
 	}
 
 	entries := m.mapper.Get(v)
-	kMax := len(p) - i
 	for _, e := range entries {
-		k := min(bits.TrailingZeros32(uint32(v)^e.v)>>3, kMax)
-		if k < m.MinMatchLen {
-			continue
-		}
 		j := int(e.i)
 		o := i - j
 		if !(0 < o && o <= m.WindowSize) {
 			continue
 		}
-		if k == 4 {
-			k += lcp(p[i+4:], p[j+4:])
+		k := lcp(p[i:], p[j:])
+		if k < m.MinMatchLen {
+			continue
 		}
 		q = append(q, Seq{Offset: uint32(o), MatchLen: uint32(k)})
 	}

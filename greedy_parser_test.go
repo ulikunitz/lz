@@ -1,7 +1,9 @@
 package lz
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"testing"
 )
 
@@ -203,4 +205,88 @@ func TestGreedyParserOptionsJSON(t *testing.T) {
 			"HashBits = %d; want %d",
 			mapperOpts.HashBits, origMapperOpts.HashBits)
 	}
+}
+
+func FuzzGreedyParser(f *testing.F) {
+	f.Add([]byte("a"))
+	f.Add([]byte{})
+	f.Add([]byte("abcabcabcabcabcabcabcabc"))
+	f.Add([]byte("aaaaaaaaaaaaaaaaaaaaaaaaaa"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		const winSize = 200
+		pOpts := &GreedyParserOptions{
+			BlockSize: 128,
+			MatcherOptions: &GenericMatcherOptions{
+				BufferSize:  256,
+				WindowSize:  winSize,
+				MinMatchLen: 3,
+				MaxMatchLen: 64,
+				MapperOptions: &HashOptions{
+					InputLen: 3,
+					HashBits: 16,
+				},
+			},
+		}
+		dOpts := &DecoderOptions{
+			WindowSize: winSize,
+			BufferSize: 2 * winSize,
+		}
+
+		p, err := pOpts.NewParser()
+		if err != nil {
+			t.Fatalf("NewGreedyParser: %v", err)
+		}
+		d, err := dOpts.NewDecoder()
+		if err != nil {
+			t.Fatalf("NewDecoder: %v", err)
+		}
+
+		r := bytes.NewReader(data)
+		w := new(bytes.Buffer)
+
+		var blk Block
+		moreData := true
+		for moreData {
+			k, err := p.ReadFrom(r)
+			t.Logf("p.ReadFrom: %d bytes", k)
+			if err != nil && err != ErrFullBuffer {
+				t.Fatalf("p.ReadFrom: %v", err)
+			}
+			moreData = err == ErrFullBuffer
+
+			for {
+				k, err := p.Parse(&blk, 0)
+				t.Logf("p.Parse: %d bytes", k)
+				if err != nil {
+					if err != ErrEndOfBuffer {
+						t.Fatalf("p.Parse: %v", err)
+					}
+					if k == 0 {
+						break
+					}
+				}
+				k = p.Prune(winSize)
+				t.Logf("p.Prune: %d bytes", k)
+
+				k, err = d.WriteBlock(&blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock: %v", err)
+				}
+				t.Logf("d.WriteBlock: %d bytes", k)
+
+				l, err := io.Copy(w, d)
+				if err != nil {
+					t.Fatalf("io.Copy: %v", err)
+				}
+				t.Logf("io.Copy: %d bytes", l)
+			}
+		}
+
+		decoded := w.Bytes()
+		if !bytes.Equal(decoded, data) {
+			t.Fatalf(
+				"decoded data does not match original\noriginal: %q\ndecoded:  %q",
+				data, decoded)
+		}
+	})
 }

@@ -106,6 +106,33 @@ func TestWindowSize(t *testing.T) {
 	}
 }
 
+func TestBufferSize(t *testing.T) {
+	opts := &GreedyParserOptions{
+		BlockSize: 128,
+		MatcherOptions: &GenericMatcherOptions{
+			BufferSize:  64,
+			WindowSize:  32,
+			MinMatchLen: 3,
+			MaxMatchLen: 64,
+			MapperOptions: &HashOptions{
+				InputLen: 3,
+				HashBits: 16,
+			},
+		},
+	}
+	n := BufferSize(opts)
+	if n != 64 {
+		t.Fatalf("GetBufferSize returned %d; want 64", n)
+	}
+	if err := SetBufferSize(opts, 96); err != nil {
+		t.Fatalf("SetBufferSize: %v", err)
+	}
+	n = BufferSize(opts)
+	if n != 96 {
+		t.Fatalf("GetBufferSize returned %d; want 96", n)
+	}
+}
+
 func TestGreedyParserOptionsJSON(t *testing.T) {
 	opts := &GreedyParserOptions{
 		BlockSize: 256,

@@ -313,3 +313,32 @@ func SetWindowSize(opts Configurator, windowSize int) error {
 	v.SetInt(int64(windowSize))
 	return nil
 }
+
+// BufferSize returns the buffer size included in the provided options.
+func BufferSize(opts Configurator) int {
+	v, err := intValue(opts, "BufferSize")
+	if err != nil {
+		panic(err)
+	}
+	return int(v.Int())
+}
+
+// SetBufferSize sets the buffer size in the provided options.
+func SetBufferSize(opts Configurator, bufferSize int) error {
+	if bufferSize < 0 {
+		return fmt.Errorf(
+			"lz: buffer size cannot be negative: %d",
+			bufferSize)
+	}
+	v, err := intValue(opts, "BufferSize")
+	if err != nil {
+		return err
+	}
+	if !v.CanSet() {
+		return fmt.Errorf(
+			"lz: cannot set BufferSize field in options type %T",
+			opts)
+	}
+	v.SetInt(int64(bufferSize))
+	return nil
+}

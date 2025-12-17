@@ -78,12 +78,11 @@ func (h *hash) Shift(delta int) {
 }
 
 func (h *hash) Put(a, w int, p []byte) int {
-	b := min(w, max(len(p)-h.inputLen+1, 0))
+	b := min(w, max(len(p)-max(h.inputLen, 4)+1, 0))
 	_p := p[:b+7]
 	for i := a; i < b; i++ {
 		v := _getLE64(_p[i:])
-		v &= h.mask
-		h.table[hashValue(v, h.shift)] =
+		h.table[hashValue(v&h.mask, h.shift)] =
 			Entry{i: uint32(i), v: uint32(v)}
 	}
 	return w - b
@@ -94,7 +93,7 @@ func (h *hash) Get(v uint64) []Entry {
 	i := hashValue(v, h.shift)
 	r := h.table[i : i+1]
 	e := r[0]
-	if e.v != uint32(v) {
+	if e.v&uint32(h.mask) != uint32(v) || (e == Entry{}) {
 		return nil
 	}
 	return r

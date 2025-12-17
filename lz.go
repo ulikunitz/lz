@@ -196,6 +196,9 @@ type Mapper interface {
 	// Shift is called by the number of bytes pruned from the buffer.
 	Shift(delta int)
 	Put(a, w int, p []byte) int
+
+	// Get returns all candidate entries for the provided hash value. The
+	// entry value v contains the all 4 bytes stored a position i.
 	Get(v uint64) []Entry
 }
 

@@ -3,6 +3,7 @@ package lz
 import (
 	"encoding/json"
 	"errors"
+	"math/bits"
 )
 
 // genericMatcher implements a matcher using the provided mapper^.
@@ -105,14 +106,17 @@ func (m *genericMatcher) Edges(n int) []Seq {
 
 	entries := m.mapper.Get(v)
 	for _, e := range entries {
+		k := min(bits.TrailingZeros32(e.v^uint32(v))>>3, n)
+		if k < m.MinMatchLen {
+			continue
+		}
 		j := int(e.i)
 		o := i - j
 		if !(0 < o && o <= m.WindowSize) {
 			continue
 		}
-		k := lcp(p[i:], p[j:])
-		if k < m.MinMatchLen {
-			continue
+		if k == 4 {
+			k = 4 + lcp(p[j+4:], p[i+4:])
 		}
 		q = append(q, Seq{Offset: uint32(o), MatchLen: uint32(k)})
 	}
@@ -160,6 +164,9 @@ func (opts *GenericMatcherOptions) verify() error {
 	}
 	if !(1 < opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
 		return errors.New("lz: matcher min/max match length invalid")
+	}
+	if !(opts.MinMatchLen <= 4) {
+		return errors.New("lz: matcher MinMatchLen must be at most 4")
 	}
 	return nil
 }

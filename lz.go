@@ -103,11 +103,7 @@ type Parser interface {
 	// Parse up to block size bytes from the internal buffer and provides
 	// the sequences in the block structure. While slices will be reused,
 	// not old information will be maintained.
-	Parse(blk *Block, flags ParserFlags) (parsed int, err error)
-
-	// Prune removes data from the internal buffer and keeps n bytes of the
-	// buffer. The function returns the number of bytes pruned.
-	Prune(keep int) (pruned int)
+	Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error)
 
 	// Write writes data into the internal buffer.
 	Write(p []byte) (n int, err error)
@@ -143,7 +139,6 @@ type Matcher interface {
 	Edges(n int) []Seq
 	Skip(n int) (skipped int, err error)
 
-	Prune(keep int) int
 	Write(p []byte) (n int, err error)
 	ReadFrom(r io.Reader) (n int64, err error)
 
@@ -340,5 +335,36 @@ func SetBufferSize(opts Configurator, bufferSize int) error {
 			opts)
 	}
 	v.SetInt(int64(bufferSize))
+	return nil
+}
+
+// RetentionSize returns the retentions size included in the provided options.
+// The retention size describes the amount of data that will be kept in the
+// buffer. It must not be larger than the WindowSize.
+func RetentionSize(opts Configurator) int {
+	v, err := intValue(opts, "RetentionSize")
+	if err != nil {
+		panic(err)
+	}
+	return int(v.Int())
+}
+
+// SetRetentionSize sets the retention size in the provided options.
+func SetRetentionSize(opts Configurator, retentionSize int) error {
+	if retentionSize < 0 {
+		return fmt.Errorf(
+			"lz: buffer size cannot be negative: %d",
+			retentionSize)
+	}
+	v, err := intValue(opts, "RetentionSize")
+	if err != nil {
+		return err
+	}
+	if !v.CanSet() {
+		return fmt.Errorf(
+			"lz: cannot set RetentionSize field in options type %T",
+			opts)
+	}
+	v.SetInt(int64(retentionSize))
 	return nil
 }

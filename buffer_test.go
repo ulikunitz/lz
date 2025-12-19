@@ -8,7 +8,7 @@ import (
 func TestBufferReadFrom(t *testing.T) {
 	const str = "The quick brown fox jumps over the lazy dog."
 	var buf Buffer
-	buf.Init(8)
+	buf.Init(8, 4, nil)
 
 	r := strings.NewReader(str)
 	for {
@@ -22,13 +22,6 @@ func TestBufferReadFrom(t *testing.T) {
 			}
 		}
 		buf.W = len(buf.Data)
-		k := buf.Prune(4)
-		if k == 0 {
-			t.Fatalf("Prune returned k=0")
-		}
-		if k > 4 {
-			t.Fatalf("Prune returned k=%d; want <= 4", k)
-		}
 	}
 	if cap(buf.Data) > buf.Size+7 {
 		t.Fatalf("cap(buf.Data) is %d; want <= %d",
@@ -39,7 +32,7 @@ func TestBufferReadFrom(t *testing.T) {
 func TestBufferWrite(t *testing.T) {
 	const str = "The quick brown fox jumps over the lazy dog."
 	var buf Buffer
-	buf.Init(8)
+	buf.Init(8, 4, nil)
 
 	p := []byte(str)
 	for len(p) > 0 {
@@ -52,13 +45,6 @@ func TestBufferWrite(t *testing.T) {
 		p = p[n:]
 
 		buf.W = len(buf.Data)
-		k := buf.Prune(4)
-		if k == 0 {
-			t.Fatalf("Prune returned k=0")
-		}
-		if k > 4 {
-			t.Fatalf("Prune returned k=%d; want <= 4", k)
-		}
 	}
 	if cap(buf.Data) > buf.Size+7 {
 		t.Fatalf("cap(buf.Data) is %d; want <= %d",

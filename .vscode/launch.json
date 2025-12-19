@@ -12,7 +12,7 @@
                         "program": "${workspaceFolder}",
                         "args": [
                                 "-test.run",
-                                "FuzzGreedyParser/^0"
+                                "FuzzGreedyParser/^c8"
                         ],
                 }
         ]

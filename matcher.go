@@ -42,14 +42,6 @@ func (m *genericMatcher) Reset(data []byte) error {
 	return nil
 }
 
-// Prune removes bytes from the beginning of the buffer and updates the mapper.
-// It will try to keep at least keep bytes from the window.
-func (m *genericMatcher) Prune(keep int) int {
-	n := m.Buffer.Prune(keep)
-	m.mapper.Shift(n)
-	return n
-}
-
 // ErrEndOfBuffer is returned at the end of the buffer.
 var ErrEndOfBuffer = errors.New("lz: end of buffer")
 
@@ -129,10 +121,11 @@ var _ Matcher = (*genericMatcher)(nil)
 
 // GenericMatcherOptions provide the options for a generic matcher.
 type GenericMatcherOptions struct {
-	BufferSize  int
-	WindowSize  int
-	MinMatchLen int
-	MaxMatchLen int
+	BufferSize    int
+	WindowSize    int
+	RetentionSize int
+	MinMatchLen   int
+	MaxMatchLen   int
 
 	MapperOptions MapperConfigurator
 }
@@ -143,6 +136,9 @@ func (opts *GenericMatcherOptions) setDefaults() {
 	}
 	if opts.WindowSize == 0 {
 		opts.WindowSize = 64 << 10
+	}
+	if opts.RetentionSize == 0 {
+		opts.RetentionSize = opts.WindowSize
 	}
 	if opts.MinMatchLen == 0 {
 		opts.MinMatchLen = 3
@@ -161,6 +157,11 @@ func (opts *GenericMatcherOptions) verify() error {
 	}
 	if !(0 < opts.WindowSize) {
 		return errors.New("lz: matcher window size must be positive")
+	}
+	if !(0 < opts.RetentionSize && opts.RetentionSize <= opts.BufferSize &&
+		opts.RetentionSize <= opts.WindowSize) {
+		return errors.New(
+			"lz: matcher retention size invalid, must be > 0, <= BufferSize, and <= WindowSize")
 	}
 	if !(1 < opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
 		return errors.New("lz: matcher min/max match length invalid")
@@ -190,7 +191,7 @@ func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
 		mapper:                mapper,
 		GenericMatcherOptions: *opts,
 	}
-	if err = m.Buffer.Init(opts.BufferSize); err != nil {
+	if err = m.Buffer.Init(opts.BufferSize, opts.RetentionSize, m.mapper.Shift); err != nil {
 		return nil, err
 	}
 	return m, nil

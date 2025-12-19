@@ -5,26 +5,13 @@ import (
 	"fmt"
 )
 
-// defaultBlockSize defines the standard block size for a Parser.
-const defaultBlockSize = 1 << 17 // 128 KiB
-
 // GreedyParserOptions defines the configuration options for a greedy parser.
 type GreedyParserOptions struct {
-	BlockSize      int
 	MatcherOptions MatcherConfigurator
 }
 
 // NewParser creates a new greedy parser using the greedy parser options.
 func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
-	if gpo.BlockSize <= 0 {
-		if gpo.BlockSize < 0 {
-			return nil, fmt.Errorf(
-				"lz: greedy parser block size cannot be negative: %d",
-				gpo.BlockSize)
-		}
-		gpo.BlockSize = defaultBlockSize
-	}
-
 	matcher, err := gpo.MatcherOptions.NewMatcher()
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -60,10 +47,7 @@ const debugGreedyParser = true
 // If the NoTrailingLiterals flag is set, the parser will not include
 // trailing literals in the block. This can be used to parse a stream in fixed
 // size blocks without overlapping literals.
-func (p *greedyParser) Parse(blk *Block, flags ParserFlags) (parsed int, err error) {
-	blockSize := p.options.BlockSize
-
-	n := blockSize
+func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	buf := p.Buf()
 	w := buf.W
 	n = min(n, len(buf.Data)-w)
@@ -148,11 +132,9 @@ func (p *greedyParser) Parse(blk *Block, flags ParserFlags) (parsed int, err err
 func (gpo *GreedyParserOptions) MarshalJSON() ([]byte, error) {
 	jOpts := &struct {
 		Type           string
-		BlockSize      int                 `json:",omitzero"`
 		MatcherOptions MatcherConfigurator `json:",omitzero"`
 	}{
 		Type:           "greedy",
-		BlockSize:      gpo.BlockSize,
 		MatcherOptions: gpo.MatcherOptions,
 	}
 	return json.Marshal(jOpts)
@@ -163,7 +145,6 @@ func (gpo *GreedyParserOptions) MarshalJSON() ([]byte, error) {
 func (gpo *GreedyParserOptions) UnmarshalJSON(data []byte) error {
 	jOpts := &struct {
 		Type           string
-		BlockSize      int             `json:",omitzero"`
 		MatcherOptions json.RawMessage `json:",omitzero"`
 	}{}
 	var err error
@@ -175,7 +156,6 @@ func (gpo *GreedyParserOptions) UnmarshalJSON(data []byte) error {
 			"lz: invalid parser type for greedy parser options: %q",
 			jOpts.Type)
 	}
-	gpo.BlockSize = jOpts.BlockSize
 	if len(jOpts.MatcherOptions) > 0 {
 		gpo.MatcherOptions, err = UnmarshalJSONMatcherOptions(
 			jOpts.MatcherOptions)

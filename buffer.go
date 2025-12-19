@@ -6,6 +6,10 @@ import (
 	"io"
 )
 
+// ShiftFunc defines the type of the shift function, called when the buffer is
+// pruned to provide more available space.
+type ShiftFunc func(delta int)
+
 // Buffer is the buffer used for LZ parsing.
 //
 // The Off field describes the offset of Data[0] in the original stream. The W
@@ -20,19 +24,31 @@ type Buffer struct {
 	W int
 	// maximum buffer size
 	Size int
+	// RetentionSize is the number of bytes to keep when pruning the buffer.
+	RetentionSize int
 	// offset of Data
 	Off int64
+
+	// Shift will be called when the buffer is pruned to inform other
+	// components about the number of bytes removed from the start of
+	// the buffer.
+	Shift ShiftFunc
 }
 
 // Init initializes the buffer. The old data slice is reused and the capacity
 // might be larger than the new buffer size.
-func (b *Buffer) Init(size int) error {
-	if !(size > 0) {
+func (b *Buffer) Init(size, retentionSize int, shift ShiftFunc) error {
+	if !(0 < size) {
 		return fmt.Errorf("lz: invalid buffer size: %d", size)
 	}
+	if !(0 <= retentionSize && retentionSize < size) {
+		return fmt.Errorf("lz: invalid retention size: %d", retentionSize)
+	}
 	*b = Buffer{
-		Data: b.Data[:0],
-		Size: size,
+		Data:          b.Data[:0],
+		Size:          size,
+		RetentionSize: retentionSize,
+		Shift:         shift,
 	}
 	return nil
 }
@@ -87,6 +103,9 @@ func (b *Buffer) Write(p []byte) (n int, err error) {
 	if n == 0 {
 		return 0, nil
 	}
+	if len(b.Data)+n > b.Size {
+		b.prune()
+	}
 	n = copy(b.makeAvailable(n), p)
 	b.Data = b.Data[:len(b.Data)+n]
 	if n < len(p) {
@@ -98,6 +117,7 @@ func (b *Buffer) Write(p []byte) (n int, err error) {
 // ReadFrom reads data from r until EOF or error. It returns the number of bytes
 // read and any error encountered.
 func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
+	b.prune()
 	const chunkSize = 32 << 10
 	for {
 		q := b.makeAvailable(chunkSize)
@@ -144,15 +164,12 @@ func (b *Buffer) ByteAt(off int64) (c byte, err error) {
 	return b.Data[i], nil
 }
 
-// Prune cuts bytes from the start of the buffer to make more space available.
+// prune cuts bytes from the start of the buffer to make more space available.
 // The number of bytes to keep can be provided. If the parameter is zero, 25% of
 // the buffer size is kept. If the parameter is negative it is handled like the
 // zero value.
-func (b *Buffer) Prune(keep int) int {
-	if keep < 0 {
-		keep = 0
-	}
-	n := max(b.W-keep, 0)
+func (b *Buffer) prune() int {
+	n := max(b.W-b.RetentionSize, 0)
 	if n == 0 {
 		return 0
 	}
@@ -160,5 +177,8 @@ func (b *Buffer) Prune(keep int) int {
 	b.Data = b.Data[:k]
 	b.Off += int64(n)
 	b.W -= n
+	if b.Shift != nil {
+		b.Shift(n)
+	}
 	return n
 }

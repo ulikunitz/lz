@@ -8,10 +8,12 @@ import (
 )
 
 func TestGreedyParser(t *testing.T) {
-	const str = "=====foofoobarfoobar bartender===="
+	const (
+		blockSize = 128
+		str = "=====foofoobarfoobar bartender===="
+	)
 
 	opts := &GreedyParserOptions{
-		BlockSize: 128,
 		MatcherOptions: &GenericMatcherOptions{
 			BufferSize:  64,
 			WindowSize:  32,
@@ -42,7 +44,7 @@ func TestGreedyParser(t *testing.T) {
 	}
 
 	var blk Block
-	parsed, err := gp.Parse(&blk, 0)
+	parsed, err := gp.Parse(&blk, blockSize, 0)
 	if err != nil {
 		t.Fatalf("gp.Parse: %v", err)
 	}
@@ -81,7 +83,6 @@ func TestGreedyParser(t *testing.T) {
 
 func TestWindowSize(t *testing.T) {
 	opts := &GreedyParserOptions{
-		BlockSize: 128,
 		MatcherOptions: &GenericMatcherOptions{
 			BufferSize:  64,
 			WindowSize:  32,
@@ -108,7 +109,6 @@ func TestWindowSize(t *testing.T) {
 
 func TestBufferSize(t *testing.T) {
 	opts := &GreedyParserOptions{
-		BlockSize: 128,
 		MatcherOptions: &GenericMatcherOptions{
 			BufferSize:  64,
 			WindowSize:  32,
@@ -135,9 +135,9 @@ func TestBufferSize(t *testing.T) {
 
 func TestGreedyParserOptionsJSON(t *testing.T) {
 	opts := &GreedyParserOptions{
-		BlockSize: 256,
 		MatcherOptions: &GenericMatcherOptions{
 			BufferSize:  128,
+			RetentionSize: 64,
 			WindowSize:  64,
 			MinMatchLen: 4,
 			MaxMatchLen: 32,
@@ -165,12 +165,6 @@ func TestGreedyParserOptionsJSON(t *testing.T) {
 		t.Fatalf(
 			"UnmarshalJSONOptions returned type %T; want *GreedyParserOptions",
 			c)
-	}
-
-	if gOpts.BlockSize != opts.BlockSize {
-		t.Fatalf(
-			"BlockSize = %d; want %d",
-			gOpts.BlockSize, opts.BlockSize)
 	}
 
 	mOpts, ok := gOpts.MatcherOptions.(*GenericMatcherOptions)
@@ -240,9 +234,11 @@ func FuzzGreedyParser(f *testing.F) {
 	f.Add([]byte("abcabcabcabcabcabcabcabc"))
 	f.Add([]byte("aaaaaaaaaaaaaaaaaaaaaaaaaa"))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		const winSize = 200
+		const (
+			blockSize = 128
+			winSize = 200
+		)
 		pOpts := &GreedyParserOptions{
-			BlockSize: 128,
 			MatcherOptions: &GenericMatcherOptions{
 				BufferSize:  256,
 				WindowSize:  winSize,
@@ -271,6 +267,7 @@ func FuzzGreedyParser(f *testing.F) {
 		r := bytes.NewReader(data)
 		w := new(bytes.Buffer)
 
+		// TODO: Call ReadFrom(r) only if p.Parse returns ErrEndOfBuffer.
 		var blk Block
 		moreData := true
 		for moreData {
@@ -282,7 +279,7 @@ func FuzzGreedyParser(f *testing.F) {
 			moreData = err == ErrFullBuffer
 
 			for {
-				k, err := p.Parse(&blk, 0)
+				k, err := p.Parse(&blk, blockSize, 0)
 				t.Logf("p.Parse: %d bytes", k)
 				if err != nil {
 					if err != ErrEndOfBuffer {
@@ -292,8 +289,6 @@ func FuzzGreedyParser(f *testing.F) {
 						break
 					}
 				}
-				k = p.Prune(winSize)
-				t.Logf("p.Prune: %d bytes", k)
 
 				k, err = d.WriteBlock(&blk)
 				if err != nil {

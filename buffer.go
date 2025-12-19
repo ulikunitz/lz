@@ -117,9 +117,11 @@ func (b *Buffer) Write(p []byte) (n int, err error) {
 // ReadFrom reads data from r until EOF or error. It returns the number of bytes
 // read and any error encountered.
 func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
-	b.prune()
 	const chunkSize = 32 << 10
 	for {
+		if len(b.Data)+chunkSize >= b.Size {
+			b.prune()
+		}
 		q := b.makeAvailable(chunkSize)
 		if len(q) == 0 {
 			return n, ErrFullBuffer

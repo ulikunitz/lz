@@ -7,10 +7,11 @@ import (
 
 func TestGenericMatcherOptionsJSON(t *testing.T) {
 	origOpts := &GenericMatcherOptions{
-		BufferSize:  65536,
-		WindowSize:  32768,
-		MinMatchLen: 4,
-		MaxMatchLen: 273,
+		BufferSize:    65536,
+		WindowSize:    32768,
+		RetentionSize: 32768,
+		MinMatchLen:   4,
+		MaxMatchLen:   273,
 		MapperOptions: &HashOptions{
 			InputLen: 3,
 			HashBits: 17,
@@ -41,6 +42,10 @@ func TestGenericMatcherOptionsJSON(t *testing.T) {
 	if opts.WindowSize != origOpts.WindowSize {
 		t.Errorf("WindowSize: got %d, want %d",
 			opts.WindowSize, origOpts.WindowSize)
+	}
+	if opts.RetentionSize != origOpts.RetentionSize {
+		t.Errorf("RetentionSize: got %d, want %d",
+			opts.RetentionSize, origOpts.RetentionSize)
 	}
 	if opts.MinMatchLen != origOpts.MinMatchLen {
 		t.Errorf("MinMatchLen: got %d, want %d",

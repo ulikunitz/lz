@@ -205,16 +205,18 @@ func (opts *GenericMatcherOptions) MarshalJSON() ([]byte, error) {
 	jOpts := &struct {
 		MatcherType string
 
-		BufferSize  int `json:",omitzero"`
-		WindowSize  int `json:",omitzero"`
-		MinMatchLen int `json:",omitzero"`
-		MaxMatchLen int `json:",omitzero"`
+		BufferSize    int `json:",omitzero"`
+		WindowSize    int `json:",omitzero"`
+		RetentionSize int `json:",omitzero"`
+		MinMatchLen   int `json:",omitzero"`
+		MaxMatchLen   int `json:",omitzero"`
 
 		MapperOptions MapperConfigurator `json:",omitzero"`
 	}{
 		MatcherType:   "generic",
 		BufferSize:    opts.BufferSize,
 		WindowSize:    opts.WindowSize,
+		RetentionSize: opts.RetentionSize,
 		MinMatchLen:   opts.MinMatchLen,
 		MaxMatchLen:   opts.MaxMatchLen,
 		MapperOptions: opts.MapperOptions,
@@ -226,10 +228,11 @@ func (opts *GenericMatcherOptions) UnmarshalJSON(data []byte) error {
 	jOpts := &struct {
 		MatcherType string
 
-		BufferSize  int `json:",omitzero"`
-		WindowSize  int `json:",omitzero"`
-		MinMatchLen int `json:",omitzero"`
-		MaxMatchLen int `json:",omitzero"`
+		BufferSize    int `json:",omitzero"`
+		WindowSize    int `json:",omitzero"`
+		RetentionSize int `json:",omitzero"`
+		MinMatchLen   int `json:",omitzero"`
+		MaxMatchLen   int `json:",omitzero"`
 
 		MapperOptions json.RawMessage `json:",omitzero"`
 	}{}
@@ -243,6 +246,7 @@ func (opts *GenericMatcherOptions) UnmarshalJSON(data []byte) error {
 	}
 	opts.BufferSize = jOpts.BufferSize
 	opts.WindowSize = jOpts.WindowSize
+	opts.RetentionSize = jOpts.RetentionSize
 	opts.MinMatchLen = jOpts.MinMatchLen
 	opts.MaxMatchLen = jOpts.MaxMatchLen
 

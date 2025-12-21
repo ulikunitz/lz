@@ -49,8 +49,11 @@ const debugGreedyParser = true
 // size blocks without overlapping literals.
 func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	buf := p.Buf()
-	w := buf.W
-	n = min(n, len(buf.Data)-w)
+	var w int
+	if debugGreedyParser {
+		w = buf.W
+	}
+	n = min(n, buf.Parsable())
 	if n == 0 {
 		return 0, ErrEndOfBuffer
 	}
@@ -62,13 +65,8 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 	blk.Literals = blk.Literals[:0]
 
 	iLit := 0
-	b := buf.W + n
-	for {
-		k := b - buf.W
-		if k <= 0 {
-			break
-		}
-		q := p.Edges(k)
+	for parsed < n {
+		q := p.Edges(n)
 		if len(q) == 0 {
 			panic("lz: no edges returned by matcher")
 		}
@@ -94,6 +92,8 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 			panic(fmt.Errorf(
 				"lz: unexpected error from Skip: %w", err))
 		}
+
+		parsed += int(seqLen)
 	}
 
 	if flags&NoTrailingLiterals != 0 {
@@ -102,29 +102,29 @@ func (p *greedyParser) Parse(blk *Block, n int, flags ParserFlags) (parsed int, 
 		if err != nil {
 			panic(err)
 		}
-		n -= l
+		parsed -= l
 		blk.Literals = blk.Literals[:iLit]
 	}
 
 	if debugGreedyParser {
 		nBuf := buf.W - w
-		if nBuf != n {
+		if nBuf != parsed {
 			return n, fmt.Errorf(
-				"lz: greedyParser.Parse: nBuf=%d != n=%d",
+				"lz: greedyParser.Parse: nBuf=%d != parsed=%d",
 				nBuf, n)
 		}
 		nBlk, err := blk.LenCheck()
 		if err != nil {
-			return n, err
+			return parsed, err
 		}
-		if nBlk != int64(n) {
-			return n, fmt.Errorf(
+		if nBlk != int64(parsed) {
+			return parsed, fmt.Errorf(
 				"lz: greedyParser.Parse: nBlk=%d != n=%d",
 				nBlk, n)
 		}
 	}
 
-	return n, err
+	return parsed, err
 }
 
 // MarshalJSON provides a custom JSON marshaller that adds a type field to the

@@ -121,9 +121,6 @@ type Parser interface {
 	// Reset resets the internal buffer to the provided data.
 	Reset(data []byte) error
 
-	// Buf returns the internal buffer used by the parser.
-	Buf() *Buffer
-
 	// Options returns the options used to create the parser.
 	Options() Configurator
 }
@@ -146,6 +143,7 @@ type Matcher interface {
 	ByteAt(off int64) (c byte, err error)
 
 	Reset(data []byte) error
+
 	Buf() *Buffer
 
 	Options() MatcherConfigurator

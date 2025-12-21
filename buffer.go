@@ -76,6 +76,11 @@ func (b *Buffer) Reset(data []byte) error {
 	return nil
 }
 
+// Parsable returns the number of bytes that can be parsed from the buffer.
+func (b *Buffer) Parsable() int {
+	return len(b.Data) - b.W
+}
+
 // makeAvailable returns the slice of available bytes and should be larger or
 // equal the parameter n. The returned slice might be smaller than n if the
 // buffer reaches the buffer size limit.

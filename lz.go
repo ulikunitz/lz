@@ -242,19 +242,19 @@ func UnmarshalJSONOptions(data []byte) (Configurator, error) {
 }
 
 // intValue looks recursively for an integer field with the provided name.
-func intValue(opts any, name string) (v reflect.Value, err error) {
-	if opts == nil {
+func intValue(options any, name string) (v reflect.Value, err error) {
+	if options == nil {
 		return reflect.Value{},
 			fmt.Errorf("lz: cannot get %s from nil options", name)
 	}
 
-	v = reflect.Indirect(reflect.ValueOf(opts))
+	v = reflect.Indirect(reflect.ValueOf(options))
 
 	if v.Kind() != reflect.Struct {
 		return reflect.Value{},
 			fmt.Errorf(
 				"lz: cannot get %s from non-struct options type %T",
-				name, opts)
+				name, options)
 	}
 
 	f := v.FieldByName(name)
@@ -267,20 +267,20 @@ func intValue(opts any, name string) (v reflect.Value, err error) {
 			}
 		}
 		return v, fmt.Errorf(
-			"lz: options type %T has no WindowSize field", opts)
+			"lz: options type %T has no WindowSize field", options)
 	}
 	if !(f.Kind() == reflect.Int) {
 		return reflect.Value{},
 			fmt.Errorf(
 				"lz: options type %T field %s is not an int",
-				opts, name)
+				options, name)
 	}
 	return f, nil
 }
 
 // WindowSize returns the window size from the provided options.
-func WindowSize(opts Configurator) int {
-	v, err := intValue(opts, "WindowSize")
+func WindowSize(options Configurator) int {
+	v, err := intValue(options, "WindowSize")
 	if err != nil {
 		panic(err)
 	}
@@ -288,28 +288,28 @@ func WindowSize(opts Configurator) int {
 }
 
 // SetWindowSize sets the window size in the provided options.
-func SetWindowSize(opts Configurator, windowSize int) error {
+func SetWindowSize(options Configurator, windowSize int) error {
 	if windowSize < 0 {
 		return fmt.Errorf(
 			"lz: window size cannot be negative: %d",
 			windowSize)
 	}
-	v, err := intValue(opts, "WindowSize")
+	v, err := intValue(options, "WindowSize")
 	if err != nil {
 		return err
 	}
 	if !v.CanSet() {
 		return fmt.Errorf(
 			"lz: cannot set WindowSize field in options type %T",
-			opts)
+			options)
 	}
 	v.SetInt(int64(windowSize))
 	return nil
 }
 
 // BufferSize returns the buffer size included in the provided options.
-func BufferSize(opts Configurator) int {
-	v, err := intValue(opts, "BufferSize")
+func BufferSize(options Configurator) int {
+	v, err := intValue(options, "BufferSize")
 	if err != nil {
 		panic(err)
 	}
@@ -317,20 +317,20 @@ func BufferSize(opts Configurator) int {
 }
 
 // SetBufferSize sets the buffer size in the provided options.
-func SetBufferSize(opts Configurator, bufferSize int) error {
+func SetBufferSize(options Configurator, bufferSize int) error {
 	if bufferSize < 0 {
 		return fmt.Errorf(
 			"lz: buffer size cannot be negative: %d",
 			bufferSize)
 	}
-	v, err := intValue(opts, "BufferSize")
+	v, err := intValue(options, "BufferSize")
 	if err != nil {
 		return err
 	}
 	if !v.CanSet() {
 		return fmt.Errorf(
 			"lz: cannot set BufferSize field in options type %T",
-			opts)
+			options)
 	}
 	v.SetInt(int64(bufferSize))
 	return nil
@@ -339,8 +339,8 @@ func SetBufferSize(opts Configurator, bufferSize int) error {
 // RetentionSize returns the retentions size included in the provided options.
 // The retention size describes the amount of data that will be kept in the
 // buffer. It must not be larger than the WindowSize.
-func RetentionSize(opts Configurator) int {
-	v, err := intValue(opts, "RetentionSize")
+func RetentionSize(options Configurator) int {
+	v, err := intValue(options, "RetentionSize")
 	if err != nil {
 		panic(err)
 	}
@@ -348,20 +348,20 @@ func RetentionSize(opts Configurator) int {
 }
 
 // SetRetentionSize sets the retention size in the provided options.
-func SetRetentionSize(opts Configurator, retentionSize int) error {
+func SetRetentionSize(options Configurator, retentionSize int) error {
 	if retentionSize < 0 {
 		return fmt.Errorf(
 			"lz: buffer size cannot be negative: %d",
 			retentionSize)
 	}
-	v, err := intValue(opts, "RetentionSize")
+	v, err := intValue(options, "RetentionSize")
 	if err != nil {
 		return err
 	}
 	if !v.CanSet() {
 		return fmt.Errorf(
 			"lz: cannot set RetentionSize field in options type %T",
-			opts)
+			options)
 	}
 	v.SetInt(int64(retentionSize))
 	return nil

@@ -28,6 +28,7 @@ func (h *hash) InputLen() int { return h.inputLen }
 
 // init initializes the hash structure.
 func (h *hash) init(hopts HashOptions) error {
+	hopts.setDefaults()
 	if err := hopts.verify(); err != nil {
 		return err
 	}
@@ -106,10 +107,13 @@ type HashOptions struct {
 }
 
 // NewMapper creates the hash mapper.
-func (hopts HashOptions) NewMapper() (Mapper, error) {
-	hopts.setDefaults()
+func (hopts *HashOptions) NewMapper() (Mapper, error) {
+	var o HashOptions
+	if hopts != nil {
+		o = *hopts
+	}
 	h := &hash{}
-	if err := h.init(hopts); err != nil {
+	if err := h.init(o); err != nil {
 		return nil, err
 	}
 	return h, nil

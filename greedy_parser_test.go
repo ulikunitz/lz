@@ -10,7 +10,7 @@ import (
 func TestGreedyParser(t *testing.T) {
 	const (
 		blockSize = 128
-		str = "=====foofoobarfoobar bartender===="
+		str       = "=====foofoobarfoobar bartender===="
 	)
 
 	opts := &GreedyParserOptions{
@@ -19,7 +19,7 @@ func TestGreedyParser(t *testing.T) {
 			WindowSize:  32,
 			MinMatchLen: 3,
 			MaxMatchLen: 64,
-			MapperOptions: HashOptions{
+			MapperOptions: &HashOptions{
 				InputLen: 3,
 				HashBits: 16,
 			},
@@ -136,11 +136,11 @@ func TestBufferSize(t *testing.T) {
 func TestGreedyParserOptionsJSON(t *testing.T) {
 	opts := &GreedyParserOptions{
 		MatcherOptions: &GenericMatcherOptions{
-			BufferSize:  128,
+			BufferSize:    128,
 			RetentionSize: 64,
-			WindowSize:  64,
-			MinMatchLen: 4,
-			MaxMatchLen: 32,
+			WindowSize:    64,
+			MinMatchLen:   4,
+			MaxMatchLen:   32,
 			MapperOptions: &HashOptions{
 				InputLen: 4,
 				HashBits: 20,
@@ -236,7 +236,7 @@ func FuzzGreedyParser(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		const (
 			blockSize = 128
-			winSize = 200
+			winSize   = 200
 		)
 		pOpts := &GreedyParserOptions{
 			MatcherOptions: &GenericMatcherOptions{

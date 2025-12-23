@@ -1,8 +1,4 @@
 # TODO lz module
-
-## lz package
-
-* Test Paese
  
 ## Release
 

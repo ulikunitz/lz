@@ -11,7 +11,7 @@ type GreedyParserOptions struct {
 }
 
 // NewParser creates a new greedy parser using the greedy parser options.
-func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
+func (gpo GreedyParserOptions) NewParser() (Parser, error) {
 	matcher, err := gpo.MatcherOptions.NewMatcher()
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -19,7 +19,7 @@ func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
 	}
 	return &greedyParser{
 		Matcher: matcher,
-		options: *gpo,
+		options: gpo,
 	}, nil
 }
 

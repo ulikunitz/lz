@@ -106,10 +106,10 @@ type HashOptions struct {
 }
 
 // NewMapper creates the hash mapper.
-func (hopts *HashOptions) NewMapper() (Mapper, error) {
+func (hopts HashOptions) NewMapper() (Mapper, error) {
 	hopts.setDefaults()
 	h := &hash{}
-	if err := h.init(*hopts); err != nil {
+	if err := h.init(hopts); err != nil {
 		return nil, err
 	}
 	return h, nil

@@ -19,7 +19,7 @@ func TestGreedyParser(t *testing.T) {
 			WindowSize:  32,
 			MinMatchLen: 3,
 			MaxMatchLen: 64,
-			MapperOptions: &HashOptions{
+			MapperOptions: HashOptions{
 				InputLen: 3,
 				HashBits: 16,
 			},

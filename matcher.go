@@ -147,7 +147,7 @@ func (opts *GenericMatcherOptions) setDefaults() {
 		opts.MaxMatchLen = 273
 	}
 	if opts.MapperOptions == nil {
-		opts.MapperOptions = &HashOptions{}
+		opts.MapperOptions = HashOptions{}
 	}
 }
 
@@ -173,11 +173,8 @@ func (opts *GenericMatcherOptions) verify() error {
 }
 
 // NewMatcher creates a new generic matcher using the generic matcher options.
-func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
+func (opts GenericMatcherOptions) NewMatcher() (Matcher, error) {
 	var err error
-	if opts == nil {
-		opts = &GenericMatcherOptions{}
-	}
 	opts.setDefaults()
 	if err = opts.verify(); err != nil {
 		return nil, err
@@ -189,7 +186,7 @@ func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
 
 	m := &genericMatcher{
 		mapper:                mapper,
-		GenericMatcherOptions: *opts,
+		GenericMatcherOptions: opts,
 	}
 	if err = m.Buffer.Init(opts.BufferSize, opts.RetentionSize, m.mapper.Shift); err != nil {
 		return nil, err

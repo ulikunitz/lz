@@ -127,11 +127,11 @@ func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
 		if len(b.Data)+chunkSize >= b.Size {
 			b.prune()
 		}
-		q := b.makeAvailable(chunkSize)
-		if len(q) == 0 {
+		p := b.makeAvailable(chunkSize)
+		if len(p) == 0 {
 			return n, ErrFullBuffer
 		}
-		k, err := r.Read(q)
+		k, err := r.Read(p)
 		n += int64(k)
 		b.Data = b.Data[:len(b.Data)+k]
 		if err != nil {

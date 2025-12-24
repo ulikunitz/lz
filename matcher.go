@@ -15,6 +15,7 @@ type genericMatcher struct {
 	q        []Seq
 	trailing int
 
+	WindowSize int
 	GenericMatcherOptions
 }
 
@@ -121,25 +122,13 @@ var _ Matcher = (*genericMatcher)(nil)
 
 // GenericMatcherOptions provide the options for a generic matcher.
 type GenericMatcherOptions struct {
-	BufferSize    int
-	WindowSize    int
-	RetentionSize int
-	MinMatchLen   int
-	MaxMatchLen   int
+	MinMatchLen int
+	MaxMatchLen int
 
 	MapperOptions MapperConfigurator
 }
 
 func (opts *GenericMatcherOptions) setDefaults() {
-	if opts.BufferSize == 0 {
-		opts.BufferSize = 128 << 10
-	}
-	if opts.WindowSize == 0 {
-		opts.WindowSize = 64 << 10
-	}
-	if opts.RetentionSize == 0 {
-		opts.RetentionSize = opts.WindowSize
-	}
 	if opts.MinMatchLen == 0 {
 		opts.MinMatchLen = 3
 	}
@@ -154,17 +143,6 @@ func (opts *GenericMatcherOptions) setDefaults() {
 }
 
 func (opts *GenericMatcherOptions) verify() error {
-	if !(0 < opts.BufferSize) {
-		return errors.New("lz: matcher buffer size must be positive")
-	}
-	if !(0 < opts.WindowSize) {
-		return errors.New("lz: matcher window size must be positive")
-	}
-	if !(0 < opts.RetentionSize && opts.RetentionSize <= opts.BufferSize &&
-		opts.RetentionSize <= opts.WindowSize) {
-		return errors.New(
-			"lz: matcher retention size invalid, must be > 0, <= BufferSize, and <= WindowSize")
-	}
 	if !(1 < opts.MinMatchLen && opts.MinMatchLen <= opts.MaxMatchLen) {
 		return errors.New("lz: matcher min/max match length invalid")
 	}
@@ -175,7 +153,7 @@ func (opts *GenericMatcherOptions) verify() error {
 }
 
 // NewMatcher creates a new generic matcher using the generic matcher options.
-func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
+func (opts *GenericMatcherOptions) NewMatcher(windowSize, retentionSize, bufferSize int) (Matcher, error) {
 	var o GenericMatcherOptions
 	if opts != nil {
 		o = *opts
@@ -185,16 +163,24 @@ func (opts *GenericMatcherOptions) NewMatcher() (Matcher, error) {
 	if err = o.verify(); err != nil {
 		return nil, err
 	}
+
+	if windowSize <= 0 {
+		return nil, errors.New(
+			"lz: invalid window size for generic matcher")
+	}
+
 	mapper, err := o.MapperOptions.NewMapper()
 	if err != nil {
 		return nil, err
 	}
 
 	m := &genericMatcher{
-		mapper:                mapper,
+		mapper: mapper,
+
+		WindowSize:            windowSize,
 		GenericMatcherOptions: o,
 	}
-	if err = m.Buffer.Init(o.BufferSize, o.RetentionSize, m.mapper.Shift); err != nil {
+	if err = m.Buffer.Init(bufferSize, retentionSize, m.mapper.Shift); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -208,18 +194,12 @@ func (opts *GenericMatcherOptions) MarshalJSON() ([]byte, error) {
 	jOpts := &struct {
 		MatcherType string
 
-		BufferSize    int `json:",omitzero"`
-		WindowSize    int `json:",omitzero"`
-		RetentionSize int `json:",omitzero"`
-		MinMatchLen   int `json:",omitzero"`
-		MaxMatchLen   int `json:",omitzero"`
+		MinMatchLen int `json:",omitzero"`
+		MaxMatchLen int `json:",omitzero"`
 
 		MapperOptions MapperConfigurator `json:",omitzero"`
 	}{
 		MatcherType:   "generic",
-		BufferSize:    opts.BufferSize,
-		WindowSize:    opts.WindowSize,
-		RetentionSize: opts.RetentionSize,
 		MinMatchLen:   opts.MinMatchLen,
 		MaxMatchLen:   opts.MaxMatchLen,
 		MapperOptions: opts.MapperOptions,
@@ -231,11 +211,8 @@ func (opts *GenericMatcherOptions) UnmarshalJSON(data []byte) error {
 	jOpts := &struct {
 		MatcherType string
 
-		BufferSize    int `json:",omitzero"`
-		WindowSize    int `json:",omitzero"`
-		RetentionSize int `json:",omitzero"`
-		MinMatchLen   int `json:",omitzero"`
-		MaxMatchLen   int `json:",omitzero"`
+		MinMatchLen int `json:",omitzero"`
+		MaxMatchLen int `json:",omitzero"`
 
 		MapperOptions json.RawMessage `json:",omitzero"`
 	}{}
@@ -247,9 +224,6 @@ func (opts *GenericMatcherOptions) UnmarshalJSON(data []byte) error {
 		return errors.New(
 			"lz: invalid matcher type for generic matcher options")
 	}
-	opts.BufferSize = jOpts.BufferSize
-	opts.WindowSize = jOpts.WindowSize
-	opts.RetentionSize = jOpts.RetentionSize
 	opts.MinMatchLen = jOpts.MinMatchLen
 	opts.MaxMatchLen = jOpts.MaxMatchLen
 

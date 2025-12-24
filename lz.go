@@ -30,7 +30,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -128,7 +127,7 @@ type Parser interface {
 // Configurator creates a parser. Usually an Options type implements the
 // interface.
 type Configurator interface {
-	NewParser() (Parser, error)
+	NewParser(windowSize, retentionSize, bufferSize int) (Parser, error)
 }
 
 // Matcher is responsible to find matches or Literal bytes in the byte stream.
@@ -152,7 +151,7 @@ type Matcher interface {
 // MatcherConfigurator creates a matcher, usually an Options type implements
 // the interface.
 type MatcherConfigurator interface {
-	NewMatcher() (Matcher, error)
+	NewMatcher(windowSize, retentionSize, bufferSize int) (Matcher, error)
 }
 
 // UnmarshalJSONMatcherOptions unmarshals matcher options from JSON data. The
@@ -222,8 +221,8 @@ func UnmarshalJSONMapperOptions(data []byte) (MapperConfigurator, error) {
 	}
 }
 
-// UnmarshalJSONOptions unmarshals parser options from JSON data.
-func UnmarshalJSONOptions(data []byte) (Configurator, error) {
+// ParseJSON unmarshals parser options from JSON data.
+func ParseJSON(data []byte) (Configurator, error) {
 	var d struct{ Type string }
 	if err := json.Unmarshal(data, &d); err != nil {
 		return nil, err
@@ -239,130 +238,4 @@ func UnmarshalJSONOptions(data []byte) (Configurator, error) {
 		return nil, errors.New(
 			"lz: unknown parser type: " + d.Type)
 	}
-}
-
-// intValue looks recursively for an integer field with the provided name.
-func intValue(options any, name string) (v reflect.Value, err error) {
-	if options == nil {
-		return reflect.Value{},
-			fmt.Errorf("lz: cannot get %s from nil options", name)
-	}
-
-	v = reflect.Indirect(reflect.ValueOf(options))
-
-	if v.Kind() != reflect.Struct {
-		return reflect.Value{},
-			fmt.Errorf(
-				"lz: cannot get %s from non-struct options type %T",
-				name, options)
-	}
-
-	f := v.FieldByName(name)
-	if !f.IsValid() {
-		for i := range v.NumField() {
-			sf := v.Field(i)
-			v, err := intValue(sf.Interface(), name)
-			if err == nil {
-				return v, nil
-			}
-		}
-		return v, fmt.Errorf(
-			"lz: options type %T has no WindowSize field", options)
-	}
-	if !(f.Kind() == reflect.Int) {
-		return reflect.Value{},
-			fmt.Errorf(
-				"lz: options type %T field %s is not an int",
-				options, name)
-	}
-	return f, nil
-}
-
-// WindowSize returns the window size from the provided options.
-func WindowSize(options Configurator) int {
-	v, err := intValue(options, "WindowSize")
-	if err != nil {
-		panic(err)
-	}
-	return int(v.Int())
-}
-
-// SetWindowSize sets the window size in the provided options.
-func SetWindowSize(options Configurator, windowSize int) error {
-	if windowSize < 0 {
-		return fmt.Errorf(
-			"lz: window size cannot be negative: %d",
-			windowSize)
-	}
-	v, err := intValue(options, "WindowSize")
-	if err != nil {
-		return err
-	}
-	if !v.CanSet() {
-		return fmt.Errorf(
-			"lz: cannot set WindowSize field in options type %T",
-			options)
-	}
-	v.SetInt(int64(windowSize))
-	return nil
-}
-
-// BufferSize returns the buffer size included in the provided options.
-func BufferSize(options Configurator) int {
-	v, err := intValue(options, "BufferSize")
-	if err != nil {
-		panic(err)
-	}
-	return int(v.Int())
-}
-
-// SetBufferSize sets the buffer size in the provided options.
-func SetBufferSize(options Configurator, bufferSize int) error {
-	if bufferSize < 0 {
-		return fmt.Errorf(
-			"lz: buffer size cannot be negative: %d",
-			bufferSize)
-	}
-	v, err := intValue(options, "BufferSize")
-	if err != nil {
-		return err
-	}
-	if !v.CanSet() {
-		return fmt.Errorf(
-			"lz: cannot set BufferSize field in options type %T",
-			options)
-	}
-	v.SetInt(int64(bufferSize))
-	return nil
-}
-
-// RetentionSize returns the retentions size included in the provided options.
-// The retention size describes the amount of data that will be kept in the
-// buffer. It must not be larger than the WindowSize.
-func RetentionSize(options Configurator) int {
-	v, err := intValue(options, "RetentionSize")
-	if err != nil {
-		panic(err)
-	}
-	return int(v.Int())
-}
-
-// SetRetentionSize sets the retention size in the provided options.
-func SetRetentionSize(options Configurator, retentionSize int) error {
-	if retentionSize < 0 {
-		return fmt.Errorf(
-			"lz: buffer size cannot be negative: %d",
-			retentionSize)
-	}
-	v, err := intValue(options, "RetentionSize")
-	if err != nil {
-		return err
-	}
-	if !v.CanSet() {
-		return fmt.Errorf(
-			"lz: cannot set RetentionSize field in options type %T",
-			options)
-	}
-	v.SetInt(int64(retentionSize))
-	return nil
 }

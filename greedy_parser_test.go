@@ -15,8 +15,6 @@ func TestGreedyParser(t *testing.T) {
 
 	opts := &GreedyParserOptions{
 		MatcherOptions: &GenericMatcherOptions{
-			BufferSize:  64,
-			WindowSize:  32,
 			MinMatchLen: 3,
 			MaxMatchLen: 64,
 			MapperOptions: &HashOptions{
@@ -25,7 +23,8 @@ func TestGreedyParser(t *testing.T) {
 			},
 		},
 	}
-	p, err := opts.NewParser()
+	const winSize = 32
+	p, err := opts.NewParser(winSize, winSize, 2*winSize)
 	if err != nil {
 		t.Fatalf("NewGreedyParser: %v", err)
 	}
@@ -52,7 +51,6 @@ func TestGreedyParser(t *testing.T) {
 		t.Fatalf("gp.Parse returned parsed=%d; want %d", parsed, len(str))
 	}
 
-	winSize := WindowSize(opts)
 	decoderOpts := DecoderOptions{
 		WindowSize: winSize,
 		BufferSize: 2 * winSize,
@@ -81,64 +79,10 @@ func TestGreedyParser(t *testing.T) {
 	}
 }
 
-func TestWindowSize(t *testing.T) {
-	opts := &GreedyParserOptions{
-		MatcherOptions: &GenericMatcherOptions{
-			BufferSize:  64,
-			WindowSize:  32,
-			MinMatchLen: 3,
-			MaxMatchLen: 64,
-			MapperOptions: &HashOptions{
-				InputLen: 3,
-				HashBits: 16,
-			},
-		},
-	}
-	n := WindowSize(opts)
-	if n != 32 {
-		t.Fatalf("GetWindowSize returned %d; want 32", n)
-	}
-	if err := SetWindowSize(opts, 48); err != nil {
-		t.Fatalf("SetWindowSize: %v", err)
-	}
-	n = WindowSize(opts)
-	if n != 48 {
-		t.Fatalf("GetWindowSize returned %d; want 48", n)
-	}
-}
-
-func TestBufferSize(t *testing.T) {
-	opts := &GreedyParserOptions{
-		MatcherOptions: &GenericMatcherOptions{
-			BufferSize:  64,
-			WindowSize:  32,
-			MinMatchLen: 3,
-			MaxMatchLen: 64,
-			MapperOptions: &HashOptions{
-				InputLen: 3,
-				HashBits: 16,
-			},
-		},
-	}
-	n := BufferSize(opts)
-	if n != 64 {
-		t.Fatalf("GetBufferSize returned %d; want 64", n)
-	}
-	if err := SetBufferSize(opts, 96); err != nil {
-		t.Fatalf("SetBufferSize: %v", err)
-	}
-	n = BufferSize(opts)
-	if n != 96 {
-		t.Fatalf("GetBufferSize returned %d; want 96", n)
-	}
-}
 
 func TestGreedyParserOptionsJSON(t *testing.T) {
 	opts := &GreedyParserOptions{
 		MatcherOptions: &GenericMatcherOptions{
-			BufferSize:    128,
-			RetentionSize: 64,
-			WindowSize:    64,
 			MinMatchLen:   4,
 			MaxMatchLen:   32,
 			MapperOptions: &HashOptions{
@@ -155,7 +99,7 @@ func TestGreedyParserOptionsJSON(t *testing.T) {
 
 	t.Logf("GreedyParserOptions JSON:\n%s\n", data)
 
-	c, err := UnmarshalJSONOptions(data)
+	c, err := ParseJSON(data)
 	if err != nil {
 		t.Fatalf("UnmarshalJSONOptions: %v", err)
 	}
@@ -181,16 +125,6 @@ func TestGreedyParserOptionsJSON(t *testing.T) {
 			opts.MatcherOptions)
 	}
 
-	if mOpts.BufferSize != origMOpts.BufferSize {
-		t.Fatalf(
-			"BufferSize = %d; want %d",
-			mOpts.BufferSize, origMOpts.BufferSize)
-	}
-	if mOpts.WindowSize != origMOpts.WindowSize {
-		t.Fatalf(
-			"WindowSize = %d; want %d",
-			mOpts.WindowSize, origMOpts.WindowSize)
-	}
 	if mOpts.MinMatchLen != origMOpts.MinMatchLen {
 		t.Fatalf(
 			"MinMatchLen = %d; want %d",
@@ -240,8 +174,6 @@ func FuzzGreedyParser(f *testing.F) {
 		)
 		pOpts := &GreedyParserOptions{
 			MatcherOptions: &GenericMatcherOptions{
-				BufferSize:  256,
-				WindowSize:  winSize,
 				MinMatchLen: 3,
 				MaxMatchLen: 64,
 				MapperOptions: &HashOptions{
@@ -255,7 +187,7 @@ func FuzzGreedyParser(f *testing.F) {
 			BufferSize: 2 * winSize,
 		}
 
-		p, err := pOpts.NewParser()
+		p, err := pOpts.NewParser(winSize, winSize, 2*winSize)
 		if err != nil {
 			t.Fatalf("NewGreedyParser: %v", err)
 		}

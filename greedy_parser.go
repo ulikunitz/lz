@@ -11,8 +11,8 @@ type GreedyParserOptions struct {
 }
 
 // NewParser creates a new greedy parser using the greedy parser options.
-func (gpo *GreedyParserOptions) NewParser() (Parser, error) {
-	matcher, err := gpo.MatcherOptions.NewMatcher()
+func (gpo *GreedyParserOptions) NewParser(windowSize, retentionSize, bufferSize int) (Parser, error) {
+	matcher, err := gpo.MatcherOptions.NewMatcher(windowSize, retentionSize, bufferSize)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"lz: cannot create matcher for greedy parser: %w", err)

@@ -174,7 +174,7 @@ var (
 	errOffset   = errors.New("lz: Offset out of range")
 )
 
-// WriteMatch appends the ma tch to the end of the buffer. The match will be
+// WriteMatch appends the match to the end of the buffer. The match will be
 // written completely, or n=0 and ErrFullBuffer will be returned.
 func (d *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	if ou == 0 && mu > 0 {

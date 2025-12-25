@@ -15,7 +15,7 @@ type genericMatcher struct {
 	q        []Seq
 	trailing int
 
-	WindowSize int
+	windowSize int
 	GenericMatcherOptions
 }
 
@@ -41,6 +41,11 @@ func (m *genericMatcher) Reset(data []byte) error {
 	m.trailing = 0
 
 	return nil
+}
+
+// WindowSize returns the window size used by the matcher.
+func (m *genericMatcher) WindowSize() int {
+	return m.windowSize
 }
 
 // ErrEndOfBuffer is returned at the end of the buffer.
@@ -105,7 +110,7 @@ func (m *genericMatcher) Edges(n int) []Seq {
 		}
 		j := int(e.i)
 		o := i - j
-		if !(0 < o && o <= m.WindowSize) {
+		if !(0 < o && o <= m.windowSize) {
 			continue
 		}
 		if k == 4 {
@@ -177,7 +182,7 @@ func (opts *GenericMatcherOptions) NewMatcher(windowSize, retentionSize, bufferS
 	m := &genericMatcher{
 		mapper: mapper,
 
-		WindowSize:            windowSize,
+		windowSize:            windowSize,
 		GenericMatcherOptions: o,
 	}
 	if err = m.Buffer.Init(bufferSize, retentionSize, m.mapper.Shift); err != nil {

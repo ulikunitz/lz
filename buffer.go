@@ -41,8 +41,9 @@ func (b *Buffer) Init(size, retentionSize int, shift ShiftFunc) error {
 	if !(0 < size) {
 		return fmt.Errorf("lz: invalid buffer size: %d", size)
 	}
-	if !(0 <= retentionSize && retentionSize < size) {
-		return fmt.Errorf("lz: invalid retention size: %d", retentionSize)
+	if !(0 <= retentionSize && retentionSize <= size) {
+		return fmt.Errorf("lz: invalid retention size: %d; bufferSize %d",
+			retentionSize, size)
 	}
 	*b = Buffer{
 		Data:          b.Data[:0],

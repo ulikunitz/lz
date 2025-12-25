@@ -120,6 +120,9 @@ type Parser interface {
 	// Reset resets the internal buffer to the provided data.
 	Reset(data []byte) error
 
+	// WindowSize returns the window size used by the parser.
+	WindowSize() int
+
 	// Options returns the options used to create the parser.
 	Options() Configurator
 }
@@ -145,6 +148,7 @@ type Matcher interface {
 
 	Buf() *Buffer
 
+	WindowSize() int
 	Options() MatcherConfigurator
 }
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
-	"sort"
+	slices0 "slices"
 	"strings"
 
 	"github.com/ulikunitz/lz/suffix"
@@ -221,9 +221,7 @@ func computeEdgeStats(edges [][]edge) string {
 	for i, e := range edges {
 		lengths[i] = len(e)
 	}
-	sort.Slice(lengths, func(i, j int) bool {
-		return lengths[i] < lengths[j]
-	})
+	slices0.Sort(lengths)
 	var sb strings.Builder
 	for i, p := range []int{0, 25, 50, 75, 90, 95, 99, 100} {
 		if i > 0 {

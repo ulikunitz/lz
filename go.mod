@@ -1,6 +1,6 @@
 module github.com/ulikunitz/lz
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/google/go-cmp v0.6.0

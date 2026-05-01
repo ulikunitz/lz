@@ -275,7 +275,6 @@ func TestLargeParameters(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		tc := tc
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			f, err := os.Open(tc.filename)
 			if err != nil {

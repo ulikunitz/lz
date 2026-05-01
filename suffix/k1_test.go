@@ -261,7 +261,7 @@ func verifySuffixArray(t []byte, sa []int32) error {
 	}
 	// For completeness we are taking samples with a comparison of the
 	// full suffixes.
-	for k := 0; k < samples; k++ {
+	for range samples {
 		i := rand.Intn(len(sa))
 		u = t[sa[i]:]
 		v = t[sa[i+1]:]

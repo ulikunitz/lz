@@ -21,10 +21,7 @@ scan:
 	for j := int32(1); ; j++ {
 		var n int32
 		if j < int32(len(lcp)) {
-			n = lcp[j]
-			if n > maxLen {
-				n = maxLen
-			}
+			n = min(lcp[j], maxLen)
 		} else {
 			n = -1
 		}

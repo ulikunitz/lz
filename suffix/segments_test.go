@@ -29,7 +29,6 @@ func TestSegments(t *testing.T) {
 		"=====foofoobarfoobar bartender====",
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc, func(t *testing.T) {
 			p := []byte(tc)
 			sa := make([]int32, len(tc))

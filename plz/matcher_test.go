@@ -1,4 +1,4 @@
-package lz
+package plz
 
 import (
 	"encoding/json"
@@ -7,8 +7,8 @@ import (
 
 func TestGenericMatcherOptionsJSON(t *testing.T) {
 	origOpts := &GenericMatcherOptions{
-		MinMatchLen:   4,
-		MaxMatchLen:   273,
+		MinMatchLen: 4,
+		MaxMatchLen: 273,
 		MapperOptions: &HashOptions{
 			InputLen: 3,
 			HashBits: 17,

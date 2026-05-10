@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-// Package lz supports encoding and decoding of LZ77 sequences. A sequence, as
+// Package plz supports encoding and decoding of LZ77 sequences. A sequence, as
 // described in the [Zstandard specification], consists of a literal copy
 // command followed by a match copy command. The literal copy command is
 // described by the length in literal bytes to be copied, and the match command
@@ -23,7 +23,7 @@
 // The library supports the implementation of parsers outside of this package.
 //
 // [Zstandard specification]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
-package lz
+package plz
 
 import (
 	"encoding/json"

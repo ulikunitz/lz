@@ -1,4 +1,4 @@
-package lz
+package plz
 
 import (
 	"bytes"
@@ -79,12 +79,11 @@ func TestGreedyParser(t *testing.T) {
 	}
 }
 
-
 func TestGreedyParserOptionsJSON(t *testing.T) {
 	opts := &GreedyParserOptions{
 		MatcherOptions: &GenericMatcherOptions{
-			MinMatchLen:   4,
-			MaxMatchLen:   32,
+			MinMatchLen: 4,
+			MaxMatchLen: 32,
 			MapperOptions: &HashOptions{
 				InputLen: 4,
 				HashBits: 20,

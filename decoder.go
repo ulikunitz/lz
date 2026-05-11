@@ -21,7 +21,7 @@ type DecoderOptions struct {
 	BufferSize int
 }
 
-func (opts DecoderOptions) NewDecoder() (*Decoder, error) {
+func NewDecoder(opts DecoderOptions) (*Decoder, error) {
 	d := &Decoder{}
 	if err := d.Init(opts); err != nil {
 		return nil, err

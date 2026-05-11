@@ -310,7 +310,7 @@ type Mapper interface {
 // and hash bits. The input length is between 2 and 8 bytes, and the hash
 // bits can be 24 bits at maximum.
 func NewMapper(name string) (Mapper, error) {
-	prefix, _, found := strings.Cut(name, "-")
+	prefix, _, found := strings.Cut(name, "_")
 	if !found {
 		return nil, fmt.Errorf("lz: unknown mapper name %q", name)
 	}

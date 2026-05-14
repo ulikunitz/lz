@@ -10,14 +10,14 @@ import (
 // pruned to provide more available space.
 type ShiftFunc func(delta int)
 
-// Buffer is the buffer used for LZ parsing.
+// Buffer is the Buffer used for LZ parsing.
 //
 // The Off field describes the offset of Data[0] in the original stream. The W
 // points to the end of sliding window used for copying matches.
 //
 // Data is not fully allocated at the beginning. It grows with the usage. There
 // must be always 7 extra bytes allocated at the end of Data to allow easy reads
-// of data from the buffer.
+// of data from the Buffer.
 type Buffer struct {
 	Data []byte
 	// Window end index

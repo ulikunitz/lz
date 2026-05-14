@@ -2,11 +2,11 @@ package lz
 
 import "fmt"
 
-type GreedyPathFinder struct {
+type greedyPathFinder struct {
 	matcher Matcher
 }
 
-func (f *GreedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
+func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	if n <= 0 {
 		return 0, fmt.Errorf("lz: length %d <= 0; want n > 0", n)
 	}
@@ -69,4 +69,4 @@ func (f *GreedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed i
 	return parsed, nil
 }
 
-func (f *GreedyPathFinder) Reset() {}
+func (f *greedyPathFinder) Reset() {}

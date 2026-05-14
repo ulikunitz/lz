@@ -132,9 +132,12 @@ type Parser interface {
 	Options() ParserOptions
 }
 
-// ParserOptions provides the configuration for a parser. PathFinder describes
-// the algorithm to find a path through the different matches. The Mapper is
+// ParserOptions provides the configuration for a parser. [PathFinder] describes
+// the algorithm to find a path through the different matches. The [Mapper] is
 // used to find potential matches.
+//
+// For the list of available path finders see [NewPathFinder]. For the list of
+// available mappers see [NewMapper].
 type ParserOptions struct {
 	PathFinder string `json:",omitzero"`
 	Mapper     string `json:",omitzero"`
@@ -265,11 +268,13 @@ type PathFinder interface {
 }
 
 // NewPathFinder creates a new PathFinder for the provided name of the algorithm
-// and the Matcher.
+// and the Matcher. The path finders supported are described below.
+//
+// greedy The greedy path finder selects the longest match at each position.
 func NewPathFinder(name string, m Matcher) (PathFinder, error) {
 	switch name {
 	case "greedy":
-		return &GreedyPathFinder{matcher: m}, nil
+		return &greedyPathFinder{matcher: m}, nil
 	default:
 		return nil, fmt.Errorf("lz: unknown path finder name %q", name)
 	}
@@ -306,7 +311,7 @@ type Mapper interface {
 // NewMapper creates a new Mapper for the provided name of the algorithm. The
 // mappers supported are described below.
 //
-// hash_<inputLen>:<hashBits>: A hash table with the provided input length
+// hash_<inputLen>:<hashBits> A hash table with the provided input length
 // and hash bits. The input length is between 2 and 8 bytes, and the hash
 // bits can be 24 bits at maximum.
 func NewMapper(name string) (Mapper, error) {

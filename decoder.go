@@ -21,7 +21,8 @@ type DecoderOptions struct {
 	BufferSize int
 }
 
-func NewDecoder(opts DecoderOptions) (*Decoder, error) {
+// NewDecoder creates a new Decoder for the provided options.
+func NewDecoder(opts *DecoderOptions) (*Decoder, error) {
 	d := &Decoder{}
 	if err := d.Init(opts); err != nil {
 		return nil, err
@@ -79,14 +80,18 @@ type Decoder struct {
 }
 
 // Init initializes the DecoderBuffer.
-func (d *Decoder) Init(opts DecoderOptions) error {
-	opts.setDefaults()
-	if err := opts.verify(); err != nil {
+func (d *Decoder) Init(opts *DecoderOptions) error {
+	var o DecoderOptions
+	if opts != nil {
+		o = *opts
+	}
+	o.setDefaults()
+	if err := o.verify(); err != nil {
 		return err
 	}
 	*d = Decoder{
 		Data:           d.Data[:0],
-		DecoderOptions: opts,
+		DecoderOptions: o,
 	}
 	if cap(d.Data) > d.BufferSize {
 		d.BufferSize = cap(d.Data)

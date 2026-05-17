@@ -19,9 +19,14 @@ type genericParser struct {
 	ParserOptions
 }
 
-func newGenericParser(options ParserOptions) (*genericParser, error) {
+// newGenericParser creates a new generic parser for the provided options.
+func newGenericParser(options *ParserOptions) (*genericParser, error) {
+	if options == nil {
+		return nil, errors.New(
+			"lz.newGenericParser: options must not be nil")
+	}
 	if options.WindowSize <= 0 {
-		return nil, fmt.Errorf("lz: invalid block size %d; must be > 0",
+		return nil, fmt.Errorf("lz: invalid window size %d; must be > 0",
 			options.WindowSize)
 	}
 	if !(2 <= options.MinMatchLen && options.MinMatchLen <= options.MaxMatchLen) {
@@ -30,20 +35,20 @@ func newGenericParser(options ParserOptions) (*genericParser, error) {
 			options.MinMatchLen, options.MaxMatchLen)
 	}
 
-	mapper, err := NewMapper(options.Mapper)
+	mapper, err := options.Mapper.NewMapper()
 	if err != nil {
 		return nil, err
 	}
 	gp := &genericParser{
 		mapper:        mapper,
-		ParserOptions: options,
+		ParserOptions: *options,
 	}
 	err = gp.Buffer.Init(int(options.BufferSize), int(options.RetentionSize),
 		mapper.Shift)
 	if err != nil {
 		return nil, err
 	}
-	gp.PathFinder, err = NewPathFinder(options.PathFinder, gp)
+	gp.PathFinder, err = options.PathFinder.NewPathFinder(gp)
 	if err != nil {
 		return nil, err
 	}

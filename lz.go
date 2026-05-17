@@ -33,10 +33,6 @@ package lz
 import (
 	"fmt"
 	"io"
-	"regexp"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -132,6 +128,16 @@ type Parser interface {
 	Options() ParserOptions
 }
 
+// PathFinderOption provides the configuration for a path finder.
+type PathFinderOption interface {
+	NewPathFinder(m Matcher) (PathFinder, error)
+}
+
+// MapperOption provides the configuration for a mapper.
+type MapperOption interface {
+	NewMapper() (Mapper, error)
+}
+
 // ParserOptions provides the configuration for a parser. [PathFinder] describes
 // the algorithm to find a path through the different matches. The [Mapper] is
 // used to find potential matches.
@@ -139,12 +145,12 @@ type Parser interface {
 // For the list of available path finders see [NewPathFinder]. For the list of
 // available mappers see [NewMapper].
 type ParserOptions struct {
-	PathFinder string `json:",omitzero"`
-	Mapper     string `json:",omitzero"`
+	PathFinder PathFinderOption
+	Mapper     MapperOption
 
-	WindowSize    Size `json:",omitzero"`
-	RetentionSize Size `json:",omitzero"`
-	BufferSize    Size `json:",omitzero"`
+	WindowSize    int
+	RetentionSize int
+	BufferSize    int
 
 	MinMatchLen int `json:",omitzero"`
 	MaxMatchLen int `json:",omitzero"`
@@ -153,11 +159,11 @@ type ParserOptions struct {
 // SetDefaults sets the default values for the parser options if the field is
 // zero or empty.
 func (o *ParserOptions) SetDefaults() {
-	if o.PathFinder == "" {
-		o.PathFinder = "greedy"
+	if o.PathFinder == nil {
+		o.PathFinder = Greedy
 	}
-	if o.Mapper == "" {
-		o.Mapper = "hash_4:16"
+	if o.Mapper == nil {
+		o.Mapper = Hash{InputLen: 4, HashBits: 16}
 	}
 	if o.BufferSize == 0 {
 		o.BufferSize = 128 << 20
@@ -176,72 +182,14 @@ func (o *ParserOptions) SetDefaults() {
 	}
 }
 
-// Size is a specific type for handling data size parameters. It shortens the
-// string representation. For instance 8 MiB are represented as "8M", 16 KiB as "16K", 2 GiB
-// as "2G".
-type Size int
-
-// String returns the string representation of the size. It uses K, M, and G as suffixes for
-// KiB, MiB, and GiB, respectively.
-func (s Size) String() string {
-	switch {
-	case s == 0:
-		return "0"
-	case s%(1<<30) == 0:
-		return fmt.Sprintf("%dG", s/(1<<30))
-	case s%(1<<20) == 0:
-		return fmt.Sprintf("%dM", s/(1<<20))
-	case s%(1<<10) == 0:
-		return fmt.Sprintf("%dK", s/(1<<10))
-	default:
-		return fmt.Sprintf("%d", s)
-	}
-}
-
-// MarshalText returns the string representation of the size as byte slice. It
-// is used by the JSON encoder.
-func (s Size) MarshalText() ([]byte, error) {
-	return []byte(s.String()), nil
-}
-
-var sizeRegexp = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^(\d+)([KMG]?)$`)
-})
-
-// parseSize parses the string representation of the Size type.
-func parseSize(s string) (size Size, err error) {
-	const msg = "lz: invalid size %q; must be in format <number>[K|M|G]"
-	m := sizeRegexp().FindStringSubmatch(s)
-	if m == nil {
-		return 0, fmt.Errorf(msg, s)
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil {
-		return 0, fmt.Errorf(msg, s)
-	}
-	switch m[2] {
-	case "K":
-		n *= 1 << 10
-	case "M":
-		n *= 1 << 20
-	case "G":
-		n *= 1 << 30
-	}
-	return Size(n), nil
-}
-
-// UnmarshalText parses the string representation of the size and sets the value
-// of s. It is used by the JSON decoder.
-func (s *Size) UnmarshalText(text []byte) error {
-	var err error
-	*s, err = parseSize(string(text))
-	return err
-}
-
 // NewParser creates a new parser for the provided options.
-func NewParser(opts ParserOptions) (Parser, error) {
-	opts.SetDefaults()
-	return newGenericParser(opts)
+func NewParser(opts *ParserOptions) (Parser, error) {
+	var o ParserOptions
+	if opts != nil {
+		o = *opts
+	}
+	o.SetDefaults()
+	return newGenericParser(&o)
 }
 
 // Matcher is responsible to find matches or Literal bytes in the byte stream.
@@ -265,19 +213,6 @@ type Matcher interface {
 type PathFinder interface {
 	Parse(block *Block, n int, flags ParserFlags) (parsed int, err error)
 	Reset()
-}
-
-// NewPathFinder creates a new PathFinder for the provided name of the algorithm
-// and the Matcher. The path finders supported are described below.
-//
-// greedy The greedy path finder selects the longest match at each position.
-func NewPathFinder(name string, m Matcher) (PathFinder, error) {
-	switch name {
-	case "greedy":
-		return &greedyPathFinder{matcher: m}, nil
-	default:
-		return nil, fmt.Errorf("lz: unknown path finder name %q", name)
-	}
 }
 
 // Entry is returned by a Mapper for a found match. It provides the position i
@@ -306,26 +241,4 @@ type Mapper interface {
 	// Get returns all candidate entries for the provided hash value. The
 	// entry value v contains the all 4 bytes stored a position i.
 	Get(v uint64) []Entry
-}
-
-// NewMapper creates a new Mapper for the provided name of the algorithm. The
-// mappers supported are described below.
-//
-// hash_<inputLen>:<hashBits> A hash table with the provided input length
-// and hash bits. The input length is between 2 and 8 bytes, and the hash
-// bits can be 24 bits at maximum.
-func NewMapper(name string) (Mapper, error) {
-	prefix, _, found := strings.Cut(name, "_")
-	if !found {
-		return nil, fmt.Errorf("lz: unknown mapper name %q", name)
-	}
-	switch prefix {
-	case "hash":
-		inputLen, hashBits, err := parseHashName(name)
-		if err != nil {
-			return nil, err
-		}
-		return newHash(inputLen, hashBits)
-	}
-	return nil, fmt.Errorf("lz: unknown mapper name %q", name)
 }

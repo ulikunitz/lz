@@ -2,6 +2,14 @@ package lz
 
 import "fmt"
 
+type greedy struct{}
+
+var Greedy greedy
+
+func (o greedy) NewPathFinder(m Matcher) (PathFinder, error) {
+	return &greedyPathFinder{matcher: m}, nil
+}
+
 type greedyPathFinder struct {
 	matcher Matcher
 }

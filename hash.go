@@ -3,9 +3,16 @@ package lz
 import (
 	"fmt"
 	"math"
-	"regexp"
-	"sync"
 )
+
+type Hash struct {
+	InputLen int
+	HashBits int
+}
+
+func (o Hash) NewMapper() (Mapper, error) {
+	return newHash(o.InputLen, o.HashBits)
+}
 
 // prime is used by [hashValue].
 const prime = 9920624304325388887
@@ -28,7 +35,8 @@ type hash struct {
 }
 
 func (h *hash) String() string {
-	return fmt.Sprintf("hash_%d:%d", h.inputLen, h.hashBits)
+	o := Hash{InputLen: h.inputLen, HashBits: h.hashBits}
+	return fmt.Sprintf("%#v", o)
 }
 
 func verifyHashParams(inputLen, hashBits int) error {
@@ -43,25 +51,6 @@ func verifyHashParams(inputLen, hashBits int) error {
 			hashBits, maxHashBits)
 	}
 	return nil
-}
-
-var hashRegexp = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^hash_\d+:\d+$`)
-})
-
-func parseHashName(name string) (inputLen, hashBits int, err error) {
-	if !hashRegexp().MatchString(name) {
-		return 0, 0, fmt.Errorf(
-			"lz: invalid hash name %q; must be in format hash-<inputLen>:<hashBits>",
-			name)
-	}
-	if _, err = fmt.Sscanf(name, "hash_%d:%d", &inputLen, &hashBits); err != nil {
-		return 0, 0, fmt.Errorf(
-			"lz: invalid hash name %q; must be in format hash-<inputLen>:<hashBits>",
-			name)
-	}
-	err = verifyHashParams(inputLen, hashBits)
-	return inputLen, hashBits, err
 }
 
 func newHash(inputLen, hashBits int) (*hash, error) {

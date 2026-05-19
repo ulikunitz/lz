@@ -17,9 +17,18 @@ func TestParserOptions(t *testing.T) {
 			RetentionSize: 16 << 10,
 			BufferSize:    64 << 10,
 		}},
+		{ParserOptions{
+			PathFinder:    "greedy",
+			Mapper:        "hash_4:16",
+			WindowSize:    2000,
+			RetentionSize: 1000,
+			BufferSize:    4000,
+			MinMatchLen:   4,
+			MaxMatchLen:   64,
+		}},
 	}
 	for _, tc := range tests {
-		data, err := json.Marshal(tc.opts)
+		data, err := json.Marshal(&tc.opts)
 		if err != nil {
 			t.Errorf("json.Marshal(%v) returned unexpected error: %s",
 				tc.opts, err)

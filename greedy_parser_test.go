@@ -96,7 +96,7 @@ func TestParserOptionsJSON(t *testing.T) {
 		MaxMatchLen: 32,
 	}
 
-	data, err := json.MarshalIndent(opts, "", "  ")
+	data, err := json.MarshalIndent(&opts, "", "  ")
 	if err != nil {
 		t.Fatalf("json.MarshalIndent: %v", err)
 	}

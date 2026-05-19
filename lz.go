@@ -31,12 +31,12 @@
 package lz
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
-	"strconv"
 	"strings"
-	"sync"
+
+	"github.com/ulikunitz/lz/internal/jsontypes"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -139,15 +139,59 @@ type Parser interface {
 // For the list of available path finders see [NewPathFinder]. For the list of
 // available mappers see [NewMapper].
 type ParserOptions struct {
-	PathFinder string `json:",omitzero"`
-	Mapper     string `json:",omitzero"`
+	PathFinder string
+	Mapper     string
 
-	WindowSize    Size `json:",omitzero"`
-	RetentionSize Size `json:",omitzero"`
-	BufferSize    Size `json:",omitzero"`
+	WindowSize    int
+	RetentionSize int
+	BufferSize    int
 
-	MinMatchLen int `json:",omitzero"`
-	MaxMatchLen int `json:",omitzero"`
+	MinMatchLen int
+	MaxMatchLen int
+}
+
+type jsonParserOptions struct {
+	PathFinder    string         `json:",omitzero"`
+	Mapper        string         `json:",omitzero"`
+	WindowSize    jsontypes.Size `json:",omitzero"`
+	RetentionSize jsontypes.Size `json:",omitzero"`
+	BufferSize    jsontypes.Size `json:",omitzero"`
+	MinMatchLen   int            `json:",omitzero"`
+	MaxMatchLen   int            `json:",omitzero"`
+}
+
+// MarshalJSON returns the JSON encoding of the parser options. The sizes are
+// encoded in a human readable format, for instance 8 MiB are represented as
+// "8M", 16 KiB as "16K", 2 GiB as "2G".
+func (o ParserOptions) MarshalJSON() ([]byte, error) {
+	t := jsonParserOptions{
+		PathFinder:    o.PathFinder,
+		Mapper:        o.Mapper,
+		WindowSize:    jsontypes.Size(o.WindowSize),
+		RetentionSize: jsontypes.Size(o.RetentionSize),
+		BufferSize:    jsontypes.Size(o.BufferSize),
+		MinMatchLen:   o.MinMatchLen,
+		MaxMatchLen:   o.MaxMatchLen,
+	}
+	return json.Marshal(&t)
+}
+
+// UnmarshalJSON parses the JSON encoding of the parser options. The sizes are
+// expected to be in a human readable format, for instance 8 MiB are represented as
+// "8M", 16 KiB as "16K", 2 GiB as "2G".
+func (o *ParserOptions) UnmarshalJSON(data []byte) error {
+	var t jsonParserOptions
+	if err := json.Unmarshal(data, &t); err != nil {
+		return err
+	}
+	o.PathFinder = t.PathFinder
+	o.Mapper = t.Mapper
+	o.WindowSize = int(t.WindowSize)
+	o.RetentionSize = int(t.RetentionSize)
+	o.BufferSize = int(t.BufferSize)
+	o.MinMatchLen = t.MinMatchLen
+	o.MaxMatchLen = t.MaxMatchLen
+	return nil
 }
 
 // SetDefaults sets the default values for the parser options if the field is
@@ -174,68 +218,6 @@ func (o *ParserOptions) SetDefaults() {
 	if o.MaxMatchLen == 0 {
 		o.MaxMatchLen = 273
 	}
-}
-
-// Size is a specific type for handling data size parameters. It shortens the
-// string representation. For instance 8 MiB are represented as "8M", 16 KiB as "16K", 2 GiB
-// as "2G".
-type Size int
-
-// String returns the string representation of the size. It uses K, M, and G as suffixes for
-// KiB, MiB, and GiB, respectively.
-func (s Size) String() string {
-	switch {
-	case s == 0:
-		return "0"
-	case s%(1<<30) == 0:
-		return fmt.Sprintf("%dG", s/(1<<30))
-	case s%(1<<20) == 0:
-		return fmt.Sprintf("%dM", s/(1<<20))
-	case s%(1<<10) == 0:
-		return fmt.Sprintf("%dK", s/(1<<10))
-	default:
-		return fmt.Sprintf("%d", s)
-	}
-}
-
-// MarshalText returns the string representation of the size as byte slice. It
-// is used by the JSON encoder.
-func (s Size) MarshalText() ([]byte, error) {
-	return []byte(s.String()), nil
-}
-
-var sizeRegexp = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^(\d+)([KMG]?)$`)
-})
-
-// parseSize parses the string representation of the Size type.
-func parseSize(s string) (size Size, err error) {
-	const msg = "lz: invalid size %q; must be in format <number>[K|M|G]"
-	m := sizeRegexp().FindStringSubmatch(s)
-	if m == nil {
-		return 0, fmt.Errorf(msg, s)
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil {
-		return 0, fmt.Errorf(msg, s)
-	}
-	switch m[2] {
-	case "K":
-		n *= 1 << 10
-	case "M":
-		n *= 1 << 20
-	case "G":
-		n *= 1 << 30
-	}
-	return Size(n), nil
-}
-
-// UnmarshalText parses the string representation of the size and sets the value
-// of s. It is used by the JSON decoder.
-func (s *Size) UnmarshalText(text []byte) error {
-	var err error
-	*s, err = parseSize(string(text))
-	return err
 }
 
 // NewParser creates a new parser for the provided options.

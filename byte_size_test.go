@@ -1,4 +1,4 @@
-package jsontypes
+package lz
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 
 func TestSizeSimpleJSON(t *testing.T) {
 	tests := []struct {
-		s Size
+		s byteSize
 	}{
 		{0},
 		{128},
@@ -23,7 +23,7 @@ func TestSizeSimpleJSON(t *testing.T) {
 				t.Fatalf("json.Marshal: unexpected error: %v",
 					err)
 			}
-			var s Size
+			var s byteSize
 			err = json.Unmarshal(data, &s)
 			if err != nil {
 				t.Fatalf("json.Unmarshal: unexpected error: %v",

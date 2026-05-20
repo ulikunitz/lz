@@ -35,8 +35,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/ulikunitz/lz/internal/jsontypes"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -151,13 +149,13 @@ type ParserOptions struct {
 }
 
 type jsonParserOptions struct {
-	PathFinder    string         `json:",omitzero"`
-	Mapper        string         `json:",omitzero"`
-	WindowSize    jsontypes.Size `json:",omitzero"`
-	RetentionSize jsontypes.Size `json:",omitzero"`
-	BufferSize    jsontypes.Size `json:",omitzero"`
-	MinMatchLen   int            `json:",omitzero"`
-	MaxMatchLen   int            `json:",omitzero"`
+	PathFinder    string   `json:",omitzero"`
+	Mapper        string   `json:",omitzero"`
+	WindowSize    byteSize `json:",omitzero"`
+	RetentionSize byteSize `json:",omitzero"`
+	BufferSize    byteSize `json:",omitzero"`
+	MinMatchLen   int      `json:",omitzero"`
+	MaxMatchLen   int      `json:",omitzero"`
 }
 
 // MarshalJSON returns the JSON encoding of the parser options. The sizes are
@@ -167,9 +165,9 @@ func (o ParserOptions) MarshalJSON() ([]byte, error) {
 	t := jsonParserOptions{
 		PathFinder:    o.PathFinder,
 		Mapper:        o.Mapper,
-		WindowSize:    jsontypes.Size(o.WindowSize),
-		RetentionSize: jsontypes.Size(o.RetentionSize),
-		BufferSize:    jsontypes.Size(o.BufferSize),
+		WindowSize:    byteSize(o.WindowSize),
+		RetentionSize: byteSize(o.RetentionSize),
+		BufferSize:    byteSize(o.BufferSize),
 		MinMatchLen:   o.MinMatchLen,
 		MaxMatchLen:   o.MaxMatchLen,
 	}

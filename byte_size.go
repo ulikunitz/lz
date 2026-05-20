@@ -1,4 +1,4 @@
-package jsontypes
+package lz
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 // Size is a specific type for handling data size parameters. It shortens the
 // string representation. For instance 8 MiB are represented as "8M", 16 KiB as "16K", 2 GiB
 // as "2G".
-type Size int
+type byteSize int
 
 // String returns the string representation of the size. It uses K, M, and G as suffixes for
 // KiB, MiB, and GiB, respectively.
-func (s Size) String() string {
+func (s byteSize) String() string {
 	switch {
 	case s == 0:
 		return "0"
@@ -31,7 +31,7 @@ func (s Size) String() string {
 
 // MarshalJSON returns the string representation of the size as byte slice. It
 // is used by the JSON encoder.
-func (s Size) MarshalJSON() ([]byte, error) {
+func (s byteSize) MarshalJSON() ([]byte, error) {
 	a := s.String()
 	if c := a[len(a)-1]; c == 'K' || c == 'M' || c == 'G' {
 		return []byte("\"" + a + "\""), nil
@@ -43,8 +43,8 @@ var sizeRegexp = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^(\d+)([KMG]?)$`)
 })
 
-// parseSize parses the string representation of the Size type.
-func parseSize(s string) (size Size, err error) {
+// parseSize parses the string representation of the byteSize type.
+func parseSize(s string) (size byteSize, err error) {
 	const msg = "lz: invalid size %q; must be in format <number>[K|M|G]"
 	m := sizeRegexp().FindStringSubmatch(s)
 	if m == nil {
@@ -62,12 +62,12 @@ func parseSize(s string) (size Size, err error) {
 	case "G":
 		n *= 1 << 30
 	}
-	return Size(n), nil
+	return byteSize(n), nil
 }
 
 // UnmarshalText parses the string representation of the size and sets the value
 // of s. It is used by the JSON decoder.
-func (s *Size) UnmarshalJSON(data []byte) error {
+func (s *byteSize) UnmarshalJSON(data []byte) error {
 	if len(data) > 0 && data[0] == '"' {
 		if len(data) < 2 || data[len(data)-1] != '"' {
 			return fmt.Errorf("lz: invalid size %q", string(data))

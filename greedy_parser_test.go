@@ -23,7 +23,7 @@ func TestGreedyParser(t *testing.T) {
 		BufferSize:    2 * winSize,
 	}
 
-	p, err := NewParser(opts)
+	p, err := NewParser(&opts)
 	if err != nil {
 		t.Fatalf("NewParser: %v", err)
 	}
@@ -141,7 +141,7 @@ func FuzzGreedyParser(f *testing.F) {
 			BufferSize: 2 * winSize,
 		}
 
-		p, err := NewParser(opts)
+		p, err := NewParser(&opts)
 		if err != nil {
 			t.Fatalf("NewParser: %v", err)
 		}

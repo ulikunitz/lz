@@ -19,7 +19,7 @@ type genericParser struct {
 	ParserOptions
 }
 
-func newGenericParser(options ParserOptions) (*genericParser, error) {
+func newGenericParser(options *ParserOptions) (*genericParser, error) {
 	if options.WindowSize <= 0 {
 		return nil, fmt.Errorf("lz: invalid block size %d; must be > 0",
 			options.WindowSize)
@@ -36,9 +36,9 @@ func newGenericParser(options ParserOptions) (*genericParser, error) {
 	}
 	gp := &genericParser{
 		mapper:        mapper,
-		ParserOptions: options,
+		ParserOptions: *options,
 	}
-	err = gp.Buffer.Init(int(options.BufferSize), int(options.RetentionSize),
+	err = gp.Buffer.Init(options.BufferSize, options.RetentionSize,
 		mapper.Shift)
 	if err != nil {
 		return nil, err

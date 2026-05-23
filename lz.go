@@ -35,6 +35,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/ulikunitz/lz/jt"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -149,13 +151,13 @@ type ParserOptions struct {
 }
 
 type jsonParserOptions struct {
-	PathFinder    string   `json:",omitzero"`
-	Mapper        string   `json:",omitzero"`
-	WindowSize    byteSize `json:",omitzero"`
-	RetentionSize byteSize `json:",omitzero"`
-	BufferSize    byteSize `json:",omitzero"`
-	MinMatchLen   int      `json:",omitzero"`
-	MaxMatchLen   int      `json:",omitzero"`
+	PathFinder    string  `json:",omitzero"`
+	Mapper        string  `json:",omitzero"`
+	WindowSize    jt.Size `json:",omitzero"`
+	RetentionSize jt.Size `json:",omitzero"`
+	BufferSize    jt.Size `json:",omitzero"`
+	MinMatchLen   int     `json:",omitzero"`
+	MaxMatchLen   int     `json:",omitzero"`
 }
 
 // MarshalJSON returns the JSON encoding of the parser options. The sizes are
@@ -165,9 +167,9 @@ func (o ParserOptions) MarshalJSON() ([]byte, error) {
 	t := jsonParserOptions{
 		PathFinder:    o.PathFinder,
 		Mapper:        o.Mapper,
-		WindowSize:    byteSize(o.WindowSize),
-		RetentionSize: byteSize(o.RetentionSize),
-		BufferSize:    byteSize(o.BufferSize),
+		WindowSize:    jt.Size(o.WindowSize),
+		RetentionSize: jt.Size(o.RetentionSize),
+		BufferSize:    jt.Size(o.BufferSize),
 		MinMatchLen:   o.MinMatchLen,
 		MaxMatchLen:   o.MaxMatchLen,
 	}
@@ -194,34 +196,58 @@ func (o *ParserOptions) UnmarshalJSON(data []byte) error {
 
 // SetDefaults sets the default values for the parser options if the field is
 // zero or empty.
-func (o *ParserOptions) SetDefaults() {
-	if o.PathFinder == "" {
-		o.PathFinder = "greedy"
+func (o *ParserOptions) update(opts *ParserOptions) {
+	if opts == nil {
+		return
 	}
-	if o.Mapper == "" {
-		o.Mapper = "hash_4:16"
+	if opts.PathFinder != "" {
+		o.PathFinder = opts.PathFinder
 	}
-	if o.BufferSize == 0 {
-		o.BufferSize = 128 << 20
+	if opts.Mapper != "" {
+		o.Mapper = opts.Mapper
 	}
-	if o.RetentionSize == 0 {
-		o.RetentionSize = min(o.BufferSize/4, 32<<10)
+	if opts.WindowSize != 0 {
+		o.WindowSize = opts.WindowSize
 	}
-	if o.WindowSize == 0 {
-		o.WindowSize = o.BufferSize
+	if opts.RetentionSize != 0 {
+		o.RetentionSize = opts.RetentionSize
+		if o.BufferSize < o.RetentionSize {
+			o.BufferSize = 2 * o.RetentionSize
+		}
 	}
-	if o.MinMatchLen == 0 {
-		o.MinMatchLen = 3
+	if opts.BufferSize != 0 {
+		o.BufferSize = opts.BufferSize
+		if o.RetentionSize >= o.BufferSize {
+			o.RetentionSize = o.BufferSize / 2
+		}
 	}
-	if o.MaxMatchLen == 0 {
-		o.MaxMatchLen = 273
+	if opts.MinMatchLen != 0 {
+		o.MinMatchLen = opts.MinMatchLen
+		if o.MaxMatchLen < o.MinMatchLen {
+			o.MaxMatchLen = o.MinMatchLen
+		}
+	}
+	if opts.MaxMatchLen != 0 {
+		o.MaxMatchLen = opts.MaxMatchLen
+		if o.MinMatchLen > o.MaxMatchLen {
+			o.MinMatchLen = o.MaxMatchLen
+		}
 	}
 }
 
 // NewParser creates a new parser for the provided options.
-func NewParser(opts ParserOptions) (Parser, error) {
-	opts.SetDefaults()
-	return newGenericParser(opts)
+func NewParser(opts *ParserOptions) (Parser, error) {
+	var defaults = ParserOptions{
+		PathFinder:    "greedy",
+		Mapper:        "hash_4:16",
+		WindowSize:    128 << 20,
+		RetentionSize: 32 << 20 / 4,
+		BufferSize:    128 << 20,
+		MinMatchLen:   3,
+		MaxMatchLen:   273,
+	}
+	defaults.update(opts)
+	return newGenericParser(&defaults)
 }
 
 // Matcher is responsible to find matches or Literal bytes in the byte stream.

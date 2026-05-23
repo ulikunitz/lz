@@ -1,4 +1,6 @@
-package lz
+// Package jt defines the Size type to handle size parameters in JSON structures
+// in a more user-friendly way. 
+package jt
 
 import (
 	"fmt"
@@ -9,12 +11,12 @@ import (
 
 // Size is a specific type for handling data size parameters. It shortens the
 // string representation. For instance 8 MiB are represented as "8M", 16 KiB as "16K", 2 GiB
-// as "2G".
-type byteSize int
+// as "2G". It is also possible to use plain numbers for it.
+type Size int
 
 // String returns the string representation of the size. It uses K, M, and G as suffixes for
 // KiB, MiB, and GiB, respectively.
-func (s byteSize) String() string {
+func (s Size) String() string {
 	switch {
 	case s == 0:
 		return "0"
@@ -31,7 +33,7 @@ func (s byteSize) String() string {
 
 // MarshalJSON returns the string representation of the size as byte slice. It
 // is used by the JSON encoder.
-func (s byteSize) MarshalJSON() ([]byte, error) {
+func (s Size) MarshalJSON() ([]byte, error) {
 	a := s.String()
 	if c := a[len(a)-1]; c == 'K' || c == 'M' || c == 'G' {
 		return []byte("\"" + a + "\""), nil
@@ -44,8 +46,8 @@ var sizeRegexp = sync.OnceValue(func() *regexp.Regexp {
 })
 
 // parseSize parses the string representation of the byteSize type.
-func parseSize(s string) (size byteSize, err error) {
-	const msg = "lz: invalid size %q; must be in format <number>[K|M|G]"
+func parseSize(s string) (size Size, err error) {
+	const msg = "lz: invalid size %q; must be in format <number>[K|M|G]?"
 	m := sizeRegexp().FindStringSubmatch(s)
 	if m == nil {
 		return 0, fmt.Errorf(msg, s)
@@ -62,12 +64,12 @@ func parseSize(s string) (size byteSize, err error) {
 	case "G":
 		n *= 1 << 30
 	}
-	return byteSize(n), nil
+	return Size(n), nil
 }
 
 // UnmarshalText parses the string representation of the size and sets the value
 // of s. It is used by the JSON decoder.
-func (s *byteSize) UnmarshalJSON(data []byte) error {
+func (s *Size) UnmarshalJSON(data []byte) error {
 	if len(data) > 0 && data[0] == '"' {
 		if len(data) < 2 || data[len(data)-1] != '"' {
 			return fmt.Errorf("lz: invalid size %q", string(data))

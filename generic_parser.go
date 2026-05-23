@@ -16,34 +16,34 @@ type genericParser struct {
 	q        []Seq
 	trailing int
 
-	ParserOptions
+	ParserConfig
 }
 
-func newGenericParser(options *ParserOptions) (*genericParser, error) {
-	if options.WindowSize <= 0 {
+func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
+	if cfg.WindowSize <= 0 {
 		return nil, fmt.Errorf("lz: invalid block size %d; must be > 0",
-			options.WindowSize)
+			cfg.WindowSize)
 	}
-	if !(2 <= options.MinMatchLen && options.MinMatchLen <= options.MaxMatchLen) {
+	if !(2 <= cfg.MinMatchLen && cfg.MinMatchLen <= cfg.MaxMatchLen) {
 		return nil, fmt.Errorf(
 			"lz: invalid min match length %d; must be between 2 and max match length %d",
-			options.MinMatchLen, options.MaxMatchLen)
+			cfg.MinMatchLen, cfg.MaxMatchLen)
 	}
 
-	mapper, err := NewMapper(options.Mapper)
+	mapper, err := NewMapper(cfg.Mapper)
 	if err != nil {
 		return nil, err
 	}
 	gp := &genericParser{
-		mapper:        mapper,
-		ParserOptions: *options,
+		mapper:       mapper,
+		ParserConfig: *cfg,
 	}
-	err = gp.Buffer.Init(options.BufferSize, options.RetentionSize,
+	err = gp.Buffer.Init(cfg.BufferSize, cfg.RetentionSize,
 		mapper.Shift)
 	if err != nil {
 		return nil, err
 	}
-	gp.PathFinder, err = NewPathFinder(options.PathFinder, gp)
+	gp.PathFinder, err = NewPathFinder(cfg.PathFinder, gp)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +51,8 @@ func newGenericParser(options *ParserOptions) (*genericParser, error) {
 	return gp, nil
 }
 
-func (gp *genericParser) Options() ParserOptions {
-	return gp.ParserOptions
+func (gp *genericParser) Config() ParserConfig {
+	return gp.ParserConfig
 }
 
 func (gp *genericParser) Edges(n int) []Seq {

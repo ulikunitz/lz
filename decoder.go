@@ -11,37 +11,31 @@ import (
 	"math"
 )
 
-// DecoderOptions contains the parameters for the DecoderBuffer and decoder
+// DecoderConfig contains the parameters for the DecoderBuffer and decoder
 // types. WindowSize must be smaller than BufferSize. It is recommended to set
 // BufferSize to twice the WindowSize.
-type DecoderOptions struct {
+type DecoderConfig struct {
 	// Size of the sliding dictionary window in bytes.
 	WindowSize int
 	// Maximum size of the buffer in bytes.
 	BufferSize int
 }
 
-func NewDecoder(opts DecoderOptions) (*Decoder, error) {
+type DecoderOption interface {
+	UpdateDecoderConfig(*DecoderConfig) error
+}
+
+func NewDecoder(opts ...DecoderOption) (*Decoder, error) {
 	d := &Decoder{}
-	if err := d.Init(opts); err != nil {
+	if err := d.Init(opts...); err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
-// setDefaults assigns default values to zero fields in DecoderConfig.
-func (opts *DecoderOptions) setDefaults() {
-	if opts.WindowSize == 0 {
-		opts.WindowSize = 8 << 20
-	}
-	if opts.BufferSize == 0 {
-		opts.BufferSize = 2 * opts.WindowSize
-	}
-}
-
 // verify checks the parameters of the DecoderConfig value and returns an error
 // for the first issue found.
-func (opts *DecoderOptions) verify() error {
+func (opts *DecoderConfig) verify() error {
 	if !(0 <= opts.WindowSize && opts.WindowSize <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: WindowSize=%d out of range [%d..%d]",
@@ -73,20 +67,29 @@ type Decoder struct {
 	// which is also the end of the dictionary window.
 	Off int64
 
-	// DecoderOptions provides the configuration parameters WindowSize and
+	// DecoderConfig provides the configuration parameters WindowSize and
 	// BufferSize.
-	DecoderOptions
+	DecoderConfig
 }
 
 // Init initializes the DecoderBuffer.
-func (d *Decoder) Init(opts DecoderOptions) error {
-	opts.setDefaults()
-	if err := opts.verify(); err != nil {
+func (d *Decoder) Init(opts ...DecoderOption) error {
+	defaults := &DecoderConfig{
+		WindowSize: 8 << 20,
+		BufferSize: 16 << 20,
+	}
+	for _, opt := range opts {
+		if err := opt.UpdateDecoderConfig(defaults); err != nil {
+			return err
+		}
+	}
+
+	if err := defaults.verify(); err != nil {
 		return err
 	}
 	*d = Decoder{
-		Data:           d.Data[:0],
-		DecoderOptions: opts,
+		Data:          d.Data[:0],
+		DecoderConfig: *defaults,
 	}
 	if cap(d.Data) > d.BufferSize {
 		d.BufferSize = cap(d.Data)
@@ -97,8 +100,8 @@ func (d *Decoder) Init(opts DecoderOptions) error {
 // Reset returns the DecoderBuffer to its initialized state.
 func (d *Decoder) Reset() {
 	*d = Decoder{
-		Data:           d.Data[:0],
-		DecoderOptions: d.DecoderOptions,
+		Data:          d.Data[:0],
+		DecoderConfig: d.DecoderConfig,
 	}
 	if cap(d.Data) > d.BufferSize {
 		// The default BufferSize is twice the WindowSize.

@@ -2,7 +2,6 @@ package lz
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"testing"
 )
@@ -14,16 +13,13 @@ func TestGreedyParser(t *testing.T) {
 	)
 
 	const winSize = 32
-	opts := ParserOptions{
-		PathFinder: "greedy",
-		Mapper:     "hash_3:16",
-
-		WindowSize:    winSize,
-		RetentionSize: winSize,
-		BufferSize:    2 * winSize,
-	}
-
-	p, err := NewParser(&opts)
+	p, err := NewParser(
+		WithPathFinder("greedy"),
+		WithMapper("hash_3:16"),
+		WithWindowSize(winSize),
+		WithRetentionSize(winSize),
+		WithBufferSize(2*winSize),
+	)
 	if err != nil {
 		t.Fatalf("NewParser: %v", err)
 	}
@@ -54,11 +50,10 @@ func TestGreedyParser(t *testing.T) {
 	t.Logf("Literals: %q", blk.Literals)
 	t.Logf("Sequences: %v", blk.Sequences)
 
-	decoderOpts := DecoderOptions{
-		WindowSize: winSize,
-		BufferSize: 2 * winSize,
-	}
-	d, err := NewDecoder(decoderOpts)
+	d, err := NewDecoder(
+		WithWindowSize(winSize),
+		WithBufferSize(2*winSize),
+	)
 	if err != nil {
 		t.Fatalf("NewDecoder: %v", err)
 	}
@@ -81,42 +76,6 @@ func TestGreedyParser(t *testing.T) {
 		t.Fatalf("decoded string = %q; want %q", string(q), str)
 	}
 }
-
-func TestParserOptionsJSON(t *testing.T) {
-	const winSize = 32
-	opts := ParserOptions{
-		PathFinder: "greedy",
-		Mapper:     "hash_3:16",
-
-		WindowSize:    winSize,
-		RetentionSize: winSize,
-		BufferSize:    2 * winSize,
-
-		MinMatchLen: 4,
-		MaxMatchLen: 32,
-	}
-
-	data, err := json.MarshalIndent(&opts, "", "  ")
-	if err != nil {
-		t.Fatalf("json.MarshalIndent: %v", err)
-	}
-
-	t.Logf("ParserOptions JSON:\n%s\n", data)
-
-	var o ParserOptions
-	c := &o
-	err = json.Unmarshal(data, c)
-	if err != nil {
-		t.Fatalf("UnmarshalJSONOptions: %v", err)
-	}
-
-	if o != opts {
-		t.Fatalf(
-			"UnmarshalJSONOptions returned options = %+v; want %+v",
-			o, opts)
-	}
-}
-
 func FuzzGreedyParser(f *testing.F) {
 	f.Add([]byte("a"))
 	f.Add([]byte{})
@@ -127,25 +86,23 @@ func FuzzGreedyParser(f *testing.F) {
 			blockSize = 128
 			winSize   = 200
 		)
-		opts := ParserOptions{
-			PathFinder:    "greedy",
-			Mapper:        "hash_3:16",
-			MinMatchLen:   3,
-			MaxMatchLen:   64,
-			WindowSize:    winSize,
-			RetentionSize: winSize,
-			BufferSize:    2 * winSize,
-		}
-		dOpts := &DecoderOptions{
-			WindowSize: winSize,
-			BufferSize: 2 * winSize,
-		}
 
-		p, err := NewParser(&opts)
+		p, err := NewParser(
+			WithPathFinder("greedy"),
+			WithMapper("hash_3:16"),
+			WithMinMatchLen(3),
+			WithMaxMatchLen(64),
+			WithWindowSize(winSize),
+			WithRetentionSize(winSize),
+			WithBufferSize(2*winSize),
+		)
 		if err != nil {
 			t.Fatalf("NewParser: %v", err)
 		}
-		d, err := NewDecoder(*dOpts)
+		d, err := NewDecoder(
+			WithWindowSize(winSize),
+			WithBufferSize(2*winSize),
+		)
 		if err != nil {
 			t.Fatalf("NewDecoder: %v", err)
 		}

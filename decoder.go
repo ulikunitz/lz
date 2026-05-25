@@ -21,10 +21,18 @@ type DecoderConfig struct {
 	BufferSize int
 }
 
+// DecoderOption represents a functional option for the decoder configuration. The
+// private method prevents the inmplementation of the interface outside of this
+// package.
 type DecoderOption interface {
 	UpdateDecoderConfig(*DecoderConfig) error
+	private()
 }
 
+// NewDecoder creates a new Decoder with the given options. If no options are
+// provided, the default values are used. The default WindowSize is 8 MiB and
+// the default BufferSize is 16 MiB. The function returns an error if the
+// options are invalid.
 func NewDecoder(opts ...DecoderOption) (*Decoder, error) {
 	d := &Decoder{}
 	if err := d.Init(opts...); err != nil {
@@ -72,7 +80,10 @@ type Decoder struct {
 	DecoderConfig
 }
 
-// Init initializes the DecoderBuffer.
+// Init initializes the DecoderBuffer using the provided options. If no options
+// are provided, the default values are used. The default WindowSize is 8 MiB
+// and the default BufferSize is 16 MiB. The function returns an error if the
+// options are invalid.
 func (d *Decoder) Init(opts ...DecoderOption) error {
 	defaults := &DecoderConfig{
 		WindowSize: 8 << 20,

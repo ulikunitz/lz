@@ -149,9 +149,12 @@ type AllOption interface {
 	DecoderOption
 }
 
-// ParserOption represents a functional option for the parser configuration.
+// ParserOption represents a functional option for the parser configuration. The
+// private method prevents the inmplementation of the interface outside of this
+// package.
 type ParserOption interface {
 	UpdateParserConfig(*ParserConfig) error
+	private()
 }
 
 type pfOpt string
@@ -160,6 +163,8 @@ func (o pfOpt) UpdateParserConfig(c *ParserConfig) error {
 	c.PathFinder = string(o)
 	return nil
 }
+
+func (o pfOpt) private() {}
 
 // WithPathFinder sets the path finder for the parser. The supported path
 // finders are described below.
@@ -170,6 +175,8 @@ func WithPathFinder(name string) ParserOption {
 }
 
 type mOpt string
+
+func (o mOpt) private() {}
 
 func (o mOpt) UpdateParserConfig(c *ParserConfig) error {
 	c.Mapper = string(o)
@@ -187,6 +194,8 @@ func WithMapper(name string) ParserOption {
 }
 
 type wOpt int
+
+func (o wOpt) private() {}
 
 func (o wOpt) UpdateParserConfig(c *ParserConfig) error {
 	if o <= 0 {
@@ -215,6 +224,8 @@ func WithWindowSize(size int) AllOption {
 }
 
 type rOpt int
+
+func (o rOpt) private() {}
 
 func (o rOpt) UpdateParserConfig(c *ParserConfig) error {
 	if o < 0 {
@@ -261,6 +272,8 @@ func (o bOpt) UpdateDecoderConfig(c *DecoderConfig) error {
 	return nil
 }
 
+func (o bOpt) private() {}
+
 // WithBufferSize sets the buffer size for the parser and decoder. The buffer
 // size is the maximum size of the internal buffer for the parser and decoder.
 // The buffer size must be greater than or equal to 2 bytes, and the retention
@@ -271,6 +284,8 @@ func WithBufferSize(size int) AllOption {
 }
 
 type minMLOpt int
+
+func (o minMLOpt) private() {}
 
 func (o minMLOpt) UpdateParserConfig(c *ParserConfig) error {
 	if o < 1 {
@@ -293,6 +308,8 @@ func WithMinMatchLen(size int) ParserOption {
 }
 
 type maxMLOpt int
+
+func (o maxMLOpt) private() {}
 
 func (o maxMLOpt) UpdateParserConfig(c *ParserConfig) error {
 	if o < 1 {

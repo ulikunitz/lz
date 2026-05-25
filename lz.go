@@ -149,22 +149,17 @@ type AllOption interface {
 	DecoderOption
 }
 
-// ParserOption represents a functional option for the parser configuration. The
-// private method prevents the inmplementation of the interface outside of this
-// package.
+// ParserOption represents a functional option for the parser configuration.
 type ParserOption interface {
-	UpdateParserConfig(*ParserConfig) error
-	private()
+	updateParserConfig(*ParserConfig) error
 }
 
 type pfOpt string
 
-func (o pfOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o pfOpt) updateParserConfig(c *ParserConfig) error {
 	c.PathFinder = string(o)
 	return nil
 }
-
-func (o pfOpt) private() {}
 
 // WithPathFinder sets the path finder for the parser. The supported path
 // finders are described below.
@@ -176,9 +171,7 @@ func WithPathFinder(name string) ParserOption {
 
 type mOpt string
 
-func (o mOpt) private() {}
-
-func (o mOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o mOpt) updateParserConfig(c *ParserConfig) error {
 	c.Mapper = string(o)
 	return nil
 }
@@ -195,9 +188,7 @@ func WithMapper(name string) ParserOption {
 
 type wOpt int
 
-func (o wOpt) private() {}
-
-func (o wOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o wOpt) updateParserConfig(c *ParserConfig) error {
 	if o <= 0 {
 		return fmt.Errorf(
 			"lz: invalid window size %d; must be > 0", o)
@@ -206,7 +197,7 @@ func (o wOpt) UpdateParserConfig(c *ParserConfig) error {
 	return nil
 }
 
-func (o wOpt) UpdateDecoderConfig(c *DecoderConfig) error {
+func (o wOpt) updateDecoderConfig(c *DecoderConfig) error {
 	if o <= 0 {
 		return fmt.Errorf(
 			"lz: invalid window size %d; must be > 0", o)
@@ -225,9 +216,7 @@ func WithWindowSize(size int) AllOption {
 
 type rOpt int
 
-func (o rOpt) private() {}
-
-func (o rOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o rOpt) updateParserConfig(c *ParserConfig) error {
 	if o < 0 {
 		return fmt.Errorf(
 			"lz: invalid retention size %d; must be >= 0", o)
@@ -248,7 +237,7 @@ func WithRetentionSize(size int) ParserOption {
 
 type bOpt int
 
-func (o bOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o bOpt) updateParserConfig(c *ParserConfig) error {
 	if o < 2 {
 		return fmt.Errorf(
 			"lz: invalid buffer size %d; must be >= 2", o)
@@ -260,7 +249,7 @@ func (o bOpt) UpdateParserConfig(c *ParserConfig) error {
 	return nil
 }
 
-func (o bOpt) UpdateDecoderConfig(c *DecoderConfig) error {
+func (o bOpt) updateDecoderConfig(c *DecoderConfig) error {
 	if o < 2 {
 		return fmt.Errorf(
 			"lz: invalid buffer size %d; must be >= 2", o)
@@ -271,8 +260,6 @@ func (o bOpt) UpdateDecoderConfig(c *DecoderConfig) error {
 	}
 	return nil
 }
-
-func (o bOpt) private() {}
 
 // WithBufferSize sets the buffer size for the parser and decoder. The buffer
 // size is the maximum size of the internal buffer for the parser and decoder.
@@ -285,9 +272,7 @@ func WithBufferSize(size int) AllOption {
 
 type minMLOpt int
 
-func (o minMLOpt) private() {}
-
-func (o minMLOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o minMLOpt) updateParserConfig(c *ParserConfig) error {
 	if o < 1 {
 		return fmt.Errorf(
 			"lz: invalid min match length %d; must be >= 1", o)
@@ -309,9 +294,7 @@ func WithMinMatchLen(size int) ParserOption {
 
 type maxMLOpt int
 
-func (o maxMLOpt) private() {}
-
-func (o maxMLOpt) UpdateParserConfig(c *ParserConfig) error {
+func (o maxMLOpt) updateParserConfig(c *ParserConfig) error {
 	if o < 1 {
 		return fmt.Errorf(
 			"lz: invalid max match length %d; must be >= 1", o)
@@ -344,7 +327,7 @@ func NewParser(opts ...ParserOption) (Parser, error) {
 	}
 
 	for _, opt := range opts {
-		if err := opt.UpdateParserConfig(defaults); err != nil {
+		if err := opt.updateParserConfig(defaults); err != nil {
 			return nil, err
 		}
 	}

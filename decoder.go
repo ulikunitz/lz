@@ -21,12 +21,9 @@ type DecoderConfig struct {
 	BufferSize int
 }
 
-// DecoderOption represents a functional option for the decoder configuration. The
-// private method prevents the inmplementation of the interface outside of this
-// package.
+// DecoderOption represents a functional option for the decoder configuration.
 type DecoderOption interface {
-	UpdateDecoderConfig(*DecoderConfig) error
-	private()
+	updateDecoderConfig(*DecoderConfig) error
 }
 
 // NewDecoder creates a new Decoder with the given options. If no options are
@@ -90,7 +87,7 @@ func (d *Decoder) Init(opts ...DecoderOption) error {
 		BufferSize: 16 << 20,
 	}
 	for _, opt := range opts {
-		if err := opt.UpdateDecoderConfig(defaults); err != nil {
+		if err := opt.updateDecoderConfig(defaults); err != nil {
 			return err
 		}
 	}

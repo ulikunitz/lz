@@ -140,6 +140,13 @@ func (d *Decoder) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(k), err
 }
 
+// Available returns the number of bytes that can be written to the Decoder. The
+// function returns 0 if the buffer is full.
+func (d *Decoder) Available() int {
+	k := min(d.R, max(len(d.Data)-d.WindowSize, 0))
+	return d.BufferSize - len(d.Data) + k
+}
+
 // prune evicts data from the buffer and returns the available space.
 func (d *Decoder) prune() int {
 	// space that can be pruned

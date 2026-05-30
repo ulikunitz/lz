@@ -93,7 +93,7 @@ func (h *hash) Shift(delta int) {
 	if delta <= 0 {
 		return
 	}
-	if delta > math.MaxUint32 {
+	if int64(delta) > math.MaxUint32 {
 		panic("lz: delta too large")
 	}
 	d := uint32(delta)

@@ -41,10 +41,10 @@ func NewDecoder(opts ...DecoderOption) (*Decoder, error) {
 // verify checks the parameters of the DecoderConfig value and returns an error
 // for the first issue found.
 func (opts *DecoderConfig) verify() error {
-	if !(0 <= opts.WindowSize && opts.WindowSize <= math.MaxUint32) {
+	if !(0 <= opts.WindowSize && int64(opts.WindowSize) <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: WindowSize=%d out of range [%d..%d]",
-			opts.WindowSize, 0, math.MaxUint32)
+			opts.WindowSize, 0, int64(math.MaxUint32))
 	}
 	if !(opts.WindowSize < opts.BufferSize) {
 		return fmt.Errorf(

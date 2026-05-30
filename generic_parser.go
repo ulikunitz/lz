@@ -20,8 +20,8 @@ type genericParser struct {
 }
 
 func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
-	if cfg.WindowSize <= 0 {
-		return nil, fmt.Errorf("lz: invalid block size %d; must be > 0",
+	if cfg.WindowSize < 0 {
+		return nil, fmt.Errorf("lz: invalid window size %d; must be >= 0",
 			cfg.WindowSize)
 	}
 	if !(2 <= cfg.MinMatchLen && cfg.MinMatchLen <= cfg.MaxMatchLen) {

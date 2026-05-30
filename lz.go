@@ -157,6 +157,9 @@ type ParserOption interface {
 type pfOpt string
 
 func (o pfOpt) updateParserConfig(c *ParserConfig) error {
+	if o == "" {
+		return fmt.Errorf("lz: path finder name cannot be empty")
+	}
 	c.PathFinder = string(o)
 	return nil
 }
@@ -172,6 +175,9 @@ func WithPathFinder(name string) ParserOption {
 type mOpt string
 
 func (o mOpt) updateParserConfig(c *ParserConfig) error {
+	if o == "" {
+		return fmt.Errorf("lz: mapper name cannot be empty")
+	}
 	c.Mapper = string(o)
 	return nil
 }
@@ -189,25 +195,26 @@ func WithMapper(name string) ParserOption {
 type wOpt int
 
 func (o wOpt) updateParserConfig(c *ParserConfig) error {
-	if o <= 0 {
+	if o < 0 {
 		return fmt.Errorf(
-			"lz: invalid window size %d; must be > 0", o)
+			"lz: invalid window size %d; must be >= 0", o)
 	}
 	c.WindowSize = int(o)
 	return nil
 }
 
 func (o wOpt) updateDecoderConfig(c *DecoderConfig) error {
-	if o <= 0 {
+	if o < 0 {
 		return fmt.Errorf(
-			"lz: invalid window size %d; must be > 0", o)
+			"lz: invalid window size %d; must be >= 0", o)
 	}
 	c.WindowSize = int(o)
 	return nil
 }
 
-// WithWindowSize sets the window size for the parser and decoder. The window size is the maximum distance of a match to be copied. The window size must be
-// greater than 0. For the decoder it must be significantly smaller than the
+// WithWindowSize sets the window size for the parser and decoder. The window
+// size is the maximum distance of a match to be copied. The window size must be
+// greater or equal to 0. For the decoder it must be significantly smaller than the
 // buffer size, and for the parser it should be significantly smaller than the
 // buffer size.
 func WithWindowSize(size int) AllOption {
@@ -230,7 +237,8 @@ func (o rOpt) updateParserConfig(c *ParserConfig) error {
 
 // WithRetentionSize sets the retention size for the parser. The retention size
 // is the number of bytes that are kept in the buffer after they have been
-// parsed. The retention size must be less than the buffer size.
+// parsed. The retention size must be less than the buffer size. It can't be
+// negative.
 func WithRetentionSize(size int) ParserOption {
 	return rOpt(size)
 }
@@ -238,34 +246,28 @@ func WithRetentionSize(size int) ParserOption {
 type bOpt int
 
 func (o bOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 2 {
+	if o < 1 {
 		return fmt.Errorf(
-			"lz: invalid buffer size %d; must be >= 2", o)
+			"lz: invalid buffer size %d; must be >= 1", o)
 	}
 	c.BufferSize = int(o)
-	if c.RetentionSize >= c.BufferSize {
-		c.RetentionSize = c.BufferSize / 4
-	}
 	return nil
 }
 
 func (o bOpt) updateDecoderConfig(c *DecoderConfig) error {
-	if o < 2 {
+	if o < 1 {
 		return fmt.Errorf(
-			"lz: invalid buffer size %d; must be >= 2", o)
+			"lz: invalid buffer size %d; must be >= 1", o)
 	}
 	c.BufferSize = int(o)
-	if c.WindowSize >= c.BufferSize {
-		c.WindowSize = c.BufferSize / 2
-	}
 	return nil
 }
 
 // WithBufferSize sets the buffer size for the parser and decoder. The buffer
 // size is the maximum size of the internal buffer for the parser and decoder.
-// The buffer size must be greater than or equal to 2 bytes, and the retention
-// size for the parser and the window size for the decoder must be less than the
-// buffer size.
+// The buffer size must be greater or equal of at least one byte, and the
+// retention size for the parser and the window size for the decoder must be
+// less than the buffer size.
 func WithBufferSize(size int) AllOption {
 	return bOpt(size)
 }
@@ -273,16 +275,11 @@ func WithBufferSize(size int) AllOption {
 type minMLOpt int
 
 func (o minMLOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 1 {
+	if o < 2 {
 		return fmt.Errorf(
-			"lz: invalid min match length %d; must be >= 1", o)
+			"lz: invalid min match length %d; must be >= 2", o)
 	}
 	c.MinMatchLen = int(o)
-	if c.MaxMatchLen < c.MinMatchLen {
-		return fmt.Errorf(
-			"lz: invalid MinMatchLen %d; must be <= MaxMatchLen %d",
-			c.MinMatchLen, c.MaxMatchLen)
-	}
 	return nil
 }
 
@@ -295,16 +292,11 @@ func WithMinMatchLen(size int) ParserOption {
 type maxMLOpt int
 
 func (o maxMLOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 1 {
+	if o < 2 {
 		return fmt.Errorf(
-			"lz: invalid max match length %d; must be >= 1", o)
+			"lz: invalid max match length %d; must be >= 2", o)
 	}
 	c.MaxMatchLen = int(o)
-	if c.MinMatchLen > c.MaxMatchLen {
-		return fmt.Errorf(
-			"lz: invalid MaxMatchLen %d; must be >= MinMatchLen %d",
-			c.MaxMatchLen, c.MinMatchLen)
-	}
 	return nil
 }
 

@@ -83,13 +83,20 @@ type Decoder struct {
 // options are invalid.
 func (d *Decoder) Init(opts ...DecoderOption) error {
 	defaults := &DecoderConfig{
-		WindowSize: 8 << 20,
-		BufferSize: 16 << 20,
+		WindowSize: -1,
+		BufferSize: -1,
 	}
 	for _, opt := range opts {
 		if err := opt.updateDecoderConfig(defaults); err != nil {
 			return err
 		}
+	}
+
+	if defaults.WindowSize < 0 {
+		defaults.WindowSize = 8 * 1024 * 1024
+	}
+	if defaults.BufferSize < 0 {
+		defaults.BufferSize = 2 * defaults.WindowSize
 	}
 
 	if err := defaults.verify(); err != nil {

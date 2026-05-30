@@ -159,6 +159,19 @@ func (d *Decoder) prune() int {
 	return d.BufferSize - len(d.Data)
 }
 
+// add appends to the the data slice, ensuring that the BufferSize is not
+// exceeded.
+func (d *Decoder) add(p ...byte) {
+	a := cap(d.Data) - len(d.Data)
+	if len(p) > a {
+		k := min(max(2*cap(d.Data), 1024), d.BufferSize)
+		q := d.Data
+		d.Data = make([]byte, len(q), k)
+		copy(d.Data, q)
+	}
+	d.Data = append(d.Data, p...)
+}
+
 // WriteByte writes a single byte into the buffer.
 func (d *Decoder) WriteByte(c byte) error {
 	if a := d.BufferSize - len(d.Data); a < 1 {
@@ -166,7 +179,7 @@ func (d *Decoder) WriteByte(c byte) error {
 			return ErrFullBuffer
 		}
 	}
-	d.Data = append(d.Data, c)
+	d.add(c)
 	d.Off++
 	return nil
 }
@@ -180,7 +193,7 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 			return 0, ErrFullBuffer
 		}
 	}
-	d.Data = append(d.Data, p...)
+	d.add(p...)
 	d.Off += int64(n)
 	return n, nil
 }
@@ -214,7 +227,7 @@ func (d *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	}
 	n = m
 	for m > o {
-		d.Data = append(d.Data, d.Data[len(d.Data)-o:]...)
+		d.add(d.Data[len(d.Data)-o:]...)
 		m -= o
 		if m <= o {
 			break
@@ -223,7 +236,7 @@ func (d *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	}
 	// m <= o
 	i := len(d.Data) - o
-	d.Data = append(d.Data, d.Data[i:i+m]...)
+	d.add(d.Data[i : i+m]...)
 	d.Off += int64(n)
 	return n, nil
 }
@@ -277,10 +290,10 @@ func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			}
 		}
 		n += g
-		d.Data = append(d.Data, blk.Literals[:s.LitLen]...)
+		d.add(blk.Literals[:s.LitLen]...)
 		blk.Literals = blk.Literals[s.LitLen:]
 		for m > o {
-			d.Data = append(d.Data, d.Data[len(d.Data)-o:]...)
+			d.add(d.Data[len(d.Data)-o:]...)
 			m -= o
 			if m <= o {
 				break
@@ -289,7 +302,7 @@ func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 		}
 		// m <= o
 		i := len(d.Data) - o
-		d.Data = append(d.Data, d.Data[i:i+m]...)
+		d.add(d.Data[i : i+m]...)
 	}
 	k = len(blk.Sequences)
 	if a := d.BufferSize - len(d.Data); len(blk.Literals) > a {
@@ -298,7 +311,7 @@ func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			goto end
 		}
 	}
-	d.Data = append(d.Data, blk.Literals...)
+	d.add(blk.Literals...)
 	n += len(blk.Literals)
 	blk.Literals = blk.Literals[:0]
 end:

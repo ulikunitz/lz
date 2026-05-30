@@ -1,4 +1,4 @@
-name: Govulncheck
+name: "Go Vulnerability Check"
 
 on:
   schedule:
@@ -11,16 +11,7 @@ jobs:
     name: Run govulncheck
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-
       - name: Run govulncheck
         uses: golang/govulncheck-action@v1
         with:
           go-package: ./...
-          cache: false

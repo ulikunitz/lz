@@ -34,6 +34,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/ulikunitz/opt"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -129,201 +131,71 @@ type Parser interface {
 	Config() ParserConfig
 }
 
-// ParserConfig provides the configuration for a parser. [PathFinder] describes
-// the algorithm to find a path through the different matches. The [Mapper] is
-// used to find potential matches.
+// ParserConfig provides the configuration for a parser.
 type ParserConfig struct {
-	PathFinder string
-	Mapper     string
+	// PathFinder describes the algorithm to find a path through the
+	// possible matches at each position of the encoding process.
+	//
+	// Support path finders are:
+	//   * greedy
+	PathFinder string `json:",omitzero"`
 
-	WindowSize    int
-	RetentionSize int
-	BufferSize    int
+	// Mapper describes the algorithm to find potential matches in the byte
+	// stream. Support mappers are:
+	//   * hash_<inputLen>:<hashBits> A hash table with the provided input
+	//     length and hash bits. The input length is between 2 and 8 bytes,
+	//     and the hash bits can be 24 bits at maximum.
+	Mapper string `json:",omitzero"`
 
-	MinMatchLen int
-	MaxMatchLen int
+	// WindowSize is the maximum distance of a match to be copied. The
+	// window size is allowed to be 0, for experimental purposes.
+	WindowSize opt.Value[int] `json:",omitzero"`
+
+	// RetentionSize is the number of bytes that are kept if the buffer is
+	// full and the data needs to be shifted. The retention size can be 0.
+	RetentionSize opt.Value[int] `json:",omitzero"`
+
+	// BufferSize is the maximum size of the internal buffer for the parser.
+	// It must at least support 1 byte.
+	BufferSize int `json:",omitzero"`
+
+	// MinMatchLen is the minimum match length for the parser. The minimum
+	// match length must be less than or equal to the maximum match length
+	// and must be at least 2 bytes.
+	MinMatchLen int `json:",omitzero"`
+
+	// MaxMatchLen is the maximum match length for the parser. The maximum
+	// match length must be greater than or equal to the minimum match
+	// length and must be at least 2 bytes.
+	MaxMatchLen int `json:",omitzero"`
 }
 
-type AllOption interface {
-	ParserOption
-	DecoderOption
-}
-
-// ParserOption represents a functional option for the parser configuration.
-type ParserOption interface {
-	updateParserConfig(*ParserConfig) error
-}
-
-type pfOpt string
-
-func (o pfOpt) updateParserConfig(c *ParserConfig) error {
-	if o == "" {
-		return fmt.Errorf("lz: path finder name cannot be empty")
+func (cfg *ParserConfig) setDefaults() {
+	if cfg.PathFinder == "" {
+		cfg.PathFinder = "greedy"
 	}
-	c.PathFinder = string(o)
-	return nil
-}
-
-// WithPathFinder sets the path finder for the parser. The supported path
-// finders are described below.
-//
-// greedy The greedy path finder selects the longest match at each position.	^
-func WithPathFinder(name string) ParserOption {
-	return pfOpt(name)
-}
-
-type mOpt string
-
-func (o mOpt) updateParserConfig(c *ParserConfig) error {
-	if o == "" {
-		return fmt.Errorf("lz: mapper name cannot be empty")
+	if cfg.Mapper == "" {
+		cfg.Mapper = "hash_3:16"
 	}
-	c.Mapper = string(o)
-	return nil
-}
-
-// WithMapper sets the mapper for the parser. The supported mappers are
-// described below.
-//
-// hash_<inputLen>:<hashBits> A hash table with the provided input length
-// and hash bits. The input length is between 2 and 8 bytes, and the hash
-// bits can be 24 bits at maximum.
-func WithMapper(name string) ParserOption {
-	return mOpt(name)
-}
-
-type wOpt int
-
-func (o wOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 0 {
-		return fmt.Errorf(
-			"lz: invalid window size %d; must be >= 0", o)
+	if cfg.WindowSize.IsZero() {
+		cfg.WindowSize = opt.Val(1 << 20)
 	}
-	c.WindowSize = int(o)
-	return nil
-}
-
-func (o wOpt) updateDecoderConfig(c *DecoderConfig) error {
-	if o < 0 {
-		return fmt.Errorf(
-			"lz: invalid window size %d; must be >= 0", o)
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = 1 << 20
 	}
-	c.WindowSize = int(o)
-	return nil
-}
-
-// WithWindowSize sets the window size for the parser and decoder. The window
-// size is the maximum distance of a match to be copied. The window size must be
-// greater or equal to 0. For the decoder it must be significantly smaller than the
-// buffer size, and for the parser it should be significantly smaller than the
-// buffer size.
-func WithWindowSize(size int) AllOption {
-	return wOpt(size)
-}
-
-type rOpt int
-
-func (o rOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 0 {
-		return fmt.Errorf(
-			"lz: invalid retention size %d; must be >= 0", o)
+	if cfg.RetentionSize.IsZero() {
+		cfg.RetentionSize = opt.Val(cfg.BufferSize / 4)
 	}
-	c.RetentionSize = int(o)
-	if c.RetentionSize >= c.BufferSize {
-		c.BufferSize = c.RetentionSize * 4
+	if cfg.MinMatchLen == 0 {
+		cfg.MinMatchLen = 3
 	}
-	return nil
-}
-
-// WithRetentionSize sets the retention size for the parser. The retention size
-// is the number of bytes that are kept in the buffer after they have been
-// parsed. The retention size must be less than the buffer size. It can't be
-// negative.
-func WithRetentionSize(size int) ParserOption {
-	return rOpt(size)
-}
-
-type bOpt int
-
-func (o bOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 1 {
-		return fmt.Errorf(
-			"lz: invalid buffer size %d; must be >= 1", o)
+	if cfg.MaxMatchLen == 0 {
+		cfg.MaxMatchLen = 273
 	}
-	c.BufferSize = int(o)
-	return nil
 }
 
-func (o bOpt) updateDecoderConfig(c *DecoderConfig) error {
-	if o < 1 {
-		return fmt.Errorf(
-			"lz: invalid buffer size %d; must be >= 1", o)
-	}
-	c.BufferSize = int(o)
-	return nil
-}
-
-// WithBufferSize sets the buffer size for the parser and decoder. The buffer
-// size is the maximum size of the internal buffer for the parser and decoder.
-// The buffer size must be greater or equal of at least one byte, and the
-// retention size for the parser and the window size for the decoder must be
-// less than the buffer size.
-func WithBufferSize(size int) AllOption {
-	return bOpt(size)
-}
-
-type minMLOpt int
-
-func (o minMLOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 2 {
-		return fmt.Errorf(
-			"lz: invalid min match length %d; must be >= 2", o)
-	}
-	c.MinMatchLen = int(o)
-	return nil
-}
-
-// WithMinMatchLen sets the minimum match length for the parser. The minimum
-// match length must be less than or equal to the maximum match length.
-func WithMinMatchLen(size int) ParserOption {
-	return minMLOpt(size)
-}
-
-type maxMLOpt int
-
-func (o maxMLOpt) updateParserConfig(c *ParserConfig) error {
-	if o < 2 {
-		return fmt.Errorf(
-			"lz: invalid max match length %d; must be >= 2", o)
-	}
-	c.MaxMatchLen = int(o)
-	return nil
-}
-
-// WithMaxMatchLen sets the maximum match length for the parser. The maximum
-// match length must be greater than or equal to the minimum match length.
-func WithMaxMatchLen(size int) ParserOption {
-	return maxMLOpt(size)
-}
-
-// NewParser creates a new parser for the provided options.
-func NewParser(opts ...ParserOption) (Parser, error) {
-	var defaults = &ParserConfig{
-		PathFinder:    "greedy",
-		Mapper:        "hash_3:16",
-		WindowSize:    128 << 10,
-		RetentionSize: 32 << 10,
-		BufferSize:    128 << 10,
-		MinMatchLen:   3,
-		MaxMatchLen:   273,
-	}
-
-	for _, opt := range opts {
-		if err := opt.updateParserConfig(defaults); err != nil {
-			return nil, err
-		}
-	}
-	return newGenericParser(defaults)
+func NewParser(cfg ParserConfig) (Parser, error) {
+	return newGenericParser(&cfg)
 }
 
 // Matcher is responsible to find matches or Literal bytes in the byte stream.

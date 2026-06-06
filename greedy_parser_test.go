@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"io"
 	"testing"
+
+	"github.com/ulikunitz/opt"
 )
 
 func TestGreedyParser(t *testing.T) {
@@ -13,13 +15,13 @@ func TestGreedyParser(t *testing.T) {
 	)
 
 	const winSize = 32
-	p, err := NewParser(
-		WithPathFinder("greedy"),
-		WithMapper("hash_3:16"),
-		WithWindowSize(winSize),
-		WithRetentionSize(winSize),
-		WithBufferSize(2*winSize),
-	)
+	p, err := NewParser(ParserConfig{
+		PathFinder:    "greedy",
+		Mapper:        "hash_3:16",
+		WindowSize:    opt.Val(winSize),
+		RetentionSize: opt.Val(winSize),
+		BufferSize:    2 * winSize,
+	})
 	if err != nil {
 		t.Fatalf("NewParser: %v", err)
 	}
@@ -50,10 +52,10 @@ func TestGreedyParser(t *testing.T) {
 	t.Logf("Literals: %q", blk.Literals)
 	t.Logf("Sequences: %v", blk.Sequences)
 
-	d, err := NewDecoder(
-		WithWindowSize(winSize),
-		WithBufferSize(2*winSize),
-	)
+	d, err := NewDecoder(DecoderConfig{
+		WindowSize: opt.Val(winSize),
+		BufferSize: 2 * winSize,
+	})
 	if err != nil {
 		t.Fatalf("NewDecoder: %v", err)
 	}
@@ -87,22 +89,22 @@ func FuzzGreedyParser(f *testing.F) {
 			winSize   = 200
 		)
 
-		p, err := NewParser(
-			WithPathFinder("greedy"),
-			WithMapper("hash_3:16"),
-			WithMinMatchLen(3),
-			WithMaxMatchLen(64),
-			WithWindowSize(winSize),
-			WithRetentionSize(winSize),
-			WithBufferSize(2*winSize),
-		)
+		p, err := NewParser(ParserConfig{
+			PathFinder:    "greedy",
+			Mapper:        "hash_3:16",
+			MinMatchLen:   3,
+			MaxMatchLen:   64,
+			WindowSize:    opt.Val(winSize),
+			RetentionSize: opt.Val(winSize),
+			BufferSize:    2 * winSize,
+		})
 		if err != nil {
 			t.Fatalf("NewParser: %v", err)
 		}
-		d, err := NewDecoder(
-			WithWindowSize(winSize),
-			WithBufferSize(2*winSize),
-		)
+		d, err := NewDecoder(DecoderConfig{
+			WindowSize: opt.Val(winSize),
+			BufferSize: 2 * winSize,
+		})
 		if err != nil {
 			t.Fatalf("NewDecoder: %v", err)
 		}

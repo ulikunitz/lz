@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+
+	"github.com/ulikunitz/opt"
 )
 
 // DecoderConfig contains the parameters for the DecoderBuffer and decoder
@@ -16,23 +18,29 @@ import (
 // BufferSize to twice the WindowSize.
 type DecoderConfig struct {
 	// Size of the sliding dictionary window in bytes.
-	WindowSize int
+	WindowSize opt.Value[int]
 	// Maximum size of the buffer in bytes.
 	BufferSize int
 }
 
-// DecoderOption represents a functional option for the decoder configuration.
-type DecoderOption interface {
-	updateDecoderConfig(*DecoderConfig) error
+func (cfg *DecoderConfig) setDefaults() {
+	if cfg.WindowSize.IsZero() {
+		cfg.WindowSize = opt.Val(8 * 1024 * 1024)
+	}
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = 2 * cfg.WindowSize.V
+	}
 }
 
 // NewDecoder creates a new Decoder with the given options. If no options are
 // provided, the default values are used. The default WindowSize is 8 MiB and
 // the default BufferSize is 16 MiB. The function returns an error if the
 // options are invalid.
-func NewDecoder(opts ...DecoderOption) (*Decoder, error) {
+func NewDecoder(cfg DecoderConfig) (*Decoder, error) {
+	cfg.setDefaults()
+
 	d := &Decoder{}
-	if err := d.Init(opts...); err != nil {
+	if err := d.Init(cfg); err != nil {
 		return nil, err
 	}
 	return d, nil
@@ -40,16 +48,19 @@ func NewDecoder(opts ...DecoderOption) (*Decoder, error) {
 
 // verify checks the parameters of the DecoderConfig value and returns an error
 // for the first issue found.
-func (opts *DecoderConfig) verify() error {
-	if !(0 <= opts.WindowSize && int64(opts.WindowSize) <= math.MaxUint32) {
+func (cfg *DecoderConfig) verify() error {
+	if cfg.WindowSize.IsZero() {
+		return fmt.Errorf("lz.DecConfig: WindowSize must be set")
+	}
+	if !(0 <= cfg.WindowSize.V && int64(cfg.WindowSize.V) <= math.MaxUint32) {
 		return fmt.Errorf(
 			"lz.DecConfig: WindowSize=%d out of range [%d..%d]",
-			opts.WindowSize, 0, int64(math.MaxUint32))
+			cfg.WindowSize.V, 0, int64(math.MaxUint32))
 	}
-	if !(opts.WindowSize < opts.BufferSize) {
+	if !(cfg.WindowSize.V < cfg.BufferSize) {
 		return fmt.Errorf(
 			"lz.DecConfig: BufferSize=%d must be greater than WindowSize=%d",
-			opts.BufferSize, opts.WindowSize)
+			cfg.BufferSize, cfg.WindowSize.V)
 	}
 	return nil
 }
@@ -81,30 +92,14 @@ type Decoder struct {
 // are provided, the default values are used. The default WindowSize is 8 MiB
 // and the default BufferSize is 16 MiB. The function returns an error if the
 // options are invalid.
-func (d *Decoder) Init(opts ...DecoderOption) error {
-	defaults := &DecoderConfig{
-		WindowSize: -1,
-		BufferSize: -1,
-	}
-	for _, opt := range opts {
-		if err := opt.updateDecoderConfig(defaults); err != nil {
-			return err
-		}
-	}
-
-	if defaults.WindowSize < 0 {
-		defaults.WindowSize = 8 * 1024 * 1024
-	}
-	if defaults.BufferSize < 0 {
-		defaults.BufferSize = 2 * defaults.WindowSize
-	}
-
-	if err := defaults.verify(); err != nil {
+func (d *Decoder) Init(cfg DecoderConfig) error {
+	cfg.setDefaults()
+	if err := cfg.verify(); err != nil {
 		return err
 	}
 	*d = Decoder{
 		Data:          d.Data[:0],
-		DecoderConfig: *defaults,
+		DecoderConfig: cfg,
 	}
 	if cap(d.Data) > d.BufferSize {
 		d.BufferSize = cap(d.Data)
@@ -150,14 +145,14 @@ func (d *Decoder) WriteTo(w io.Writer) (n int64, err error) {
 // Available returns the number of bytes that can be written to the Decoder. The
 // function returns 0 if the buffer is full.
 func (d *Decoder) Available() int {
-	k := min(d.R, max(len(d.Data)-d.WindowSize, 0))
+	k := min(d.R, max(len(d.Data)-d.WindowSize.V, 0))
 	return d.BufferSize - len(d.Data) + k
 }
 
 // prune evicts data from the buffer and returns the available space.
 func (d *Decoder) prune() int {
 	// space that can be pruned
-	n := min(d.R, max(len(d.Data)-d.WindowSize, 0))
+	n := min(d.R, max(len(d.Data)-d.WindowSize.V, 0))
 	if n > 0 {
 		l := copy(d.Data, d.Data[n:])
 		d.Data = d.Data[:l]
@@ -218,12 +213,12 @@ func (d *Decoder) WriteMatch(mu, ou uint32) (n int, err error) {
 	if ou == 0 && mu > 0 {
 		return 0, errOffset
 	}
-	winLen := min(len(d.Data), d.WindowSize)
+	winLen := min(len(d.Data), d.WindowSize.V)
 	if int64(ou) > int64(winLen) {
 		return 0, errOffset
 	}
 	o := int(ou)
-	if int64(mu) > int64(d.WindowSize) {
+	if int64(mu) > int64(d.WindowSize.V) {
 		return 0, errMatchLen
 	}
 	m := int(mu)
@@ -270,13 +265,13 @@ func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 			goto end
 		}
 		l := int(s.LitLen)
-		winLen := min(len(d.Data)+l, d.WindowSize)
+		winLen := min(len(d.Data)+l, d.WindowSize.V)
 		if int64(s.Offset) > int64(winLen) {
 			err = errOffset
 			goto end
 		}
 		o := int(s.Offset)
-		if int64(s.MatchLen) > int64(d.WindowSize) {
+		if int64(s.MatchLen) > int64(d.WindowSize.V) {
 			err = errMatchLen
 			goto end
 		}

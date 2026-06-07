@@ -1,5 +1,10 @@
 # TODO lz module
 
+## further improvement
+
+* Fuzz parameters
+* Fuzz JSON
+
 ## Release
 
 * Review documentation

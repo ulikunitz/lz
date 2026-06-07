@@ -3,6 +3,7 @@ package lz
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"io"
 	"os"
 	"testing"
@@ -103,4 +104,38 @@ func FuzzConfig(f *testing.F) {
 				"decoded data differs from original")
 		}
 	})
+}
+
+func TestParserConfigJSON(t *testing.T) {
+	tests := []ParserConfig{
+		{},
+		{
+			WindowSize:    opt.Val(16),
+			RetentionSize: opt.Val(4),
+			BufferSize:    32,
+			MinMatchLen:   2,
+			MaxMatchLen:   273,
+		},
+		{
+			PathFinder: "greedy",
+			Mapper:     "hash_32:16",
+		},
+	}
+
+	for _, cfg := range tests {
+		data, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			t.Fatalf("json.MarshalIndent: %v", err)
+		}
+		t.Logf("config JSON:\n%s", data)
+		var cfgGot ParserConfig
+		err = json.Unmarshal(data, &cfgGot)
+		if err != nil {
+			t.Fatalf("json.Unmarshal: %v", err)
+		}
+
+		if cfg != cfgGot {
+			t.Fatalf("config mismatch: got %+v, want %+v", cfgGot, cfg)
+		}
+	}
 }

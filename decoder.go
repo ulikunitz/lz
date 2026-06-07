@@ -29,6 +29,9 @@ func (cfg *DecoderConfig) setDefaults() {
 	}
 	if cfg.BufferSize == 0 {
 		cfg.BufferSize = 2 * cfg.WindowSize.V
+		if cfg.BufferSize == 0 {
+			cfg.BufferSize = 1024
+		}
 	}
 }
 
@@ -308,7 +311,8 @@ func (d *Decoder) WriteBlock(blk *Block) (n int, err error) {
 	}
 	k = len(blk.Sequences)
 	if a := d.BufferSize - len(d.Data); len(blk.Literals) > a {
-		if len(blk.Literals) > d.prune() {
+		l := d.prune()
+		if len(blk.Literals) > l {
 			err = ErrFullBuffer
 			goto end
 		}

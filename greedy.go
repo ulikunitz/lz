@@ -8,7 +8,7 @@ type greedyPathFinder struct {
 
 func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	if n <= 0 {
-		return 0, fmt.Errorf("lz: length %d <= 0; want n > 0", n)
+		return 0, fmt.Errorf("lz: length n=%d <= 0; want n > 0", n)
 	}
 
 	p := f.matcher
@@ -25,8 +25,9 @@ func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed i
 	blk.Sequences = blk.Sequences[:0]
 
 	iLit := 0
-	for parsed < n {
-		q := p.Edges(n)
+	r := n
+	for r > 0 {
+		q := p.Edges(r)
 		if len(q) == 0 {
 			panic("lz: no edges returned by matcher")
 		}
@@ -53,7 +54,7 @@ func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed i
 				"lz: unexpected error from Skip: %w", err))
 		}
 
-		parsed += int(seqLen)
+		r -= int(seqLen)
 	}
 
 	if flags&NoTrailingLiterals != 0 {
@@ -62,11 +63,11 @@ func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed i
 		if err != nil {
 			panic(err)
 		}
-		parsed -= l
+		r += l
 		blk.Literals = blk.Literals[:iLit]
 	}
 
-	return parsed, nil
+	return n - r, nil
 }
 
 func (f *greedyPathFinder) Reset() {}

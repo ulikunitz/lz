@@ -88,8 +88,8 @@ func FuzzConfig(f *testing.F) {
 				if err != nil {
 					t.Fatalf("d.WriteBlock: %v", err)
 				}
-				_, cerr := io.Copy(w, d)
-				if cerr != nil {
+				_, err = io.Copy(w, d)
+				if err != nil {
 					t.Fatalf("io.Copy: %v", err)
 				}
 			}

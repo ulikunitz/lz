@@ -2,8 +2,7 @@
 
 ## further improvement
 
-* Fuzz parameters
-* Fuzz JSON
+* Test JSON
 
 ## Release
 

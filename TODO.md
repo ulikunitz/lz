@@ -1,9 +1,5 @@
 # TODO lz module
 
-## further improvement
-
-* Test JSON
-
 ## Release
 
 * Review documentation

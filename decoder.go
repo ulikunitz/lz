@@ -18,9 +18,9 @@ import (
 // BufferSize to twice the WindowSize.
 type DecoderConfig struct {
 	// Size of the sliding dictionary window in bytes.
-	WindowSize opt.Value[int]
+	WindowSize opt.Value[int] `json:",omitzero"`
 	// Maximum size of the buffer in bytes.
-	BufferSize int
+	BufferSize int `json:",omitzero"`
 }
 
 func (cfg *DecoderConfig) setDefaults() {

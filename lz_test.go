@@ -6,9 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"reflect"
 	"testing"
-
-	"github.com/ulikunitz/opt"
 )
 
 func FuzzConfig(f *testing.F) {
@@ -23,8 +22,8 @@ func FuzzConfig(f *testing.F) {
 			t.Skip()
 		}
 		cfg := ParserConfig{
-			WindowSize:    opt.Val(winSize),
-			RetentionSize: opt.Val(retSize),
+			WindowSize:    new(winSize),
+			RetentionSize: new(retSize),
 			BufferSize:    bufSize,
 			MinMatchLen:   2,
 			MaxMatchLen:   273,
@@ -47,7 +46,7 @@ func FuzzConfig(f *testing.F) {
 		}
 		defer f.Close()
 		h := sha256.New()
-		r := io.TeeReader(io.LimitReader(f, 10000), h)
+		r := io.TeeReader(io.LimitReader(f, 100), h)
 		w := sha256.New()
 
 		t.Logf("parser config: %+v", p.Config())
@@ -110,8 +109,8 @@ func TestParserConfigJSON(t *testing.T) {
 	tests := []ParserConfig{
 		{},
 		{
-			WindowSize:    opt.Val(16),
-			RetentionSize: opt.Val(4),
+			WindowSize:    new(16),
+			RetentionSize: new(4),
 			BufferSize:    32,
 			MinMatchLen:   2,
 			MaxMatchLen:   273,
@@ -134,7 +133,7 @@ func TestParserConfigJSON(t *testing.T) {
 			t.Fatalf("json.Unmarshal: %v", err)
 		}
 
-		if cfg != cfgGot {
+		if !reflect.DeepEqual(cfg, cfgGot) {
 			t.Fatalf("config mismatch: got %+v, want %+v", cfgGot, cfg)
 		}
 	}

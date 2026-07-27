@@ -21,9 +21,9 @@ type genericParser struct {
 
 func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
 	cfg.setDefaults()
-	if cfg.WindowSize.V < 0 {
+	if *cfg.WindowSize < 0 {
 		return nil, fmt.Errorf("lz: invalid window size %d; must be >= 0",
-			cfg.WindowSize.V)
+			*cfg.WindowSize)
 	}
 	if !(2 <= cfg.MinMatchLen && cfg.MinMatchLen <= cfg.MaxMatchLen) {
 		return nil, fmt.Errorf(
@@ -39,8 +39,7 @@ func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
 		mapper:       mapper,
 		ParserConfig: *cfg,
 	}
-	err = gp.Buffer.Init(cfg.BufferSize, cfg.RetentionSize.V,
-		mapper.Shift)
+	err = gp.Buffer.Init(cfg.BufferSize, *cfg.RetentionSize, mapper.Shift)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,7 @@ func (gp *genericParser) Edges(n int) []Seq {
 		}
 		j := int(e.i)
 		o := i - j
-		if !(0 < o && o <= gp.WindowSize.V) {
+		if !(0 < o && o <= *gp.WindowSize) {
 			continue
 		}
 		if k == 4 {

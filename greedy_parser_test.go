@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"io"
 	"testing"
-
-	"github.com/ulikunitz/opt"
 )
 
 func TestGreedyParser(t *testing.T) {
@@ -18,8 +16,8 @@ func TestGreedyParser(t *testing.T) {
 	p, err := NewParser(ParserConfig{
 		PathFinder:    "greedy",
 		Mapper:        "hash_3:16",
-		WindowSize:    opt.Val(winSize),
-		RetentionSize: opt.Val(winSize),
+		WindowSize:    new(winSize),
+		RetentionSize: new(winSize),
 		BufferSize:    2 * winSize,
 	})
 	if err != nil {
@@ -94,8 +92,8 @@ func FuzzGreedyParser(f *testing.F) {
 			Mapper:        "hash_3:16",
 			MinMatchLen:   3,
 			MaxMatchLen:   64,
-			WindowSize:    opt.Val(winSize),
-			RetentionSize: opt.Val(winSize),
+			WindowSize:    new(winSize),
+			RetentionSize: new(winSize),
 			BufferSize:    2 * winSize,
 		})
 		if err != nil {

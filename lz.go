@@ -34,8 +34,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/ulikunitz/opt"
 )
 
 // Seq represents a single Lempel-Ziv 77 sequence describing a match,
@@ -149,11 +147,11 @@ type ParserConfig struct {
 
 	// WindowSize is the maximum distance of a match to be copied. The
 	// window size is allowed to be 0, for experimental purposes.
-	WindowSize opt.Value[int] `json:",omitzero"`
+	WindowSize *int `json:",omitzero"`
 
 	// RetentionSize is the number of bytes that are kept if the buffer is
 	// full and the data needs to be shifted. The retention size can be 0.
-	RetentionSize opt.Value[int] `json:",omitzero"`
+	RetentionSize *int `json:",omitzero"`
 
 	// BufferSize is the maximum size of the internal buffer for the parser.
 	// It must at least support 1 byte.
@@ -177,14 +175,14 @@ func (cfg *ParserConfig) setDefaults() {
 	if cfg.Mapper == "" {
 		cfg.Mapper = "hash_3:16"
 	}
-	if cfg.WindowSize.IsZero() {
-		cfg.WindowSize = opt.Val(1 << 20)
+	if cfg.WindowSize == nil {
+		cfg.WindowSize = new(1 << 20)
 	}
 	if cfg.BufferSize == 0 {
 		cfg.BufferSize = 1 << 20
 	}
-	if cfg.RetentionSize.IsZero() {
-		cfg.RetentionSize = opt.Val(cfg.BufferSize / 4)
+	if cfg.RetentionSize == nil {
+		cfg.RetentionSize = new(cfg.BufferSize / 4)
 	}
 	if cfg.MinMatchLen == 0 {
 		cfg.MinMatchLen = 3

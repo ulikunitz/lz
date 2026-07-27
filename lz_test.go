@@ -34,7 +34,7 @@ func FuzzConfig(f *testing.F) {
 			t.Fatalf("NewParser: %v", err)
 		}
 		decCfg := DecoderConfig{
-			WindowSize: opt.Val(winSize),
+			WindowSize: new(winSize),
 		}
 		d, err := NewDecoder(decCfg)
 		if err != nil {
@@ -52,7 +52,7 @@ func FuzzConfig(f *testing.F) {
 
 		t.Logf("parser config: %+v", p.Config())
 		t.Logf("decoder config: %+v", d.DecoderConfig)
-		blockSize := min(128<<10, d.BufferSize-d.WindowSize.V)
+		blockSize := min(128<<10, d.BufferSize-*d.WindowSize)
 		t.Logf("blockSize: %d", blockSize)
 		var blk Block
 		moreData := true

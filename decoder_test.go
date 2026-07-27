@@ -3,15 +3,23 @@ package lz
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/ulikunitz/opt"
 )
+
+func equalDecoderConfig(a, b DecoderConfig) bool {
+	if a.BufferSize != b.BufferSize {
+		return false
+	}
+	if a.WindowSize == nil || b.WindowSize == nil {
+		return a.WindowSize == b.WindowSize
+	}
+	return *a.WindowSize == *b.WindowSize
+}
 
 func TestDecoderConfigJSON(t *testing.T) {
 	tests := []DecoderConfig{
 		{},
 		{
-			WindowSize: opt.Val(16),
+			WindowSize: new(16),
 			BufferSize: 32,
 		},
 		{
@@ -31,7 +39,7 @@ func TestDecoderConfigJSON(t *testing.T) {
 			t.Fatalf("json.Unmarshal: %v", err)
 		}
 
-		if cfg != cfgGot {
+		if !equalDecoderConfig(cfgGot, cfg) {
 			t.Fatalf("config mismatch: got %+v, want %+v", cfgGot, cfg)
 		}
 	}

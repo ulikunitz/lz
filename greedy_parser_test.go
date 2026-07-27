@@ -53,7 +53,7 @@ func TestGreedyParser(t *testing.T) {
 	t.Logf("Sequences: %v", blk.Sequences)
 
 	d, err := NewDecoder(DecoderConfig{
-		WindowSize: opt.Val(winSize),
+		WindowSize: new(winSize),
 		BufferSize: 2 * winSize,
 	})
 	if err != nil {
@@ -102,7 +102,7 @@ func FuzzGreedyParser(f *testing.F) {
 			t.Fatalf("NewParser: %v", err)
 		}
 		d, err := NewDecoder(DecoderConfig{
-			WindowSize: opt.Val(winSize),
+			WindowSize: new(winSize),
 			BufferSize: 2 * winSize,
 		})
 		if err != nil {

@@ -6,6 +6,10 @@ import (
 	"math/bits"
 )
 
+// genericParser is a generic implementation of the Parser interface. It uses a
+// PathFinder to find matches in the input data and a Mapper to map the input
+// data to a sequence of bytes. The genericParser maintains a buffer of input
+// data.
 type genericParser struct {
 	PathFinder
 
@@ -19,6 +23,8 @@ type genericParser struct {
 	ParserConfig
 }
 
+// newGenericParser creates a new genericParser with the given configuration.
+// Note that no copy of the configuration will be made.
 func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
 	cfg.setDefaults()
 	if *cfg.WindowSize < 0 {
@@ -51,10 +57,14 @@ func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
 	return gp, nil
 }
 
+// Config returns a deep copy of the ParserConfig value used to create the
+// genericParser.
 func (gp *genericParser) Config() ParserConfig {
 	return gp.ParserConfig.clone()
 }
 
+// Edges return a slice of Seq values representing the edges of the graph at the
+// current position in the input data. The edges are computed by the Mapper.
 func (gp *genericParser) Edges(n int) []Seq {
 	q := gp.q[:0]
 	i := gp.W
@@ -98,6 +108,8 @@ var ErrEndOfBuffer = errors.New("lz: end of buffer")
 // ErrStartOfBuffer is returned at the start of the buffer.
 var ErrStartOfBuffer = errors.New("lz: start of buffer")
 
+// Skip jumps over the next n bytes in the input data. The argument n can be
+// negative.
 func (gp *genericParser) Skip(n int) (skipped int, err error) {
 	if n < 0 {
 		if n < -gp.W {
@@ -123,6 +135,7 @@ func (gp *genericParser) Skip(n int) (skipped int, err error) {
 	return n, err
 }
 
+// Resets the parser for being reused with a new input data slice.
 func (gp *genericParser) Reset(data []byte) error {
 	var err error
 	if err = gp.Buffer.Reset(data); err != nil {
@@ -134,4 +147,5 @@ func (gp *genericParser) Reset(data []byte) error {
 	return nil
 }
 
+// verify that the genericParser implements the Parser interface.
 var _ Parser = (*genericParser)(nil)

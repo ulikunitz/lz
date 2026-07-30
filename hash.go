@@ -27,10 +27,13 @@ type hash struct {
 	hashBits int
 }
 
+// String returns the string representation for the hash.
 func (h *hash) String() string {
 	return fmt.Sprintf("hash_%d:%d", h.inputLen, h.hashBits)
 }
 
+// verifyHashParams checks the parameters for a hash and returns an error if
+// they are invalid.
 func verifyHashParams(inputLen, hashBits int) error {
 	if !(2 <= inputLen && inputLen <= 8) {
 		return fmt.Errorf("lz: invalid inputLen=%d; must be 2..8",
@@ -45,25 +48,32 @@ func verifyHashParams(inputLen, hashBits int) error {
 	return nil
 }
 
+// hashRegexp is a regular expression that matches the string representation of
+// a hash.
 var hashRegexp = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^hash_\d+:\d+$`)
 })
 
+// parseHashName parses the string representation of a hash and returns the input
+// length and the number of hash bits. The function returns an error if the
+// string is invalid.
 func parseHashName(name string) (inputLen, hashBits int, err error) {
 	if !hashRegexp().MatchString(name) {
 		return 0, 0, fmt.Errorf(
-			"lz: invalid hash name %q; must be in format hash-<inputLen>:<hashBits>",
+			"lz: invalid hash name %q; must be in format hash_<inputLen>:<hashBits>",
 			name)
 	}
 	if _, err = fmt.Sscanf(name, "hash_%d:%d", &inputLen, &hashBits); err != nil {
 		return 0, 0, fmt.Errorf(
-			"lz: invalid hash name %q; must be in format hash-<inputLen>:<hashBits>",
+			"lz: invalid hash name %q; must be in format hash_<inputLen>:<hashBits>",
 			name)
 	}
 	err = verifyHashParams(inputLen, hashBits)
 	return inputLen, hashBits, err
 }
 
+// newHash creates a new hash with the given input length and number of hash
+// bits. The function returns an error if the parameters are invalid.
 func newHash(inputLen, hashBits int) (*hash, error) {
 	if err := verifyHashParams(inputLen, hashBits); err != nil {
 		return nil, err
@@ -78,6 +88,7 @@ func newHash(inputLen, hashBits int) (*hash, error) {
 	return h, nil
 }
 
+// InputLen returns the input length of the hash.
 func (h *hash) InputLen() int { return h.inputLen }
 
 // Reset clears the hash table.
@@ -106,6 +117,9 @@ func (h *hash) Shift(delta int) {
 	}
 }
 
+// Put adds the entries for the next w bytes of input data starting at position
+// a. The function returns the number of bytes that could not be added to the
+// hash table because they are too close to the end of the input data.
 func (h *hash) Put(p []byte, a, w int) int {
 	b := min(w, max(len(p)-max(h.inputLen, 4)+1, 0))
 	_p := p[:b+7]
@@ -117,6 +131,8 @@ func (h *hash) Put(p []byte, a, w int) int {
 	return w - b
 }
 
+// Get returns the entries for the given value v. The function returns nil if no
+// entries are found.
 func (h *hash) Get(v uint64) []Entry {
 	v &= h.mask
 	i := hashValue(v, h.shift)

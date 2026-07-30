@@ -2,10 +2,15 @@ package lz
 
 import "fmt"
 
+// greedyPathFinder implements a path finder that chooses always the longest
+// match at each step.
 type greedyPathFinder struct {
 	matcher Matcher
 }
 
+// Parse parses the next n bytes of input data and returns a Block containing
+// the parsed data. The argument n must be greater than 0. If blk is nil, the
+// function skips over the next n bytes of input data and returns the number of
 func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error) {
 	if n <= 0 {
 		return 0, fmt.Errorf("lz: length n=%d <= 0; want n > 0", n)
@@ -70,4 +75,5 @@ func (f *greedyPathFinder) Parse(blk *Block, n int, flags ParserFlags) (parsed i
 	return n - r, nil
 }
 
+// Reset resets the path finder for being reused with new data.
 func (f *greedyPathFinder) Reset() {}

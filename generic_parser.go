@@ -52,7 +52,7 @@ func newGenericParser(cfg *ParserConfig) (*genericParser, error) {
 }
 
 func (gp *genericParser) Config() ParserConfig {
-	return gp.ParserConfig
+	return gp.ParserConfig.clone()
 }
 
 func (gp *genericParser) Edges(n int) []Seq {

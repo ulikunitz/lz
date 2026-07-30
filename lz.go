@@ -192,7 +192,21 @@ func (cfg *ParserConfig) setDefaults() {
 	}
 }
 
+// clone returns a deep copy of the ParserConfig value.
+func (cfg ParserConfig) clone() ParserConfig {
+	c := cfg
+	if cfg.WindowSize != nil {
+		c.WindowSize = new(*cfg.WindowSize)
+	}
+	if cfg.RetentionSize != nil {
+		c.RetentionSize = new(*cfg.RetentionSize)
+	}
+	return c
+}
+
+// NewParser creates a new Parser with the given configuration parameters.
 func NewParser(cfg ParserConfig) (Parser, error) {
+	cfg = cfg.clone()
 	return newGenericParser(&cfg)
 }
 

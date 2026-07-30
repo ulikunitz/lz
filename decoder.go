@@ -33,11 +33,21 @@ func (cfg *DecoderConfig) setDefaults() {
 	}
 }
 
+// clone returns a copy of the DecoderConfig value.
+func (cfg *DecoderConfig) clone() DecoderConfig {
+	c := *cfg
+	if cfg.WindowSize != nil {
+		c.WindowSize = new(*cfg.WindowSize)
+	}
+	return c
+}
+
 // NewDecoder creates a new Decoder with the given options. If no options are
 // provided, the default values are used. The default WindowSize is 8 MiB and
 // the default BufferSize is 16 MiB. The function returns an error if the
 // options are invalid.
 func NewDecoder(cfg DecoderConfig) (*Decoder, error) {
+	cfg = cfg.clone()
 	cfg.setDefaults()
 
 	d := &Decoder{}

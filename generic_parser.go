@@ -68,7 +68,7 @@ func (gp *genericParser) Config() ParserConfig {
 func (gp *genericParser) Edges(n int) []Seq {
 	q := gp.q[:0]
 	i := gp.W
-	n = min(n, len(gp.Data)-i)
+	n = min(n, len(gp.Data)-i, gp.MaxMatchLen)
 	if n <= 0 {
 		return q
 	}
@@ -77,8 +77,8 @@ func (gp *genericParser) Edges(n int) []Seq {
 	p := gp.Data[:i+n]
 	v := _getLE64(p[i : i+8])
 	q = append(q, Seq{LitLen: 1, Aux: uint32(v & 0xFF)})
-	gp.q = q
 	if i >= b || n < gp.MinMatchLen {
+		gp.q = q
 		return q
 	}
 

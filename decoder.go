@@ -11,7 +11,7 @@ import (
 	"math"
 )
 
-// DecoderConfig contains the parameters for the DecoderBuffer and decoder
+// DecoderConfig contains parameters for the Decoder type.
 // types. WindowSize must be smaller than BufferSize. It is recommended to set
 // BufferSize to twice the WindowSize.
 type DecoderConfig struct {
@@ -99,7 +99,7 @@ type Decoder struct {
 	DecoderConfig
 }
 
-// Init initializes the DecoderBuffer using the provided options. If no options
+// Init initializes the Decoder using the provided options. If no options
 // are provided, the default values are used. The default WindowSize is 8 MiB
 // and the default BufferSize is 16 MiB. The function returns an error if the
 // options are invalid.
@@ -118,7 +118,7 @@ func (d *Decoder) Init(cfg DecoderConfig) error {
 	return nil
 }
 
-// Reset returns the DecoderBuffer to its initialized state.
+// Reset returns the Decoder to its initialized state.
 func (d *Decoder) Reset() {
 	*d = Decoder{
 		Data:          d.Data[:0],
@@ -172,7 +172,7 @@ func (d *Decoder) prune() int {
 	return d.BufferSize - len(d.Data)
 }
 
-// add appends to the the data slice, ensuring that the BufferSize is not
+// add appends to the data slice, ensuring that BufferSize is not
 // exceeded.
 func (d *Decoder) add(p ...byte) {
 	a := cap(d.Data) - len(d.Data)

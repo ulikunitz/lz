@@ -63,7 +63,7 @@ func (gp *genericParser) Config() ParserConfig {
 	return gp.ParserConfig.clone()
 }
 
-// Edges return a slice of Seq values representing the edges of the graph at the
+// Edges returns a slice of Seq values representing the edges of the graph at the
 // current position in the input data. The edges are computed by the Mapper.
 func (gp *genericParser) Edges(n int) []Seq {
 	q := gp.q[:0]
@@ -135,7 +135,7 @@ func (gp *genericParser) Skip(n int) (skipped int, err error) {
 	return n, err
 }
 
-// Resets the parser for being reused with a new input data slice.
+// Reset resets the parser so it can be reused with new input data.
 func (gp *genericParser) Reset(data []byte) error {
 	var err error
 	if err = gp.Buffer.Reset(data); err != nil {

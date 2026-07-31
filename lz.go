@@ -13,16 +13,16 @@
 // [Decoder] converts the block of sequences into the original
 // decompressed byte stream.
 //
-// The module provides multiple parser implementations that offer different
+// The package provides multiple parser implementations that offer different
 // combinations of encoding speed and compression ratios. Usually, a slower
 // parser will generate a better compression ratio.
 //
 // The package has a generic parser that needs a path finder, which selects the
-// sequences for data block and a mapper that finds potential matches in the
+// sequences for a data block and a mapper that finds potential matches in the
 // byte stream.
 //
-// For optimization we may provide custom implementations that integrate matcher
-// or path finder into the parser and avoids the calling overhead through
+// For optimization we may provide custom implementations that integrate a
+// matcher or path finder into the parser and avoid calling overhead through
 // interfaces.
 //
 // The library supports the implementation of parsers outside of this package.
@@ -102,11 +102,11 @@ const (
 	NoTrailingLiterals ParserFlags = 1 << iota
 )
 
-// Parser provides the possibility to parse a byte stream into LZ77 sequences.
+// Parser parses a byte stream into LZ77 sequences.
 type Parser interface {
-	// Parse up to block size bytes from the internal buffer and provides
-	// the sequences in the block structure. While slices will be reused,
-	// not old information will be maintained.
+	// Parse parses up to n bytes from the internal buffer and stores the
+	// resulting sequences in blk. Slices may be reused; previous contents
+	// are not preserved.
 	Parse(blk *Block, n int, flags ParserFlags) (parsed int, err error)
 
 	// Write writes data into the internal buffer.
@@ -217,7 +217,7 @@ type Matcher interface {
 	Edges(n int) []Seq
 
 	// Skip is called to advance the current position by n bytes. An error
-	// is only returned if the there are not enough bytes in the buffer.
+	// is only returned if there are not enough bytes in the buffer.
 	// Note that n can be negative, to allow to set the current position
 	// backwards.
 	Skip(n int) (skipped int, err error)
@@ -251,8 +251,8 @@ func NewPathFinder(name string, m Matcher) (PathFinder, error) {
 // bytes of the match to avoid a lookup in the buffer.
 type Entry struct{ i, v uint32 }
 
-// Mapper provides potential matches for a given position in the byte stream. Is
-// it usually implemented by hash tables.
+// Mapper provides potential matches for a given position in the byte stream. It
+// is usually implemented using hash tables.
 type Mapper interface {
 	// InputLen returns the length of the input data into the table. We are
 	// supporting length from 2 to 8 bytes.
@@ -261,8 +261,8 @@ type Mapper interface {
 	// Reset resets the internal state of the mapper.
 	Reset()
 
-	// Shift is called by the number of bytes pruned from the buffer and
-	// provide the new extended buffer to the mapper.
+	// Shift notifies the mapper that delta bytes were pruned from the
+	// beginning of the buffer.
 	Shift(delta int)
 
 	// Put adds all values between a and w to the mapper. We assume that

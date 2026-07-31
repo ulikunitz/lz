@@ -10,13 +10,13 @@ import (
 // pruned to provide more available space.
 type ShiftFunc func(delta int)
 
-// Buffer is the Buffer used for LZ parsing.
+// Buffer stores parser input and sliding-window state for LZ parsing.
 //
-// The Off field describes the offset of Data[0] in the original stream. The W
-// points to the end of sliding window used for copying matches.
+// The Off field describes the offset of Data[0] in the original stream. W
+// points to the end of the sliding window used for copying matches.
 //
 // Data is not fully allocated at the beginning. It grows with the usage. There
-// must be always 7 extra bytes allocated at the end of Data to allow easy reads
+// must always be 7 extra bytes allocated at the end of Data to allow easy reads
 // of data from the Buffer.
 type Buffer struct {
 	Data []byte
@@ -57,7 +57,7 @@ func (b *Buffer) Init(size, retentionSize int, shift ShiftFunc) error {
 // Reset resets the buffer with the provided data slice. If the data slice is
 // larger than the buffer size, the buffer size will be updated. Note that the
 // data slice should have 7 extra bytes, len(data)+7 <= cap(data). Otherwise the
-// old slice will be used or a new one need to be allocated.
+// old slice will be used or a new slice needs to be allocated.
 func (b *Buffer) Reset(data []byte) error {
 	if len(data) > b.Size {
 		b.Size = len(data)
@@ -82,8 +82,8 @@ func (b *Buffer) Parsable() int {
 	return len(b.Data) - b.W
 }
 
-// makeAvailable returns the slice of available bytes and should be larger or
-// equal the parameter n. The returned slice might be smaller than n if the
+// makeAvailable returns the slice of available bytes and should be greater than
+// or equal to n. The returned slice might be smaller than n if the
 // buffer reaches the buffer size limit.
 func (b *Buffer) makeAvailable(n int) []byte {
 	n = max(n, 0)

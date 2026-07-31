@@ -10,9 +10,9 @@ import (
 // prime is used by [hashValue].
 const prime = 9920624304325388887
 
-// hashValue computes a hash from the string stored in x with the first byte
-// stored on the lowest bits. The shift values ensures that only 64 - shift bits
-// potential non-zero bits remain.
+// hashValue computes a hash from the byte pattern encoded in x with the first
+// byte stored in the lowest bits. The shift value ensures that only 64 - shift
+// bits potential non-zero bits remain.
 func hashValue(x uint64, shift uint) uint32 {
 	return uint32((x * prime) >> shift)
 }

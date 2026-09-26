@@ -138,15 +138,14 @@ func (h *hash) Put(p []byte, a, w int) int {
 	return w - b
 }
 
-// Get returns the entries for the given value v. The function returns nil if no
-// entries are found.
-func (h *hash) Get(v uint64) []Entry {
+// AppendEntries appends all candidate entries for the provided hash value v
+// to the provided slice and returns the updated slice.
+func (h *hash) AppendEntries(entries []Entry, v uint64) []Entry {
 	v &= h.mask
 	i := hashValue(v, h.shift)
-	r := h.table[i : i+1]
-	e := r[0]
-	if e.v&uint32(h.mask) != uint32(v) || (e == Entry{}) {
-		return nil
+	e := h.table[i]
+	if e.v&uint32(h.mask) == uint32(v) && e != (Entry{}) {
+		entries = append(entries, e)
 	}
-	return r
+	return entries
 }

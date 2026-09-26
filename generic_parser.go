@@ -18,6 +18,7 @@ type genericParser struct {
 	Buffer
 
 	q        []Seq
+	entries  []Entry
 	trailing int
 
 	ParserConfig
@@ -82,8 +83,8 @@ func (gp *genericParser) Edges(n int) []Seq {
 		return q
 	}
 
-	entries := gp.mapper.Get(v)
-	for _, e := range entries {
+	gp.entries = gp.mapper.AppendEntries(gp.entries[:0], v)
+	for _, e := range gp.entries {
 		k := min(bits.TrailingZeros32(e.v^uint32(v))>>3, n)
 		if k < gp.MinMatchLen {
 			continue

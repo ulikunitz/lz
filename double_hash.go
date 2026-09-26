@@ -136,20 +136,19 @@ func (d *doubleHash) Put(p []byte, a, w int) int {
 	return w - b
 }
 
-// Get returns all matching entries for v from both hash tables.
-func (d *doubleHash) Get(v uint64) []Entry {
-	// TODO: implement an Append function
-	r := make([]Entry, 0, 2)
+// AppendEntries appends all candidate entries for the provided hash value v
+// from both hash tables to the provided slice and returns the updated slice.
+func (d *doubleHash) AppendEntries(entries []Entry, v uint64) []Entry {
 	i := hashValue(v&d.h1.mask, d.h1.shift)
 	e := d.h1.table[i]
-	if e.v&uint32(d.h1.mask) == uint32(v) && (e != Entry{}) {
-		r = append(r, e)
+	if e.v&uint32(d.h1.mask) == uint32(v) && e != (Entry{}) {
+		entries = append(entries, e)
 	}
 
 	i = hashValue(v&d.h2.mask, d.h2.shift)
 	e = d.h2.table[i]
-	if e.v&uint32(d.h2.mask) == uint32(v) && (e != Entry{}) {
-		r = append(r, e)
+	if e.v&uint32(d.h2.mask) == uint32(v) && e != (Entry{}) {
+		entries = append(entries, e)
 	}
-	return r
+	return entries
 }

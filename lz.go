@@ -269,9 +269,9 @@ type Mapper interface {
 	// cap(p) >= len(p) + 7.
 	Put(p []byte, a, w int) int
 
-	// Get returns all candidate entries for the provided hash value. The
-	// entry value v contains the all 4 bytes stored a position i.
-	Get(v uint64) []Entry
+	// AppendEntries appends all candidate entries for the provided hash value v
+	// to the provided slice and returns the updated slice.
+	AppendEntries(entries []Entry, v uint64) []Entry
 }
 
 // NewMapper creates a new Mapper for the provided name of the algorithm. The

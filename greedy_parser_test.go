@@ -7,73 +7,83 @@ import (
 )
 
 func TestGreedyParser(t *testing.T) {
-	const (
-		blockSize = 128
-		str       = "=====foofoobarfoobar bartender===="
-	)
-
-	const winSize = 32
-	p, err := NewParser(ParserConfig{
-		PathFinder:    "greedy",
-		Mapper:        "hash_3:16",
-		WindowSize:    new(winSize),
-		RetentionSize: new(winSize),
-		BufferSize:    2 * winSize,
-	})
-	if err != nil {
-		t.Fatalf("NewParser: %v", err)
-	}
-	gp, ok := p.(*genericParser)
-	if !ok {
-		t.Fatalf(
-			"NewGreedyParser returned type %T; want *genericParser",
-			p)
+	tests := []string{
+		"hash_3:16",
+		"doubleHash_3:16_6:17",
 	}
 
-	buf := &gp.Buffer
-	n, err := buf.Write([]byte(str))
-	if err != nil {
-		t.Fatalf("buf.Write: %v", err)
-	}
-	if n != len(str) {
-		t.Fatalf("buf.Write returned n=%d; want %d", n, len(str))
-	}
+	for _, mapperName := range tests {
+		t.Run("mapper="+mapperName, func(t *testing.T) {
+			const (
+				blockSize = 128
+				str       = "=====foofoobarfoobar bartender===="
+			)
 
-	var blk Block
-	parsed, err := gp.Parse(&blk, blockSize, 0)
-	if err != nil {
-		t.Fatalf("gp.Parse: %v", err)
-	}
-	if parsed != len(str) {
-		t.Fatalf("gp.Parse returned parsed=%d; want %d", parsed, len(str))
-	}
-	t.Logf("Literals: %q", blk.Literals)
-	t.Logf("Sequences: %v", blk.Sequences)
+			const winSize = 32
+			p, err := NewParser(ParserConfig{
+				PathFinder:    "greedy",
+				Mapper:        "hash_3:16",
+				WindowSize:    new(winSize),
+				RetentionSize: new(winSize),
+				BufferSize:    2 * winSize,
+			})
+			if err != nil {
+				t.Fatalf("NewParser: %v", err)
+			}
+			gp, ok := p.(*genericParser)
+			if !ok {
+				t.Fatalf(
+					"NewGreedyParser returned type %T; want *genericParser",
+					p)
+			}
 
-	d, err := NewDecoder(DecoderConfig{
-		WindowSize: new(winSize),
-		BufferSize: 2 * winSize,
-	})
-	if err != nil {
-		t.Fatalf("NewDecoder: %v", err)
-	}
-	n, err = d.WriteBlock(&blk)
-	if err != nil {
-		t.Fatalf("d.WriteBlock: %v", err)
-	}
-	if n != len(str) {
-		t.Fatalf("d.WriteBlock returned n=%d; want %d", n, len(str))
-	}
-	q := make([]byte, len(str))
-	n, err = d.Read(q)
-	if err != nil {
-		t.Fatalf("d.Read: %v", err)
-	}
-	if n != len(str) {
-		t.Fatalf("d.Read returned n=%d; want %d", n, len(str))
-	}
-	if string(q) != str {
-		t.Fatalf("decoded string = %q; want %q", string(q), str)
+			buf := &gp.Buffer
+			n, err := buf.Write([]byte(str))
+			if err != nil {
+				t.Fatalf("buf.Write: %v", err)
+			}
+			if n != len(str) {
+				t.Fatalf("buf.Write returned n=%d; want %d", n, len(str))
+			}
+
+			var blk Block
+			parsed, err := gp.Parse(&blk, blockSize, 0)
+			if err != nil {
+				t.Fatalf("gp.Parse: %v", err)
+			}
+			if parsed != len(str) {
+				t.Fatalf("gp.Parse returned parsed=%d; want %d", parsed, len(str))
+			}
+			t.Logf("Literals: %q", blk.Literals)
+			t.Logf("Sequences: %v", blk.Sequences)
+
+			d, err := NewDecoder(DecoderConfig{
+				WindowSize: new(winSize),
+				BufferSize: 2 * winSize,
+			})
+			if err != nil {
+				t.Fatalf("NewDecoder: %v", err)
+			}
+			n, err = d.WriteBlock(&blk)
+			if err != nil {
+				t.Fatalf("d.WriteBlock: %v", err)
+			}
+			if n != len(str) {
+				t.Fatalf("d.WriteBlock returned n=%d; want %d", n, len(str))
+			}
+			q := make([]byte, len(str))
+			n, err = d.Read(q)
+			if err != nil {
+				t.Fatalf("d.Read: %v", err)
+			}
+			if n != len(str) {
+				t.Fatalf("d.Read returned n=%d; want %d", n, len(str))
+			}
+			if string(q) != str {
+				t.Fatalf("decoded string = %q; want %q", string(q), str)
+			}
+
+		})
 	}
 }
 func FuzzGreedyParser(f *testing.F) {
@@ -90,6 +100,98 @@ func FuzzGreedyParser(f *testing.F) {
 		p, err := NewParser(ParserConfig{
 			PathFinder:    "greedy",
 			Mapper:        "hash_3:16",
+			MinMatchLen:   3,
+			MaxMatchLen:   64,
+			WindowSize:    new(winSize),
+			RetentionSize: new(winSize),
+			BufferSize:    2 * winSize,
+		})
+		if err != nil {
+			t.Fatalf("NewParser: %v", err)
+		}
+		d, err := NewDecoder(DecoderConfig{
+			WindowSize: new(winSize),
+			BufferSize: 2 * winSize,
+		})
+		if err != nil {
+			t.Fatalf("NewDecoder: %v", err)
+		}
+
+		r := bytes.NewReader(data)
+		w := new(bytes.Buffer)
+
+		// TODO: Call ReadFrom(r) only if p.Parse returns ErrEndOfBuffer.
+		var blk Block
+		moreData := true
+		for moreData {
+			k, err := p.ReadFrom(r)
+			t.Logf("p.ReadFrom: %d bytes", k)
+			if err != nil && err != ErrFullBuffer {
+				t.Fatalf("p.ReadFrom: %v", err)
+			}
+			moreData = err == ErrFullBuffer
+
+			for {
+				k, err := p.Parse(&blk, blockSize, 0)
+				t.Logf("p.Parse: %d bytes", k)
+				if err != nil {
+					if err != ErrEndOfBuffer {
+						t.Fatalf("p.Parse: %v", err)
+					}
+					if k == 0 {
+						break
+					}
+				}
+
+				k, err = d.WriteBlock(&blk)
+				if err != nil {
+					t.Fatalf("d.WriteBlock: %v", err)
+				}
+				t.Logf("d.WriteBlock: %d bytes", k)
+
+				l, err := io.Copy(w, d)
+				if err != nil {
+					t.Fatalf("io.Copy: %v", err)
+				}
+				t.Logf("io.Copy: %d bytes", l)
+			}
+		}
+
+		decoded := w.Bytes()
+		if !bytes.Equal(decoded, data) {
+			t.Fatalf(
+				"decoded data does not match original\noriginal: %q\ndecoded:  %q",
+				data, decoded)
+		}
+	})
+}
+
+func FuzzParser(f *testing.F) {
+	f.Add(0, 1, []byte("aaaaaaaaaaaaaaaaaaaaaaaaaa"))
+	f.Add(0, 0, []byte("abcabcabcabcabcabcabcabc"))
+	f.Add(0, 0, []byte("a"))
+	f.Add(0, 1, []byte{})
+	f.Fuzz(func(t *testing.T, finderIndex int, mapperIndex int, data []byte) {
+		finders := []string{"greedy"}
+		mappers := []string{"hash_3:16", "doubleHash_3:12_6:20"}
+
+		if !(0 <= finderIndex && finderIndex < len(finders)) {
+			t.Skip()
+		}
+		finder := finders[finderIndex]
+		if !(0 <= mapperIndex && mapperIndex < len(mappers)) {
+			t.Skip()
+		}
+		mapper := mappers[mapperIndex]
+
+		const (
+			blockSize = 128
+			winSize   = 200
+		)
+
+		p, err := NewParser(ParserConfig{
+			PathFinder:    finder,
+			Mapper:        mapper,
 			MinMatchLen:   3,
 			MaxMatchLen:   64,
 			WindowSize:    new(winSize),

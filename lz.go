@@ -280,6 +280,11 @@ type Mapper interface {
 // hash_<inputLen>:<hashBits> A hash table with the provided input length
 // and hash bits. The input length is between 2 and 8 bytes, and the hash
 // bits can be 24 bits at maximum.
+//
+// doubleHash_<h1InputLen>:<h1HashBits>_<h2InputLen>:<h2HashBits> A double
+// hash table. The input lengths and hash bits must follow
+// the constraints described above. The second input length must be greater than
+// the first.
 func NewMapper(name string) (Mapper, error) {
 	prefix, _, found := strings.Cut(name, "_")
 	if !found {
@@ -292,6 +297,12 @@ func NewMapper(name string) (Mapper, error) {
 			return nil, err
 		}
 		return newHash(inputLen, hashBits)
+	case "doubleHash":
+		params, err := parseDoubleHashName(name)
+		if err != nil {
+			return nil, err
+		}
+		return newDoubleHash(params)
 	}
 	return nil, fmt.Errorf("lz: unknown mapper name %q", name)
 }

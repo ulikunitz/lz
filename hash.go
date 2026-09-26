@@ -72,20 +72,27 @@ func parseHashName(name string) (inputLen, hashBits int, err error) {
 	return inputLen, hashBits, err
 }
 
+func (h *hash) init(inputLen, hashBits int) error {
+	if err := verifyHashParams(inputLen, hashBits); err != nil {
+		return err
+	}
+	h.inputLen = inputLen
+	h.hashBits = hashBits
+	h.mask = 1<<(inputLen*8) - 1
+	h.shift = 64 - uint(hashBits)
+	h.table = make([]Entry, 1<<hashBits)
+	return nil
+}
+
 // newHash creates a new hash with the given input length and number of hash
 // bits. The function returns an error if the parameters are invalid.
 func newHash(inputLen, hashBits int) (*hash, error) {
-	if err := verifyHashParams(inputLen, hashBits); err != nil {
+	var h hash
+	err := h.init(inputLen, hashBits)
+	if err != nil {
 		return nil, err
 	}
-	h := &hash{
-		table:    make([]Entry, 1<<hashBits),
-		inputLen: inputLen,
-		hashBits: hashBits,
-		mask:     1<<(inputLen*8) - 1,
-		shift:    64 - uint(hashBits),
-	}
-	return h, nil
+	return &h, nil
 }
 
 // InputLen returns the input length of the hash.

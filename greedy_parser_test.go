@@ -10,6 +10,7 @@ func TestGreedyParser(t *testing.T) {
 	tests := []string{
 		"hash_3:16",
 		"doubleHash_3:16_6:17",
+		"bucketHash_3:18:4",
 	}
 
 	for _, mapperName := range tests {
@@ -22,7 +23,7 @@ func TestGreedyParser(t *testing.T) {
 			const winSize = 32
 			p, err := NewParser(ParserConfig{
 				PathFinder:    "greedy",
-				Mapper:        "hash_3:16",
+				Mapper:        mapperName,
 				WindowSize:    new(winSize),
 				RetentionSize: new(winSize),
 				BufferSize:    2 * winSize,
@@ -173,7 +174,11 @@ func FuzzParser(f *testing.F) {
 	f.Add(0, 1, []byte{})
 	f.Fuzz(func(t *testing.T, finderIndex int, mapperIndex int, data []byte) {
 		finders := []string{"greedy"}
-		mappers := []string{"hash_3:16", "doubleHash_3:12_6:20"}
+		mappers := []string{
+			"hash_3:16",
+			"doubleHash_3:12_6:20",
+			"bucketHash_3:18:4",
+		}
 
 		if !(0 <= finderIndex && finderIndex < len(finders)) {
 			t.Skip()

@@ -141,7 +141,7 @@ func (h *hash) Put(p []byte, a, w int) int {
 // AppendEntries appends all candidate entries for the provided hash value v
 // to the provided slice and returns the updated slice.
 func (h *hash) AppendEntries(entries []Entry, v uint64) []Entry {
-	v &= h.mask
+	v = v & h.mask
 	i := hashValue(v, h.shift)
 	e := h.table[i]
 	if e.v&uint32(h.mask) == uint32(v) && e != (Entry{}) {

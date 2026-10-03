@@ -139,15 +139,17 @@ func (d *doubleHash) Put(p []byte, a, w int) int {
 // AppendEntries appends all candidate entries for the provided hash value v
 // from both hash tables to the provided slice and returns the updated slice.
 func (d *doubleHash) AppendEntries(entries []Entry, v uint64) []Entry {
-	i := hashValue(v&d.h1.mask, d.h1.shift)
+	v1 := v & d.h1.mask
+	i := hashValue(v1, d.h1.shift)
 	e := d.h1.table[i]
-	if e.v&uint32(d.h1.mask) == uint32(v) && e != (Entry{}) {
+	if e.v&uint32(d.h1.mask) == uint32(v1) && e != (Entry{}) {
 		entries = append(entries, e)
 	}
 
-	i = hashValue(v&d.h2.mask, d.h2.shift)
+	v2 := v & d.h2.mask
+	i = hashValue(v2, d.h2.shift)
 	e = d.h2.table[i]
-	if e.v&uint32(d.h2.mask) == uint32(v) && e != (Entry{}) {
+	if e.v&uint32(d.h2.mask) == uint32(v2) && e != (Entry{}) {
 		entries = append(entries, e)
 	}
 	return entries

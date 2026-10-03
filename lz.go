@@ -303,6 +303,12 @@ func NewMapper(name string) (Mapper, error) {
 			return nil, err
 		}
 		return newDoubleHash(params)
+	case "bucketHash":
+		params, err := parseBucketHashName(name)
+		if err != nil {
+			return nil, err
+		}
+		return newBucketHash(params)
 	}
 	return nil, fmt.Errorf("lz: unknown mapper name %q", name)
 }
